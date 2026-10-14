@@ -1,0 +1,8 @@
+# Install cyclonedds 0.10.x from source first and export CYCLONEDDS_HOME (see README).
+cyclonedds==0.10.2
+numpy
+opencv-python
+open3d
+pynput
+PyYAML
+# unitree_sdk2py is installed from source:  pip install -e ~/unitree_sdk2_python
