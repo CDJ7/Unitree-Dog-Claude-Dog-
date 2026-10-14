@@ -5,4 +5,6 @@ opencv-python
 open3d
 pynput
 PyYAML
+ultralytics        # YOLO (pulls in torch; install a CUDA build of torch first for GPU)
+pytest             # unit tests only
 # unitree_sdk2py is installed from source:  pip install -e ~/unitree_sdk2_python
