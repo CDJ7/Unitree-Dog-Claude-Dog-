@@ -1,0 +1,55 @@
+# Go2 streaming + teleop configuration. CLI flags override the matching values.
+network:
+  iface: enp0s31f6            # overridden by --iface
+  robot_ip: 192.168.123.161   # used only for log hints
+
+camera:
+  mode: videoclient           # "videoclient" (SDK JPEG RPC) or "multicast" (GStreamer H.264)
+  window: go2_front_camera
+  no_data_warn_s: 5.0
+  multicast:
+    # UNVERIFIED defaults: confirm with `sudo tcpdump -i <iface> -n udp and dst net 224.0.0.0/4`
+    address: 230.1.1.1
+    port: 1720
+    iface: null               # null -> network.iface. Must be the NIC on 192.168.123.x
+    pipeline: >-
+      udpsrc address={address} port={port} multicast-iface={iface}
+      ! application/x-rtp, media=video, encoding-name=H264
+      ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert
+      ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+
+lidar:
+  topic: rt/utlidar/cloud     # sensor_msgs/PointCloud2 (sensor_msgs.msg.dds_.PointCloud2_)
+  switch_topic: rt/utlidar/switch
+  switch_on_start: true       # publish "ON" to the switch topic at startup
+  viewer: open3d              # "open3d" (falls back to "topdown" automatically) or "topdown"
+  view_hz: 10
+  max_points: 60000           # random subsample for display
+  z_min: -1.0                 # colour-scale / clip range (metres, cloud frame)
+  z_max: 2.0
+  topdown_range_m: 6.0
+  no_data_warn_s: 5.0
+
+state:
+  sport_topic: rt/sportmodestate
+  low_topic: rt/lowstate      # used only for battery SOC (bms_state.soc)
+  no_data_warn_s: 5.0
+
+control:
+  rate_hz: 20
+  client_timeout_s: 3.0
+  # Default limits (m/s, rad/s). --max-speed sets max_vx; vy/vyaw scale proportionally.
+  max_vx: 0.4
+  max_vy: 0.3
+  max_vyaw: 0.8
+  # Hard caps: nothing (config or CLI) can exceed these.
+  hard_cap_vx: 0.6
+  hard_cap_vy: 0.4
+  hard_cap_vyaw: 1.2
+  speed_scale: {initial: 1.0, min: 0.2, max: 1.0, step: 0.1}
+  # A key counts as held for `deadman_s` after its last key event. The first press gets
+  # `initial_repeat_grace_s` because X11 auto-repeat waits ~0.5 s before repeating.
+  deadman_s: 0.3
+  initial_repeat_grace_s: 0.75
+  loop_stall_s: 0.25          # watchdog sends StopMove if the control loop is this late
+  damp_confirm_s: 3.0         # X then Y within this window triggers Damp()
