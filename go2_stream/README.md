@@ -118,3 +118,57 @@ Overlay on the video: FPS, current command velocity, speed scale, status, batter
   (OpenCV + Open3D) are driven from the main thread, so a slow display can never block the control thread.
 - If Open3D cannot open a window the app falls back to a top-down OpenCV view automatically.
 - Topics that deliver nothing for 5 s print a warning naming the topic and what to check.
+
+## 8. Object detection with distance (YOLO + LiDAR)
+
+`run_detection.py` runs Ultralytics YOLO on the front camera and labels each object with its distance and 3D position.
+**The Go2 front camera is RGB only (no depth channel)**, so distance comes from projecting the LiDAR point cloud into the
+image and taking a robust median of the points that fall on each box. It is perception only: nothing moves the robot unless
+you pass `--teleop`. `main.py` and `teleop.py` are unchanged.
+
+```
+perception/detector.py       YOLO wrapper (GPU if available, else CPU; class filter)
+perception/depth_fusion.py   pinhole projection, frame transforms, robust per-box distance (pure numpy)
+perception/pipeline.py       detection thread + fusion + CSV/JSONL logger
+perception/visualization.py  boxes, labels, LiDAR overlay
+run_detection.py             entry point
+config/detection.yaml        model, thresholds, class filter, camera model, extrinsics
+tests/test_depth_fusion.py   unit tests (synthetic arrays)
+```
+
+Install (inside the venv): `pip install ultralytics` (pulls in PyTorch; for an NVIDIA GPU install a CUDA build of torch first).
+The first run downloads `yolov8n.pt`.
+
+```bash
+python -m pytest -q tests                                       # depth math tests, no robot needed
+python run_detection.py --image some_photo.jpg                  # 1. detector alone (writes some_photo_det.jpg)
+python run_detection.py --iface enp0s31f6 --no-lidar            # 2. live camera, distances n/a
+python run_detection.py --iface enp0s31f6                       # 3. live camera + LiDAR distances
+python run_detection.py --iface enp0s31f6 --classes person chair bottle --log det.csv
+python run_detection.py --iface enp0s31f6 --teleop              # 4. optional: WASD alongside (global key capture)
+```
+Flags: `--model`, `--conf`, `--classes`, `--device`, `--no-display`, `--log FILE` (`.csv` or `.jsonl`), `--no-lidar`,
+`--image`, `--teleop`. Key `L` toggles the LiDAR overlay; Esc quits (with `--teleop` it also stops the dog first).
+
+Each detection (`perception.detector.Detection`) has `name, conf, bbox, distance_m, xyz_cam, xyz_body, n_depth_points`.
+`distance_m` is the straight-line range; `xyz_body` is x forward / y left / z up (metres) from the robot body origin.
+`distance_m is None` renders as "depth: n/a".
+
+### Check that distances are accurate (do this before trusting them)
+1. Start the app and press `L`. LiDAR dots (blue near, red far) should sit on the edges of real objects such as a wall, a
+   door frame or a box. If they are shifted, tune `camera_model.hfov_deg` and `extrinsics` in `config/detection.yaml`.
+   The defaults are **guesses**: the camera's field of view and its offset from the LiDAR were not measured.
+2. Put a large flat object (a box or a person) at a **tape-measured 1.0 m, 2.0 m and 3.0 m** straight ahead of the dog's
+   chest and compare `distance_m`. Expect a constant offset if the extrinsics are off, and a scale error if the field of
+   view is wrong. Note that the distance is measured from the camera position set in `extrinsics`, not from the dog's nose.
+3. Check that the sign of `xyz_body` is right: step the object to the dog's left and `y` should go positive.
+
+### Limitations
+- The LiDAR cloud is sparse: small or distant objects may get fewer than `fusion.min_points` points and show "depth: n/a".
+- The camera frame and the cloud are matched by "latest of each", not by timestamp, so a moving object or a turning dog will
+  have some error.
+- `rt/utlidar/cloud` may be published in an odom (world) frame. With `fusion.lidar_frame: auto` the app checks the message's
+  `header.frame_id` (logged once at start) and, if it contains "odom", transforms into the body frame using the pose from
+  `rt/sportmodestate`. Tell me what the log line shows if distances look wrong.
+- Not yet run on a real robot. Unit tests, the detector on a sample image, and the threaded pipeline with synthetic LiDAR
+  data were run.

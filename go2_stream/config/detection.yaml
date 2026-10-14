@@ -1,0 +1,36 @@
+# YOLO + LiDAR distance fusion. The Go2 front camera is RGB only, so distance comes from projecting
+# LiDAR points into the camera image. Camera model and extrinsics below are APPROXIMATE DEFAULTS:
+# check them with the LiDAR overlay (press L) and tune until the dots sit on object edges.
+model:
+  path: yolov8n.pt
+  conf: 0.35
+  device: auto            # auto | cpu | cuda:0
+  imgsz: 640
+  classes: []             # e.g. [person, chair, bottle]; empty = all 80 COCO classes
+
+fusion:
+  lidar_frame: auto       # auto | body | odom. auto: use odom->body transform if header.frame_id contains "odom"
+  central_frac: 0.4       # use points in the central 40% (each axis) of the box; falls back to the full box
+  min_points: 3           # fewer valid LiDAR points than this -> "depth: n/a"
+  foreground_frac: 0.5    # keep the nearest 50% of points so background doesn't inflate distance
+  min_range_m: 0.2
+  max_range_m: 20.0
+
+# UNVERIFIED guess: the Go2 front camera is a wide-angle lens. Replace with measured values
+# (fx, fy, cx, cy, ref_width, ref_height) from a checkerboard calibration if you need accuracy.
+camera_model:
+  hfov_deg: 100.0
+  # fx: 640.0
+  # fy: 640.0
+  # cx: 640.0
+  # cy: 360.0
+  # ref_width: 1280
+  # ref_height: 720
+
+# Camera pose relative to the LiDAR/body frame (x forward, y left, z up). Defaults are a guess:
+# measure the real offset and tilt. pitch_deg > 0 = camera tilted down.
+extrinsics:
+  translation: [0.0, 0.0, 0.0]
+  pitch_deg: 0.0
+  yaw_deg: 0.0
+  roll_deg: 0.0
