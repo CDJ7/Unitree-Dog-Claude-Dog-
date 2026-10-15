@@ -64,7 +64,8 @@ def check_interface(iface):
                       f"./setup_network.sh temp {iface}      (this is also what causes 'does not match an available interface')\n"
                       f"or for a persistent profile: ./setup_network.sh nmcli {iface}")
     if state not in ("up", "unknown"):
-        return report("WARN", f"{iface} link state", f"{state} (address {ok_addr[0]})", "check the cable and that the dog is powered on")
+        return report("FAIL", f"{iface} link is up", f"link {state} (address {ok_addr[0]} is set)",
+                      "no cable signal: plug the Ethernet cable into the dog's port and power the dog on, then wait 1-2 min")
     return report("PASS", f"{iface} has a 192.168.123.x address", f"{ok_addr[0]}, link {state}")
 
 
@@ -250,18 +251,27 @@ def main():
             check_lidar(cfg)
 
     bad = results.count("FAIL")
+    # a SKIP means a check could not run (an earlier one failed); that must never read as "passed"
+    skipped = results.count("SKIP") - (1 if args.no_dds else 0)
     print()
     if bad:
-        print(f"{bad} check(s) FAILED - fix them, then re-run: python preflight.py --iface {iface}")
+        print(f"NOT READY: {bad} check(s) FAILED" + (f" and {skipped} could not run" if skipped else "")
+              + f". Fix them, then re-run: python preflight.py --iface {iface}")
+        sys.exit(1)
+    if skipped > 0:
+        print(f"NOT READY: {skipped} check(s) could not run. Re-run: python preflight.py --iface {iface}")
         sys.exit(1)
     warns = results.count("WARN")
+    if args.no_dds:
+        print("Network and software checks passed" + (f" ({warns} warning(s) above)" if warns else "")
+              + ". The robot itself was NOT checked: run again without --no-dds with the dog on.")
+        return
     print("All checks passed" + (f" ({warns} warning(s) above)." if warns else "."))
     print("\nLaunch the full real-robot app (camera + LiDAR + keyboard teleop):")
     print(f"    python main.py --iface {iface} --max-speed 0.3")
     print("With YOLO detection and LiDAR distances:")
     print(f"    python run_detection.py --iface {iface} --teleop --max-speed 0.3")
     print("Dog starts lying down: clear ~2 m around it, press R to stand, keep the Unitree remote in reach.")
-
 
 if __name__ == "__main__":
     main()
