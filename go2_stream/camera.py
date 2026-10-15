@@ -118,7 +118,10 @@ def draw_overlay(img, fps, cmd, scale, status, extra_lines=()):
              f"status: {status}", *extra_lines]
     y = 22
     for text in lines:
-        cv2.putText(out, text, (8, y), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 3, cv2.LINE_AA)
+        for dx in (-1, 0, 1):          # halo: same-thickness text shifted 1 px (a thicker outline pass mis-spaces letters)
+            for dy in (-1, 0, 1):
+                if dx or dy:
+                    cv2.putText(out, text, (8 + dx, y + dy), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 1, cv2.LINE_AA)
         cv2.putText(out, text, (8, y), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 1, cv2.LINE_AA)
         y += 20
     return out

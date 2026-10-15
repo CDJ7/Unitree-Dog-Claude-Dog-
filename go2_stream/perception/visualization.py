@@ -4,7 +4,13 @@ import numpy as np
 
 
 def _text(img, s, org, color=(0, 255, 0), scale=0.55):
-    cv2.putText(img, s, org, cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), 3, cv2.LINE_AA)
+    """Text with a dark halo. The halo is the same thickness-1 text shifted by 1 px in 8 directions: a thicker
+    outline pass gets different letter spacing in OpenCV and smears into a doubled label."""
+    x, y = org
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            if dx or dy:
+                cv2.putText(img, s, (x + dx, y + dy), cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), 1, cv2.LINE_AA)
     cv2.putText(img, s, org, cv2.FONT_HERSHEY_SIMPLEX, scale, color, 1, cv2.LINE_AA)
 
 
@@ -34,10 +40,13 @@ def draw_detections(frame, detections, infer_fps=0.0, display_fps=0.0, lidar_uvr
         cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
         dist = "depth: n/a" if d.distance_m is None else f"{d.distance_m:.2f} m"
         label = f"GT {d.name} {dist}" if gt else f"{d.name} {d.conf:.2f} {dist}"
-        _text(img, label, (x1, max(y1 - 8, 14)), color)
+        h, w = img.shape[:2]
+        ly = y1 - 8 if y1 > 70 else y1 + 18          # inside the box when it touches the top, clear of the status text
+        _text(img, label, (min(x1, max(w - 12 * len(label), 4)), ly), color)
         if d.xyz_body is not None:
             x, y, z = d.xyz_body
-            _text(img, f"fwd {x:+.2f} left {y:+.2f} up {z:+.2f}", (x1, min(y2 + 16, img.shape[0] - 4)), color, 0.45)
+            pos = f"fwd {x:+.2f} left {y:+.2f} up {z:+.2f}"
+            _text(img, pos, (min(x1, max(w - 8 * len(pos), 4)), min(y2 + 16, h - 4)), color, 0.45)
     _text(img, f"infer {infer_fps:4.1f} fps  display {display_fps:4.1f} fps", (8, 20))
     if status:
         _text(img, status, (8, 40), (0, 200, 255))
