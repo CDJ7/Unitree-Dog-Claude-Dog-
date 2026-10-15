@@ -8,6 +8,8 @@ teleop as main.py runs alongside).
     python run_detection.py --iface enp0s31f6                  # live camera + LiDAR fusion
     python run_detection.py --iface enp0s31f6 --classes person chair --log det.csv
     python run_detection.py --iface enp0s31f6 --teleop         # also drive with WASD (see README)
+    python run_detection.py --sim                              # MuJoCo sim instead of the robot (teleop on by default)
+    python run_detection.py --sim --gt                         # sim with GROUND TRUTH labels instead of YOLO
 """
 import argparse
 import logging
@@ -38,6 +40,12 @@ def parse_args():
     ap.add_argument("--image", metavar="PATH", help="run the detector on one image and exit (no robot, no DDS)")
     ap.add_argument("--teleop", action="store_true", help="also run keyboard teleop (off by default)")
     ap.add_argument("--max-speed", type=float, help="with --teleop: max forward speed m/s")
+    ap.add_argument("--sim", action="store_true", help="use the MuJoCo simulation instead of the robot (no DDS)")
+    ap.add_argument("--sim-config", default=os.path.join(HERE, "config", "sim.yaml"))
+    ap.add_argument("--no-render", action="store_true", help="sim: skip OpenGL, use a flat-colour ray-cast view")
+    ap.add_argument("--gt", action="store_true", help="sim: label objects with GROUND TRUTH from the sim, not YOLO")
+    ap.add_argument("--no-teleop", action="store_true", help="sim: do not start keyboard teleop (it is on by default)")
+    ap.add_argument("--results-dir", default=os.path.join(HERE, "results"))
     return ap.parse_args()
 
 
@@ -64,12 +72,100 @@ def run_image(args, dcfg):
     print("Saved", out)
 
 
+def save_screenshot(results_dir, img, tag="screenshot"):
+    out = os.path.join(results_dir, "screenshots")
+    os.makedirs(out, exist_ok=True)
+    path = os.path.join(out, time.strftime(f"{tag}_%Y%m%d_%H%M%S.png"))
+    cv2.imwrite(path, img)
+    log.info("Saved %s", path)
+    return path
+
+
+def run_sim(args, dcfg):
+    """MuJoCo sim backend. Same detector, display and teleop as the real robot; no DDS, no SDK needed."""
+    from sim.world import SimWorld, SimSportClient, load_config
+    from sim.topdown import TopDownMap
+    from sim.ground_truth import GroundTruthDetector
+    from mapping.sim_depth import make_sim_fuse_fn
+    from perception.pipeline import DetectionThread, DetectionLogger
+    from perception.visualization import draw_detections
+
+    cfg = yaml.safe_load(open(args.config))
+    world = SimWorld(load_config(args.sim_config), render=False if args.no_render else None)
+    gt_det = GroundTruthDetector(world)
+    yolo = None if args.gt else build_detector(args, dcfg)
+    detector = gt_det if args.gt else yolo
+    teleop = det_thread = logger = None
+    try:
+        world.start()
+        if not args.no_teleop:
+            from teleop import Teleop
+            teleop = Teleop(cfg["control"], SimSportClient(world), max_speed=args.max_speed)
+            teleop.start()
+            log.info("Dog starts lying down: press R to stand, then WASD. P = screenshot, G = toggle YOLO / GROUND TRUTH.")
+        logger = DetectionLogger(args.log) if args.log else None
+        det_thread = DetectionThread(detector, world.buffer, dcfg, logger=logger,
+                                     fuse_fn=make_sim_fuse_fn(world, dcfg["fusion"]))
+        det_thread.start()
+        topdown = TopDownMap(world)
+        win = "go2_sim_detection"
+        if not args.no_display:
+            cv2.namedWindow(win, cv2.WINDOW_NORMAL)
+        last_seq, shown, times = 0, None, []
+        while True:
+            res = det_thread.latest()
+            if res is not None and res.seq != last_seq:
+                last_seq = res.seq
+                now = time.monotonic()
+                times.append(now)
+                while times and now - times[0] > 2.0:
+                    times.pop(0)
+                dfps = (len(times) - 1) / (times[-1] - times[0]) if len(times) > 1 else 0.0
+                shown = draw_detections(res.frame, res.detections, res.infer_fps, dfps, None, False,
+                                        f"sim ({world.render_backend})  {res.status}")
+            if args.no_display:
+                time.sleep(0.05)
+            else:
+                if shown is not None:
+                    cv2.imshow(win, shown)
+                cv2.imshow("go2_sim_map", topdown.draw())
+                key = cv2.waitKey(15) & 0xFF
+                if key == 27 or cv2.getWindowProperty(win, cv2.WND_PROP_VISIBLE) < 1:
+                    break
+                if key in (ord("p"), ord("P")) and shown is not None:
+                    save_screenshot(args.results_dir, shown, "detection")
+                    save_screenshot(args.results_dir, topdown.draw(), "map")
+                if key in (ord("g"), ord("G")):
+                    if yolo is None and not args.gt:
+                        continue
+                    if yolo is None:
+                        yolo = build_detector(args, dcfg)      # --gt run: load YOLO on demand
+                    det_thread.detector = yolo if det_thread.detector is gt_det else gt_det
+                    log.info("Labels now: %s", "GROUND TRUTH" if det_thread.detector is gt_det else "YOLO")
+            if teleop and teleop.quit_event.is_set():
+                break
+    except KeyboardInterrupt:
+        log.info("Interrupted")
+    except Exception:
+        log.exception("Fatal error")
+    finally:
+        if teleop:
+            teleop.shutdown()
+        if det_thread: det_thread.stop()
+        world.stop()
+        if logger: logger.close()
+        cv2.destroyAllWindows()
+        log.info("Exited cleanly")
+
+
 def main():
     args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
     dcfg = yaml.safe_load(open(args.det_config))
     if args.image:
         return run_image(args, dcfg)
+    if args.sim:
+        return run_sim(args, dcfg)
 
     cfg = yaml.safe_load(open(args.config))
     iface = args.iface or cfg["network"]["iface"]

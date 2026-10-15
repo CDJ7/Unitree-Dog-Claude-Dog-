@@ -29,15 +29,19 @@ def draw_detections(frame, detections, infer_fps=0.0, display_fps=0.0, lidar_uvr
         draw_lidar_overlay(img, lidar_uvr)
     for d in detections:
         x1, y1, x2, y2 = (int(v) for v in d.bbox)
-        color = (0, 200, 255) if d.distance_m is None else (0, 255, 0)
+        gt = getattr(d, "source", "yolo") == "ground_truth"
+        color = (255, 0, 255) if gt else ((0, 200, 255) if d.distance_m is None else (0, 255, 0))
         cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
         dist = "depth: n/a" if d.distance_m is None else f"{d.distance_m:.2f} m"
-        _text(img, f"{d.name} {d.conf:.2f} {dist}", (x1, max(y1 - 8, 14)), color)
+        label = f"GT {d.name} {dist}" if gt else f"{d.name} {d.conf:.2f} {dist}"
+        _text(img, label, (x1, max(y1 - 8, 14)), color)
         if d.xyz_body is not None:
             x, y, z = d.xyz_body
             _text(img, f"fwd {x:+.2f} left {y:+.2f} up {z:+.2f}", (x1, min(y2 + 16, img.shape[0] - 4)), color, 0.45)
     _text(img, f"infer {infer_fps:4.1f} fps  display {display_fps:4.1f} fps", (8, 20))
     if status:
         _text(img, status, (8, 40), (0, 200, 255))
+    if any(getattr(d, "source", "yolo") == "ground_truth" for d in detections):
+        _text(img, "GROUND TRUTH LABELS (from the simulator, not YOLO)", (8, 60), (255, 0, 255))
     _text(img, "L: LiDAR overlay   Esc: quit", (8, img.shape[0] - 10), (200, 200, 200), 0.45)
     return img
