@@ -24,6 +24,8 @@ WAIT_S = 5.0
 _tty = sys.stdout.isatty()
 COLORS = {"PASS": "32", "FAIL": "31", "WARN": "33", "SKIP": "36"}
 results = []
+_keep_alive = []     # DDS subscribers/publishers/clients must outlive their check: the robot keeps streaming into them, and
+                     # deleting a reader mid-stream makes cyclonedds print "take sample error" and then segfault
 
 
 def report(status, title, detail="", hint=""):
@@ -149,6 +151,7 @@ def check_topic(topic, msg_type, hint):
     try:
         sub = ChannelSubscriber(topic, msg_type)
         sub.Init(c, 0)
+        _keep_alive.append(sub)
     except Exception as e:
         return report("FAIL", f"data on {topic}", f"could not subscribe: {e}",
                       "cyclonedds version problem? see the cyclonedds check above"), None
@@ -163,6 +166,7 @@ def check_camera():
     import numpy as np
     from unitree_sdk2py.go2.video.video_client import VideoClient
     client = VideoClient()
+    _keep_alive.append(client)
     client.SetTimeout(3.0)
     client.Init()
     code = None
@@ -187,6 +191,7 @@ def check_lidar(cfg):
     try:
         sub = ChannelSubscriber(topic, PointCloud2_)
         sub.Init(c, 0)
+        _keep_alive.append(sub)
     except Exception as e:
         return report("FAIL", f"data on {topic}", f"could not subscribe: {e}", "cyclonedds version problem? see the check above")
     if wait_for(c, 3.0):
@@ -197,6 +202,7 @@ def check_lidar(cfg):
         from unitree_sdk2py.idl.default import std_msgs_msg_dds__String_
         pub = ChannelPublisher(cfg["lidar"]["switch_topic"], String_)
         pub.Init()
+        _keep_alive.append(pub)
         msg = std_msgs_msg_dds__String_()
         msg.data = "ON"
         time.sleep(0.5)
@@ -274,4 +280,12 @@ def main():
     print("Dog starts lying down: clear ~2 m around it, press R to stand, keep the Unitree remote in reach.")
 
 if __name__ == "__main__":
-    main()
+    code = 0
+    try:
+        main()
+    except SystemExit as e:
+        code = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # skip interpreter teardown: tearing down live DDS readers while data is still arriving can segfault
+    os._exit(code)
