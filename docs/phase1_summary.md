@@ -51,7 +51,7 @@ latest-value buffers, so a slow detector or window cannot stall robot control.
 | YOLO detection | Tested on still images (GPU: RTX 4000 Ada). **Not yet run live on the robot** (last attempt: no data from the dog, a connection problem) |
 | LiDAR-based distance for detections | Unit-tested with synthetic data; **not run on the robot**. Camera-LiDAR calibration values are placeholders |
 | MuJoCo room + kinematic Go2 + teleop in the sim | Works; 24 unit/integration tests, headless |
-| Sim camera + depth into the same detector/UI code path | Works with a ray-cast render. The OpenGL render, YOLO on rendered frames and photo billboards **have not been run by the author** |
+| Sim camera + depth into the same detector/UI code path | Works: OpenGL (glfw) render at ~12.5 FPS on the author's laptop, YOLO runs on the rendered frames. Photo billboards **not yet tried** |
 | Object map + accuracy report in the sim | Works (results below) |
 | `preflight.py` | Output formatting and parsing tested with fakes; **never run against the robot** |
 | `--map` on the real robot | Written, **untested** |
@@ -61,6 +61,8 @@ service, camera or LiDAR, so walking commands are not supported. Perception is w
 directly from the teleop velocity. It does not reproduce gait, balance or slip.
 
 ## Accuracy results (simulation)
+
+### Run A: ray-cast render, ground-truth labels (committed files)
 
 Setup: scripted survey (6 waypoints, 360 degree spin at each, about 80 s), `--gt` mode, ray-cast render at 320x180,
 nominal camera field of view 100 degrees. **Labels are GROUND TRUTH from the simulator, not YOLO**, so this isolates the
@@ -84,7 +86,35 @@ nominal camera field of view 100 degrees. **Labels are GROUND TRUTH from the sim
 ![top-down map](phase1_results/map_topdown.png)
 ![error per object](phase1_results/error_per_object.png)
 
-How to read it:
+### Run B and C: OpenGL render on the author's laptop (640x360, RTX 4000 Ada), same survey
+
+Same scripted survey and settings. B uses GROUND TRUTH labels, C uses YOLO (`yolov8n`). Numbers copied from the terminal
+output of `run_mapping_eval.py`; the plots/JSON from these runs are not committed (the YOLO run overwrote the other in
+`results/`).
+
+| Object | B: GT labels, error (m) | C: YOLO, error (m) | C: surface-point error (m) |
+|---|---|---|---|
+| dining table | 0.95 | 0.38 | 0.34 |
+| chair 1 | 0.11 | 0.26 | 0.10 |
+| chair 2 | 0.38 | 0.38 | 0.18 |
+| chair 3 | 0.13 | 0.05 | 0.13 |
+| suitcase (box) | 0.04 | **missed** | |
+| backpack | 0.05 | **missed** | |
+| bottle 1 | 0.00 | 0.03 | 0.05 |
+| cup | **missed** | 0.00 | 0.04 |
+| bottle 2 | 0.00 | 0.03 | 0.04 |
+| **summary** | 8/9 found, mean 0.21, median 0.083, max 0.955, 3 false positives | 7/9 found, mean 0.164, median 0.052, max 0.384, 6 false positives | |
+
+- YOLO does not recognise the plain cardboard box or the red backpack (they are untextured shapes, and YOLO is trained on real
+  photos). It does find the chairs, table, both bottles and the cup. Photo billboards (`sim/fetch_photos.py`) are the next
+  thing to try for the box and the backpack.
+- Position error is similar with a real detector, so the 3D estimate is not what limits accuracy here; detection coverage is.
+- False positives go up with the higher-resolution render (hundreds more sightings, so chance outliers reach the 5-sighting
+  threshold). A requirement for sightings from several distinct viewpoints would likely remove most of them (not implemented).
+- YOLO "found" is judged per class and position, not per identity, so a chair detected at the wrong chair's position with
+  small error would still count as a match; the false-positive count partly reflects this.
+
+How to read Run A:
 - Compact objects on the floor or a table (bottles, backpack, box) are within about 5 cm of the true centre.
 - The **dining table is the worst case**: the camera is about 0.3 m high, so it looks *under* the table top and the central
   depth lands on legs, chairs or the floor behind it. It had only 5 sightings. Thin or see-through objects are a
@@ -107,6 +137,7 @@ How to read it:
 - The LiDAR is sparse: small or far objects may get no distance ("depth: n/a").
 - Occlusion handling is a heuristic (floor-standing assumption); objects on shelves/tables can be misjudged.
 - The sim does not model gait, slipping or sensor noise, so real error will be larger.
+- Results are from one scene, one path and one run each; run-to-run timing changes the numbers (e.g. Run A mean error 0.11-0.21 m).
 - Keyboard capture is global (pynput) and needs an X11 session.
 - `Move` is a no-reply call: a dropped packet is not detected. Keep the Unitree remote in reach.
 

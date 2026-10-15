@@ -205,8 +205,9 @@ Angles in the file are in radians.
 
 **Making YOLO recognise sim objects:** YOLO is trained on real photos, so plain coloured boxes may be ignored.
 `python sim/fetch_photos.py` downloads sample photos into `sim/photos/`; list them under `billboards:` in `config/sim.yaml`
-and they are pasted on thin boards in the room. If detection is still weak, use `--gt`. (Billboards and YOLO-on-sim frames
-have not been verified by the author yet.)
+and they are pasted on thin boards in the room. If detection is still weak, use `--gt`. On the author's laptop YOLO (`yolov8n`)
+recognised the chairs, table, bottles and cup in the plain-shape room but not the cardboard box or the backpack; billboards
+have not been tried yet.
 
 ## 10. Object map and accuracy check
 
