@@ -1,0 +1,24 @@
+# MuJoCo simulation settings (see sim/world.py). Everything here is for the SIM only.
+unitree_mujoco_dir: ~/unitree_mujoco      # clone of github.com/unitreerobotics/unitree_mujoco (env UNITREE_MUJOCO overrides)
+robot_xml: unitree_robots/go2/go2.xml     # relative to the clone
+scene: sim/scene_room.xml                 # relative to go2_stream/
+
+start_pose: {x: -2.2, y: 0.0, yaw_deg: 0.0, standing: false}   # starts lying down, like the real dog: press R to stand
+physics_hz: 50
+command_timeout_s: 0.5      # like the real robot: a Move() command lapses if not refreshed
+
+camera:
+  width: 640
+  height: 360
+  hfov_deg: 100.0           # same guess as config/detection.yaml camera_model.hfov_deg
+  fps: 15
+  position: [0.28, 0.0, 0.05]   # in the base_link frame (x fwd, y left, z up). Approximate Go2 head camera.
+  pitch_deg: 0.0                # > 0 tilts the camera down
+
+render: true                # false = skip OpenGL and use a flat-colour ray-cast view (headless logic tests only)
+
+# Real photos pasted on thin boards so YOLO has something it recognises. Run `python sim/fetch_photos.py`
+# to download sample photos, then list them here. image is relative to sim/photos/.
+# name must be obj_<class>_<n> to be used as ground truth.
+billboards: []
+# - {name: obj_person_1, image: zidane.jpg, pos: [2.9, 0.0, 0.9], size: [0.9, 0.6], yaw_deg: 180}
