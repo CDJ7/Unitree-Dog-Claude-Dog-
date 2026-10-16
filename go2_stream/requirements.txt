@@ -7,4 +7,6 @@ pynput
 PyYAML
 ultralytics        # YOLO (pulls in torch; install a CUDA build of torch first for GPU)
 pytest             # unit tests only
+mujoco             # simulation (sim/); also: ./sim/setup_sim.sh clones the Unitree Go2 model
+matplotlib         # accuracy plots (results/)
 # unitree_sdk2py is installed from source:  pip install -e ~/unitree_sdk2_python

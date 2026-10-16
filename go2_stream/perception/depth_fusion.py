@@ -128,3 +128,42 @@ def summarize_points(points):
     """Per-axis median of points -> (xyz, euclidean distance)."""
     xyz = np.median(np.asarray(points, dtype=np.float64), axis=0)
     return xyz, float(np.linalg.norm(xyz))
+
+
+# ----------------------------------------------------------------------------------------------
+# Depth-image fusion (simulation, or any camera with a registered depth image)
+def estimate_from_depth(depth, box_xyxy, cam, central_frac=0.4, foreground_frac=0.5, min_valid=20,
+                        min_range=0.2, max_range=20.0):
+    """3D position of the object in a box from a depth image (metres along the optical axis).
+
+    Median depth of the nearest `foreground_frac` of valid pixels in the central `central_frac` of the box
+    (falls back to the whole box when there are too few), deprojected at the box centre with the intrinsics.
+    Returns (xyz_optical, range_m, n_pixels) or None. The result is a point on the object's visible surface.
+    """
+    h, w = depth.shape
+    x1, y1, x2, y2 = box_xyxy
+    mx, my = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+    for frac in (central_frac, 1.0):
+        hw, hh = (x2 - x1) * frac / 2.0, (y2 - y1) * frac / 2.0
+        xa, xb = int(max(mx - hw, 0)), int(min(mx + hw, w))
+        ya, yb = int(max(my - hh, 0)), int(min(my + hh, h))
+        patch = depth[ya:yb, xa:xb].ravel()
+        valid = patch[np.isfinite(patch) & (patch >= min_range) & (patch <= max_range)]
+        if len(valid) >= min_valid:
+            near = np.sort(valid)[:max(min_valid, int(np.ceil(len(valid) * foreground_frac)))]
+            z = float(np.median(near))
+            xyz = deproject(min(max(mx, 0), w - 1), min(max(my, 0), h - 1), z, cam)
+            return xyz, float(np.linalg.norm(xyz)), len(near)
+    return None
+
+
+def optical_to_world(p_opt, cam_pos, cam_mat):
+    """Optical frame (x right, y down, z fwd) -> world, given a MuJoCo camera pose (cam_mat columns: right, up, back)."""
+    p_opt = np.asarray(p_opt, dtype=np.float64)
+    p_mj = np.stack([p_opt[..., 0], -p_opt[..., 1], -p_opt[..., 2]], axis=-1)
+    return np.asarray(cam_pos) + p_mj @ np.asarray(cam_mat).T
+
+
+def world_to_optical(p_world, cam_pos, cam_mat):
+    p_mj = (np.asarray(p_world, dtype=np.float64) - np.asarray(cam_pos)) @ np.asarray(cam_mat)
+    return np.stack([p_mj[..., 0], -p_mj[..., 1], -p_mj[..., 2]], axis=-1)

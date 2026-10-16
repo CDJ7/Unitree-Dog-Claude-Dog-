@@ -1,0 +1,632 @@
+{
+  "meta": {
+    "labels": "GROUND TRUTH labels",
+    "render": "raycast",
+    "camera": {
+      "width": 320,
+      "height": 180,
+      "hfov_deg": 100.0,
+      "fps": 4.0,
+      "position": [
+        0.28,
+        0.0,
+        0.05
+      ],
+      "pitch_deg": 0.0
+    },
+    "n_observations": 240,
+    "survey_seconds": 80.2,
+    "center_correction": true,
+    "note": "sim; estimate = median depth in the central box region, nearest half, deprojected with sim intrinsics"
+  },
+  "objects": [
+    {
+      "id": 1,
+      "class": "chair",
+      "position_world_m": [
+        0.954,
+        -0.9989,
+        0.5315
+      ],
+      "surface_position_world_m": [
+        0.7651,
+        -0.9333,
+        0.5315
+      ],
+      "n_observations": 13,
+      "n_viewpoints": 1,
+      "mean_range_m": 2.87
+    },
+    {
+      "id": 2,
+      "class": "chair",
+      "position_world_m": [
+        -0.4779,
+        0.139,
+        0.4325
+      ],
+      "surface_position_world_m": [
+        -0.5224,
+        0.1209,
+        0.4325
+      ],
+      "n_observations": 38,
+      "n_viewpoints": 5,
+      "mean_range_m": 1.522
+    },
+    {
+      "id": 3,
+      "class": "chair",
+      "position_world_m": [
+        0.5673,
+        0.942,
+        0.4465
+      ],
+      "surface_position_world_m": [
+        0.7449,
+        0.8786,
+        0.4465
+      ],
+      "n_observations": 10,
+      "n_viewpoints": 3,
+      "mean_range_m": 2.034
+    },
+    {
+      "id": 4,
+      "class": "bottle",
+      "position_world_m": [
+        -1.099,
+        1.7996,
+        0.3819
+      ],
+      "surface_position_world_m": [
+        -1.0667,
+        1.7929,
+        0.3819
+      ],
+      "n_observations": 40,
+      "n_viewpoints": 7,
+      "mean_range_m": 1.623
+    },
+    {
+      "id": 6,
+      "class": "backpack",
+      "position_world_m": [
+        1.9546,
+        -1.4006,
+        0.2191
+      ],
+      "surface_position_world_m": [
+        1.8579,
+        -1.4167,
+        0.2191
+      ],
+      "n_observations": 47,
+      "n_viewpoints": 7,
+      "mean_range_m": 1.984
+    },
+    {
+      "id": 7,
+      "class": "dining table",
+      "position_world_m": [
+        1.3333,
+        0.6418,
+        0.4208
+      ],
+      "surface_position_world_m": [
+        1.0172,
+        0.3963,
+        0.4208
+      ],
+      "n_observations": 5,
+      "n_viewpoints": 1,
+      "mean_range_m": 3.051
+    },
+    {
+      "id": 8,
+      "class": "bottle",
+      "position_world_m": [
+        1.4995,
+        -0.3027,
+        0.1631
+      ],
+      "surface_position_world_m": [
+        1.4883,
+        -0.328,
+        0.1631
+      ],
+      "n_observations": 23,
+      "n_viewpoints": 4,
+      "mean_range_m": 1.364
+    },
+    {
+      "id": 9,
+      "class": "suitcase",
+      "position_world_m": [
+        1.9638,
+        1.476,
+        0.1949
+      ],
+      "surface_position_world_m": [
+        1.9338,
+        1.3065,
+        0.1949
+      ],
+      "n_observations": 34,
+      "n_viewpoints": 6,
+      "mean_range_m": 2.024
+    }
+  ],
+  "robot_path": [
+    [
+      -2.2,
+      0.0
+    ],
+    [
+      -2.111,
+      -0.134
+    ],
+    [
+      -2.034,
+      -0.286
+    ],
+    [
+      -1.976,
+      -0.425
+    ],
+    [
+      -1.92,
+      -0.58
+    ],
+    [
+      -1.873,
+      -0.725
+    ],
+    [
+      -1.83,
+      -0.872
+    ],
+    [
+      -1.787,
+      -1.027
+    ],
+    [
+      -1.746,
+      -1.183
+    ],
+    [
+      -1.703,
+      -1.351
+    ],
+    [
+      -1.666,
+      -1.505
+    ],
+    [
+      -1.63,
+      -1.66
+    ],
+    [
+      -1.478,
+      -1.724
+    ],
+    [
+      -1.322,
+      -1.766
+    ],
+    [
+      -1.168,
+      -1.795
+    ],
+    [
+      -1.017,
+      -1.816
+    ],
+    [
+      -0.857,
+      -1.833
+    ],
+    [
+      -0.694,
+      -1.846
+    ],
+    [
+      -0.543,
+      -1.856
+    ],
+    [
+      -0.375,
+      -1.866
+    ],
+    [
+      -0.223,
+      -1.873
+    ],
+    [
+      -0.055,
+      -1.88
+    ],
+    [
+      0.106,
+      -1.886
+    ],
+    [
+      0.273,
+      -1.892
+    ],
+    [
+      0.436,
+      -1.896
+    ],
+    [
+      0.584,
+      -1.843
+    ],
+    [
+      0.725,
+      -1.762
+    ],
+    [
+      0.861,
+      -1.668
+    ],
+    [
+      0.984,
+      -1.574
+    ],
+    [
+      1.108,
+      -1.472
+    ],
+    [
+      1.239,
+      -1.361
+    ],
+    [
+      1.362,
+      -1.252
+    ],
+    [
+      1.483,
+      -1.144
+    ],
+    [
+      1.609,
+      -1.029
+    ],
+    [
+      1.727,
+      -0.921
+    ],
+    [
+      1.847,
+      -0.81
+    ],
+    [
+      1.97,
+      -0.696
+    ],
+    [
+      2.088,
+      -0.586
+    ],
+    [
+      2.202,
+      -0.479
+    ],
+    [
+      2.317,
+      -0.372
+    ],
+    [
+      2.379,
+      -0.25
+    ],
+    [
+      2.302,
+      -0.096
+    ],
+    [
+      2.213,
+      0.045
+    ],
+    [
+      2.112,
+      0.185
+    ],
+    [
+      2.018,
+      0.306
+    ],
+    [
+      1.914,
+      0.432
+    ],
+    [
+      1.806,
+      0.558
+    ],
+    [
+      1.705,
+      0.675
+    ],
+    [
+      1.603,
+      0.79
+    ],
+    [
+      1.496,
+      0.911
+    ],
+    [
+      1.392,
+      1.027
+    ],
+    [
+      1.288,
+      1.142
+    ],
+    [
+      1.183,
+      1.259
+    ],
+    [
+      1.078,
+      1.375
+    ],
+    [
+      0.97,
+      1.494
+    ],
+    [
+      0.857,
+      1.618
+    ],
+    [
+      0.746,
+      1.74
+    ],
+    [
+      0.596,
+      1.787
+    ],
+    [
+      0.436,
+      1.762
+    ],
+    [
+      0.275,
+      1.722
+    ],
+    [
+      0.12,
+      1.675
+    ],
+    [
+      -0.023,
+      1.626
+    ],
+    [
+      -0.166,
+      1.574
+    ],
+    [
+      -0.318,
+      1.516
+    ],
+    [
+      -0.46,
+      1.46
+    ],
+    [
+      -0.609,
+      1.399
+    ],
+    [
+      -0.751,
+      1.341
+    ],
+    [
+      -0.894,
+      1.282
+    ],
+    [
+      -1.034,
+      1.224
+    ],
+    [
+      -1.196,
+      1.156
+    ],
+    [
+      -1.336,
+      1.097
+    ],
+    [
+      -1.491,
+      1.031
+    ],
+    [
+      -1.634,
+      0.971
+    ]
+  ],
+  "evaluation": {
+    "summary": {
+      "n_true": 9,
+      "n_detected": 8,
+      "recall": 0.889,
+      "n_false_positives": 0,
+      "precision": 1.0,
+      "mean_error_3d_m": 0.213,
+      "median_error_3d_m": 0.077,
+      "max_error_3d_m": 0.976,
+      "mean_error_xy_m": 0.21
+    },
+    "per_object": [
+      {
+        "object": "obj_dining_table_1",
+        "class": "dining table",
+        "detected": true,
+        "n_observations": 5,
+        "true_xyz": [
+          0.6,
+          0.0,
+          0.372
+        ],
+        "est_xyz": [
+          1.333,
+          0.642,
+          0.421
+        ],
+        "error_3d_m": 0.976,
+        "error_xy_m": 0.974,
+        "surface_error_3d_m": 0.577
+      },
+      {
+        "object": "obj_chair_1",
+        "class": "chair",
+        "detected": true,
+        "n_observations": 10,
+        "true_xyz": [
+          0.6,
+          0.85,
+          0.485
+        ],
+        "est_xyz": [
+          0.567,
+          0.942,
+          0.447
+        ],
+        "error_3d_m": 0.105,
+        "error_xy_m": 0.098,
+        "surface_error_3d_m": 0.153
+      },
+      {
+        "object": "obj_chair_2",
+        "class": "chair",
+        "detected": true,
+        "n_observations": 13,
+        "true_xyz": [
+          0.6,
+          -0.85,
+          0.485
+        ],
+        "est_xyz": [
+          0.954,
+          -0.999,
+          0.532
+        ],
+        "error_3d_m": 0.387,
+        "error_xy_m": 0.384,
+        "surface_error_3d_m": 0.191
+      },
+      {
+        "object": "obj_chair_3",
+        "class": "chair",
+        "detected": true,
+        "n_observations": 38,
+        "true_xyz": [
+          -0.6,
+          0.1,
+          0.485
+        ],
+        "est_xyz": [
+          -0.478,
+          0.139,
+          0.433
+        ],
+        "error_3d_m": 0.138,
+        "error_xy_m": 0.128,
+        "surface_error_3d_m": 0.096
+      },
+      {
+        "object": "obj_suitcase_1",
+        "class": "suitcase",
+        "detected": true,
+        "n_observations": 34,
+        "true_xyz": [
+          2.0,
+          1.5,
+          0.2
+        ],
+        "est_xyz": [
+          1.964,
+          1.476,
+          0.195
+        ],
+        "error_3d_m": 0.044,
+        "error_xy_m": 0.043,
+        "surface_error_3d_m": 0.205
+      },
+      {
+        "object": "obj_backpack_1",
+        "class": "backpack",
+        "detected": true,
+        "n_observations": 47,
+        "true_xyz": [
+          2.005,
+          -1.4,
+          0.22
+        ],
+        "est_xyz": [
+          1.955,
+          -1.401,
+          0.219
+        ],
+        "error_3d_m": 0.05,
+        "error_xy_m": 0.05,
+        "surface_error_3d_m": 0.148
+      },
+      {
+        "object": "obj_bottle_1",
+        "class": "bottle",
+        "detected": true,
+        "n_observations": 40,
+        "true_xyz": [
+          -1.1,
+          1.8,
+          0.382
+        ],
+        "est_xyz": [
+          -1.099,
+          1.8,
+          0.382
+        ],
+        "error_3d_m": 0.001,
+        "error_xy_m": 0.001,
+        "surface_error_3d_m": 0.034
+      },
+      {
+        "object": "obj_cup_1",
+        "class": "cup",
+        "detected": false,
+        "true_xyz": [
+          -1.3,
+          1.75,
+          0.27
+        ]
+      },
+      {
+        "object": "obj_bottle_2",
+        "class": "bottle",
+        "detected": true,
+        "n_observations": 23,
+        "true_xyz": [
+          1.5,
+          -0.3,
+          0.162
+        ],
+        "est_xyz": [
+          1.499,
+          -0.303,
+          0.163
+        ],
+        "error_3d_m": 0.003,
+        "error_xy_m": 0.003,
+        "surface_error_3d_m": 0.03
+      }
+    ],
+    "false_positives": []
+  }
+}

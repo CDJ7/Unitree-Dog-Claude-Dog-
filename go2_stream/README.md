@@ -4,9 +4,11 @@ Streams the Go2 front camera and LiDAR point cloud to your laptop and lets you d
 **Requires a Go2 EDU** (full SDK/DDS access over Ethernet). On AIR/PRO use the WebRTC route instead
 (`go2_webrtc_connect`); this project will not work.
 
-> Status: written against the current `unitree_sdk2_python` sources (APIs and topic names read from the repo).
-> The teleop safety logic is tested in simulation (fake client). **Nothing here has been run against a real robot yet** —
-> follow the staged bring-up below.
+> Status: camera streaming and keyboard teleop were run on a real Go2 EDU, and LiDAR streaming was reported working.
+> YOLO detection has been tested on still images only (a live run with the robot was not completed). The MuJoCo
+> simulation, object mapping, `preflight.py` and `--map` were added later and are described in sections 9-12. Anything
+> marked "untested" has not been run on the real robot. Unit tests: `python -m pytest -q tests`.
+> The architecture and results write-up for the class project is in `../docs/phase1_summary.md`.
 
 ```
 main.py      UI loop (main thread): camera window, 3D LiDAR, overlay, shutdown handling
@@ -172,3 +174,90 @@ Each detection (`perception.detector.Detection`) has `name, conf, bbox, distance
   `rt/sportmodestate`. Tell me what the log line shows if distances look wrong.
 - Not yet run on a real robot. Unit tests, the detector on a sample image, and the threaded pipeline with synthetic LiDAR
   data were run.
+
+
+## 9. Simulation (no robot needed)
+
+Everything in this section works without the dog. Use it for perception and mapping work.
+
+**Why a custom sim mode?** Unitree's official MuJoCo simulator (`unitree_mujoco`, DDS domain 1 on the `lo` interface) only
+accepts low-level joint commands on `rt/lowcmd`. It has no `SportClient` service (no `Move`/`StandUp`), no camera and no
+LiDAR. So `sim/world.py` runs the same Go2 model in a **kinematic mode**: keyboard velocity moves the robot's base directly
+and the legs blend between a lying and a standing pose. It is for perception tests, **not** for testing walking.
+`SimSportClient` has the same methods as the real `SportClient`, so `teleop.py` is reused unchanged (same limits, deadman,
+watchdog). The sim camera exposes the same `.buffer` / `.fps` as `camera.CameraThread`, so the detector can't tell them apart.
+
+One-time setup (inside your venv):
+```bash
+./sim/setup_sim.sh                  # clones ~/unitree_mujoco (Go2 model) and installs mujoco + matplotlib
+python run_sim.py                   # camera view + top-down map; R stands, WASD drives, Esc quits
+python run_detection.py --sim       # live YOLO on the sim camera, with distances from the sim depth image
+python run_detection.py --sim --gt  # GROUND TRUTH labels from the sim instead of YOLO (clearly labelled, magenta boxes)
+python run_detection.py --sim --map # also build an object map; saved to results/ on exit
+python run_mapping_eval.py --gt     # scripted survey of the room + accuracy report vs the true positions (about 90 s)
+```
+`--no-render` (any of the sim commands) uses a flat-colour ray-cast view instead of OpenGL. It needs no GPU/display
+libraries but YOLO will not recognise it. Use it only for headless logic tests.
+
+The room is `sim/scene_room.xml` (walls, a table, 3 chairs, a box, a backpack, 2 bottles, a cup). Edit it freely: any body
+named `obj_<class>_<n>` (e.g. `obj_chair_4`) is a labelled object used for ground truth and the accuracy check.
+Angles in the file are in radians.
+
+**Making YOLO recognise sim objects:** YOLO is trained on real photos, so plain coloured boxes may be ignored.
+`python sim/fetch_photos.py` downloads sample photos into `sim/photos/`; list them under `billboards:` in `config/sim.yaml`
+and they are pasted on thin boards in the room. If detection is still weak, use `--gt`. On the author's laptop YOLO (`yolov8n`)
+recognised the chairs, table, bottles and cup in the plain-shape room but not the cardboard box or the backpack; billboards
+have not been tried yet.
+
+## 10. Object map and accuracy check
+
+`mapping/` turns detections into a persistent map. Per frame, each detection's 3D position comes from the sim depth image
+(median depth of the nearest half of the valid pixels in the central 40% of the box, deprojected with the camera
+intrinsics, moved to world coordinates with the robot pose). Repeated sightings of the same class within 0.5 m are merged
+by a median; an object only appears after 5 sightings; sightings beyond 4 m, cut off by the image edge, or mostly hidden
+behind a nearer detection are skipped. Depth gives a point on the object's *surface*, so a per-class half-depth prior moves
+it towards the centre (`config/mapping.yaml`); both errors are reported.
+
+`run_mapping_eval.py` writes `results/object_map.json`, `map_topdown.png` (room, robot path, true vs estimated positions),
+`error_per_object.png` and `accuracy.csv`. Committed example results are in `../docs/phase1_results/`.
+
+**Real robot (untested):** `python run_detection.py --iface <iface> --map` uses the LiDAR-based distances instead, converted
+to the world (odom) frame with the pose from `rt/sportmodestate` (`mapping/real_adapter.py`) and saved as
+`results/object_map_real.json`. The camera-LiDAR calibration (`camera_model:` and `extrinsics:` in `config/detection.yaml`)
+holds **placeholders** (assumed 100 degree field of view, zero offset and tilt). **Measure them before trusting real positions.**
+
+## 11. Preflight check before using the real robot
+
+```bash
+python preflight.py --iface enp0s31f6
+```
+Prints PASS/FAIL/WARN, each failure with a fix hint: interface has a 192.168.123.x address, ping 192.168.123.161, the
+`cyclonedds` version matches what the SDK pins, `ufw` status, data on `rt/lowstate` and `rt/sportmodestate` within 5 s, one
+camera frame, and LiDAR data on `rt/utlidar/cloud`. It never moves the robot, and ends by printing the launch command.
+`--no-dds` runs only the network/software checks.
+
+## 12. Key bindings
+
+Keyboard teleop (global key capture via pynput; same in `main.py`, `teleop.py`, `run_sim.py`, and `--teleop` / `--sim`):
+
+| Key | Action |
+|---|---|
+| W / S | forward / backward |
+| A / D | strafe left / right |
+| Q / E | rotate left / right |
+| Space | stop and ignore held keys until released |
+| R | stop, stand up, balance stand |
+| F | stop, stand down |
+| + / - | speed scale up / down |
+| X then Y (within 3 s) | Damp (dog goes limp; never automatic) |
+| Esc | stop and exit |
+
+Extra keys in the detection window (`run_detection.py`): **L** toggles the LiDAR overlay (real robot), **P** saves a
+screenshot of the detection view and the map to `results/screenshots/` (sim), **G** switches between YOLO and GROUND TRUTH
+labels (sim). Esc quits. Avoid these letters in custom teleop keys.
+
+Real-robot launch (after `preflight.py` passes; dog lying down, 2 m clear around it, remote controller in reach):
+```bash
+python main.py --iface enp0s31f6 --max-speed 0.3                     # camera + LiDAR + teleop
+python run_detection.py --iface enp0s31f6 --teleop --max-speed 0.3   # YOLO + LiDAR distances + teleop
+```

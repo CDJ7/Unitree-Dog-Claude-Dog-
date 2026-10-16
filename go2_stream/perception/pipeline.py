@@ -98,10 +98,12 @@ class DetectionLogger:
 
 class DetectionThread(threading.Thread):
     def __init__(self, detector, camera_buffer, cfg, lidar_source=None, state_source=None,
-                 lidar_mod=None, logger=None):
+                 lidar_mod=None, logger=None, fuse_fn=None, on_result=None):
         super().__init__(name="detection", daemon=True)
         self.detector, self.camera_buffer, self.cfg = detector, camera_buffer, cfg
         self.lidar, self.state, self.lidar_mod, self.logger = lidar_source, state_source, lidar_mod, logger
+        self.fuse_fn = fuse_fn          # fn(frame, detections) -> (detections, uvr, status); replaces LiDAR fusion (sim)
+        self.on_result = on_result      # fn(DetectionResult), called on this thread for every result (mapping)
         self._lock = threading.Lock()
         self._result = None
         self._stop_evt = threading.Event()
@@ -124,14 +126,20 @@ class DetectionThread(threading.Thread):
             last_seq = seq
             try:
                 dets = self.detector.detect(frame)
-                cloud = self.lidar.latest.get()[0] if self.lidar else None
-                sport = self.state.sport.get()[0] if self.state else None
+                if self.fuse_fn is not None:
+                    dets, uvr, status = self.fuse_fn(frame, dets)
+                    cloud = None
+                    sport = None
+                else:
+                    cloud = self.lidar.latest.get()[0] if self.lidar else None
+                    sport = self.state.sport.get()[0] if self.state else None
                 if cloud is not None and not self._frame_id_logged:
                     self._frame_id_logged = True
                     log.info("LiDAR cloud header.frame_id = %r (lidar_frame=%s)",
                              getattr(cloud.header, "frame_id", None), self.cfg["fusion"].get("lidar_frame", "auto"))
-                dets, uvr, status = fuse_detections(dets, frame.shape, cloud, sport, self.cfg, self.lidar_mod) \
-                    if self.lidar_mod else (dets, None, "LiDAR disabled")
+                if self.fuse_fn is None:
+                    dets, uvr, status = fuse_detections(dets, frame.shape, cloud, sport, self.cfg, self.lidar_mod) \
+                        if self.lidar_mod else (dets, None, "LiDAR disabled")
             except Exception:
                 log.exception("detection/fusion failed on a frame")
                 time.sleep(0.2)
@@ -146,3 +154,8 @@ class DetectionThread(threading.Thread):
                 self._result = res
             if self.logger:
                 self.logger.write(res)
+            if self.on_result:
+                try:
+                    self.on_result(res)
+                except Exception:
+                    log.exception("on_result callback failed")

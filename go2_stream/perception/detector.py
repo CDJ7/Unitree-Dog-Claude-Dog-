@@ -18,6 +18,8 @@ class Detection:
     xyz_cam: Optional[Tuple[float, float, float]] = None    # optical frame: x right, y down, z forward (m)
     xyz_body: Optional[Tuple[float, float, float]] = None   # body frame: x forward, y left, z up (m)
     n_depth_points: int = 0
+    xyz_world: Optional[Tuple[float, float, float]] = None  # world frame (sim, or robot odom on the real dog), m
+    source: str = "yolo"                                     # "yolo" or "ground_truth" (sim only, never mixed up)
 
 
 def pick_device(requested="auto"):
