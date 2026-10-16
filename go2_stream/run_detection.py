@@ -58,6 +58,9 @@ def parse_args():
                     help="REAL ROBOT: required before a mission may move the dog (read config/behaviors.yaml first)")
     ap.add_argument("--mission-dry-run", action="store_true",
                     help="mission computes and prints the commands it WOULD send, but nothing is sent to the robot")
+    ap.add_argument("--mission-min-conf", type=float, metavar="C",
+                    help="override the minimum YOLO confidence for mission targets (config: 0.5). The sim's plain-coloured chairs score "
+                         "about 0.5; lowering this on the REAL robot makes mis-identified targets more likely")
     ap.add_argument("--behaviors-config", default=os.path.join(HERE, "config", "behaviors.yaml"))
     ap.add_argument("--results-dir", default=os.path.join(HERE, "results"))
     return ap.parse_args()
@@ -95,6 +98,10 @@ def setup_mission(args, teleop, det_thread, clearance_fn, real):
     from behavior.mission import Mission
     bcfg = yaml.safe_load(open(args.behaviors_config))
     allow = (not real) or args.allow_autonomy
+    if args.mission_min_conf is not None:
+        bcfg["safety"]["min_conf"] = args.mission_min_conf
+        if real and args.mission_min_conf < 0.5:
+            log.warning("mission min_conf lowered to %.2f on the REAL robot: be extra careful", args.mission_min_conf)
     try:
         m = Mission(bcfg, det_thread.latest, teleop, classes=args.mission or None, clearance_fn=clearance_fn,
                     dry_run=args.mission_dry_run, allow_autonomy=allow)
@@ -102,8 +109,9 @@ def setup_mission(args, teleop, det_thread, clearance_fn, real):
         sys.exit(f"mission config problem: {e}")
     teleop.on_manual_input = m.manual_input
     m.start()
-    log.warning("MISSION enabled for %s%s. Sequence: R (stand) -> wait for 'READY' in the video -> B (go-ahead). "
-                "ANY control key, Space, Esc or V aborts. Speeds capped at %.2f m/s.",
+    log.warning("MISSION enabled for %s%s. Sequence: R (stand) -> wait for 'READY' in the video -> CLICK the video window "
+                "(B only works with that window focused) -> B (go-ahead). ANY control key, Space, Esc or V aborts. "
+                "Speeds capped at %.2f m/s.",
                 "/".join(m.classes), " [DRY RUN]" if args.mission_dry_run else "", bcfg["safety"]["max_vx"])
     if real and not allow:
         log.warning("Autonomy is DISABLED on the real robot: add --allow-autonomy after reading config/behaviors.yaml.")

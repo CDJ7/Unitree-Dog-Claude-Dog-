@@ -14,6 +14,7 @@ safety:
   max_start_distance_m: 4.5   # refuses to start if the target is farther than this
   max_travel_s: 45            # abort an approach that takes longer than this
   min_conf: 0.5               # ignore detections less confident than this
+  candidate_hold_s: 0.6       # a target that drops out of detection for less than this keeps its confirmation count
   confirm_frames: 4           # a target must be seen in this many consecutive results before it can be chosen
   target_lost_s: 1.5          # abort if the target is not seen for this long
   stale_result_s: 0.7         # a detection result older than this is not used (robot stops while waiting)
