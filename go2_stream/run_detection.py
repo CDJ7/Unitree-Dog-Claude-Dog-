@@ -89,7 +89,7 @@ def run_image(args, dcfg):
     print("Saved", out)
 
 
-def setup_mission(args, teleop, det_thread, clearance_fn, real):
+def setup_mission(args, teleop, det_thread, clearance_fn, real, pose_fn=None):
     """Create and start the approach-and-act mission, or return None when --mission was not given."""
     if args.mission is None:
         return None
@@ -104,7 +104,7 @@ def setup_mission(args, teleop, det_thread, clearance_fn, real):
             log.warning("mission min_conf lowered to %.2f on the REAL robot: be extra careful", args.mission_min_conf)
     try:
         m = Mission(bcfg, det_thread.latest, teleop, classes=args.mission or None, clearance_fn=clearance_fn,
-                    dry_run=args.mission_dry_run, allow_autonomy=allow)
+                    dry_run=args.mission_dry_run, allow_autonomy=allow, pose_fn=pose_fn)
     except ValueError as e:
         sys.exit(f"mission config problem: {e}")
     teleop.on_manual_input = m.manual_input
@@ -184,7 +184,8 @@ def run_sim(args, dcfg):
         if args.mission is not None:
             from behavior.clearance import make_sim_clearance
             bcfg = yaml.safe_load(open(args.behaviors_config))
-            mission = setup_mission(args, teleop, det_thread, make_sim_clearance(world, bcfg["safety"]["corridor"]), real=False)
+            mission = setup_mission(args, teleop, det_thread, make_sim_clearance(world, bcfg["safety"]["corridor"]), real=False,
+                                   pose_fn=lambda: world.pose)
         topdown = TopDownMap(world)
         win = "go2_sim_detection"
         if not args.no_display:
@@ -300,11 +301,12 @@ def main():
         if args.mission is not None:
             if lidar_src is None:
                 sys.exit("--mission needs LiDAR distances (drop --no-lidar and fix the LiDAR subscription first).")
-            from behavior.clearance import make_real_clearance
+            from behavior.clearance import make_real_clearance, make_real_pose_fn
             bcfg = yaml.safe_load(open(args.behaviors_config))
             clear = make_real_clearance(lidar_src, state, lidar_mod, dcfg["fusion"].get("lidar_frame", "auto"),
                                         bcfg["safety"]["corridor"])
-            mission = setup_mission(args, teleop, det_thread, clear, real=True)
+            mission = setup_mission(args, teleop, det_thread, clear, real=True,
+                                    pose_fn=make_real_pose_fn(state) if state is not None else None)
 
         win = "go2_detection"
         if not args.no_display:

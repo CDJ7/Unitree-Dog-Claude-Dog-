@@ -15,8 +15,10 @@ Safety properties (all unit-tested in the sim and with fakes; NOT yet run on the
   * speeds are capped here and again by Teleop's limits; never strafes or reverses; no Damp, no risky actions.
 """
 import logging
+import math
 import threading
 import time
+from collections import deque
 from enum import Enum
 from typing import Callable, Optional
 
@@ -43,7 +45,7 @@ ACTIVE = (State.APPROACH, State.SETTLE, State.AWAIT_CONFIRM, State.ACTING, State
 
 class Mission(threading.Thread):
     def __init__(self, cfg, get_result: Callable, teleop, classes=None, clearance_fn: Optional[Callable] = None,
-                 dry_run=False, allow_autonomy=True, rate_hz=20):
+                 dry_run=False, allow_autonomy=True, rate_hz=20, pose_fn: Optional[Callable] = None):
         super().__init__(name="mission", daemon=True)
         self.cfg, self.p = cfg, cfg["safety"]
         self.table = validate_config(cfg)                         # {class: (action, stop_distance)}
@@ -76,6 +78,17 @@ class Mission(threading.Thread):
         self.last_cmd = (0.0, 0.0, 0.0)
         self._notice, self._notice_until = "", 0.0
         self._last_cand_t = 0.0
+        # Blind approach: the camera is low and fixed, so the target often leaves the view in the last metre.
+        # pose_fn() -> (x, y, yaw) of the robot in any fixed frame (sim pose, or the dog's own odometry).
+        self.pose_fn = pose_fn
+        self._reset_blind()
+
+    def _reset_blind(self):
+        self._tw_hist = deque(maxlen=5)        # recent world-frame estimates of the target
+        self._first, self._anchor = [], None
+        self._n_sightings, self._last_range = 0, 1e9
+        self._pose_bad, self._blind = False, False
+        self._drift = None                     # how far the target's world estimate has wandered (for the dry-run printout)
 
     # ------------------------------------------------------------------ public API (UI / teleop threads)
     def _note(self, text, seconds=5.0):
@@ -111,6 +124,8 @@ class Mission(threading.Thread):
             self._t_start = self._last_seen = time.monotonic()
             self._blocked_since = self._settle_since = None
             self._confirmed = False
+            self._reset_blind()
+            self._remember(c)
             self._set(State.APPROACH, f"approaching {c.cls} ({c.range:.2f} m) -> {action} at {stop:.2f} m"
                                       + (" [DRY RUN: nothing will move]" if self.dry_run else ""))
             return True, self.message
@@ -156,7 +171,9 @@ class Mission(threading.Thread):
                 return f"MISSION READY: {c.cls} {c.range:.2f} m -> {act} @ {stop:.2f} m  [B = go]{stand}"
             if s == State.APPROACH and self.target:
                 t = self.target
-                return f"MISSION{' DRY' if self.dry_run else ''}: approaching {t.cls} {t.range:.2f} m -> {self.stop_dist:.2f} m  [any key aborts]"
+                blind = " (out of view: dead reckoning)" if self._blind else ""
+                return (f"MISSION{' DRY' if self.dry_run else ''}: approaching {t.cls} {t.range:.2f} m -> {self.stop_dist:.2f} m"
+                        f"{blind}  [any key aborts]")
             if s == State.AWAIT_CONFIRM:
                 return f"MISSION: at the {self.target.cls}; press C to {self.action}"
             if s in (State.SETTLE, State.ACTING, State.HOLD, State.RISING):
@@ -183,8 +200,9 @@ class Mission(threading.Thread):
             if now - self._last_cmd_log > 0.5:
                 self._last_cmd_log = now
                 t = self.target
-                log.info("[dry run] would command vx=%+.2f vyaw=%+.2f   (target %.2f m ahead %.2f m left, bearing %+.0f deg)",
-                         vx, vyaw, t.x, t.y, 57.2958 * t.bearing)
+                drift = "" if self._drift is None else f"  pose drift {self._drift:.2f} m (limit {self.p['blind_consistency_m']})"
+                log.info("[dry run] would command vx=%+.2f vyaw=%+.2f   (target %.2f m ahead %.2f m left, bearing %+.0f deg)%s",
+                         vx, vyaw, t.x, t.y, 57.2958 * t.bearing, drift)
         else:
             self.teleop.set_autonomy(vx, 0.0, vyaw)
 
@@ -260,25 +278,124 @@ class Mission(threading.Thread):
             self.candidate = pick
             self._last_cand_t = now if pick else 0.0
 
+    # ---- target tracking, including the blind (dead-reckoning) stretch
+    def _pose(self):
+        if self.pose_fn is None:
+            return None
+        try:
+            return self.pose_fn()
+        except Exception:
+            return None
+
+    @staticmethod
+    def _to_world(t, pose):
+        x, y, yaw = pose
+        c, s = math.cos(yaw), math.sin(yaw)
+        return (x + c * t.x - s * t.y, y + s * t.x + c * t.y)
+
+    @staticmethod
+    def _to_body(w, pose):
+        x, y, yaw = pose
+        dx, dy = w[0] - x, w[1] - y
+        c, s = math.cos(yaw), math.sin(yaw)
+        return (c * dx + s * dy, -s * dx + c * dy)
+
+    @staticmethod
+    def _median_xy(pts):
+        xs, ys = sorted(p[0] for p in pts), sorted(p[1] for p in pts)
+        return (xs[len(xs) // 2], ys[len(ys) // 2])
+
+    def _remember(self, t):
+        """Store a real sighting in the world frame. Also checks the pose source agrees with the sensor: if the
+        world estimate of a standing-still object drifts a lot while we walk, the pose frame/yaw is wrong and
+        blind approach is switched off for this mission."""
+        pose = self._pose()
+        self._last_range = t.range
+        if pose is None:
+            return
+        w = self._to_world(t, pose)
+        self._tw_hist.append(w)
+        self._n_sightings += 1
+        if len(self._first) < 5:
+            self._first.append(w)
+            if len(self._first) == 5:
+                self._anchor = self._median_xy(self._first)
+        elif self._anchor is not None and self._n_sightings >= 10 and not self._pose_bad:
+            m = self._median_xy(self._tw_hist)
+            drift = math.hypot(m[0] - self._anchor[0], m[1] - self._anchor[1])
+            self._drift = drift
+            if drift > self.p["blind_consistency_m"]:
+                self._pose_bad = True
+                log.warning("pose and sensor disagree (target estimate drifted %.2f m): blind approach disabled", drift)
+
+    def _blind_ok(self, now):
+        return (self.pose_fn is not None and not self._pose_bad and len(self._tw_hist) >= 3
+                and self._last_range <= self.p["blind_max_range_m"]
+                and now - self._last_seen <= self.p["blind_max_s"] and self._pose() is not None)
+
+    def _predict(self):
+        """Where the target is now, from where it was last seen and how the robot has moved since."""
+        pose = self._pose()
+        xb, yb = self._to_body(self._median_xy(self._tw_hist), pose)
+        old = self.target
+        self.target = Target(old.cls, xb, yb, old.conf, time.time())
+
+    def _same_object(self, cands):
+        """The candidate that is the object we are already heading for, or None. With a pose source the test is
+        'still within track_gate_m of where it is in the world', so a second chair that comes into view when the first
+        drops out of view is never mistaken for it; without one, a tight bearing/range gate against the last sighting."""
+        pose = self._pose()
+        if pose is not None and self._tw_hist and self.target is not None:
+            est = self._median_xy(self._tw_hist)
+            best, best_d = None, self.p["track_gate_m"]
+            for c in cands:
+                if c.cls != self.target.cls:
+                    continue
+                w = self._to_world(c, pose)
+                d = math.hypot(w[0] - est[0], w[1] - est[1])
+                if d <= best_d:
+                    best, best_d = c, d
+            return best
+        return pick_target(cands, self.target)
+
     def _update_target(self, res, now):
         if res is not None and res.seq != self._last_target_seq:
             self._last_target_seq = res.seq
             cands = candidates(res.detections, self.classes, self.p["min_conf"], res.wall_time)
-            t = pick_target(cands, self.target)
+            t = self._same_object(cands)
             if t is not None:
                 self.target, self._last_seen = t, now
+                self._remember(t)
 
-    def _check_common(self, now):
-        """Abort conditions shared by APPROACH and SETTLE. Returns True if the mission was aborted."""
+    def _refresh_target(self, now):
+        """-> 'fresh' (seen just now), 'blind' (out of view, dead reckoning), 'waiting' (briefly unseen) or 'lost'."""
+        self._update_target(self._fresh_result(), now)
+        age = now - self._last_seen
+        if age <= self.p["stale_result_s"]:
+            self._blind = False
+            return "fresh"
+        if self._blind_ok(now):
+            self._predict()
+            self._blind = True
+            return "blind"
+        self._blind = False
+        return "lost" if age > self.p["target_lost_s"] else "waiting"
+
+    def _check_standing(self):
         if not self.teleop.standing:
             self._set(State.ABORTED, "aborted: dog is no longer standing")
             self._zero()
             return True
-        if now - self._last_seen > self.p["target_lost_s"]:
-            self._set(State.ABORTED, "aborted: target lost")
-            self._zero()
-            return True
         return False
+
+    def _abort_lost(self):
+        why = "target lost"
+        if self.pose_fn is not None and self._pose_bad:
+            why += " (and pose/sensor disagree, so no blind approach)"
+        elif self._last_range > self.p["blind_max_range_m"]:
+            why += f" at {self._last_range:.1f} m (too far to finish blind)"
+        self._set(State.ABORTED, f"aborted: {why}")
+        self._zero()
 
     def _tick_approach(self, now):
         if now - self._t_start > self.p["max_travel_s"]:
@@ -288,11 +405,14 @@ class Mission(threading.Thread):
         if self.dry_run and now - self._t_start > self.cfg["dry_run_report_s"]:
             self._set(State.DONE, "dry run finished: nothing was sent to the robot")
             return
-        self._update_target(self._fresh_result(), now)
-        if self._check_common(now):
+        mode = self._refresh_target(now)
+        if self._check_standing():
             return
-        if now - self._last_seen > self.p["stale_result_s"]:
-            self._publish(0.0, 0.0, now)                 # no fresh sighting: stand still and wait (until lost)
+        if mode == "lost":
+            self._abort_lost()
+            return
+        if mode == "waiting":
+            self._publish(0.0, 0.0, now)                 # no fresh sighting yet: stand still and wait (until lost)
             return
         t = self.target
         if self.clearance_fn is not None:
@@ -307,17 +427,24 @@ class Mission(threading.Thread):
                 return
         self._blocked_since = None
         vx, vyaw, arrived = approach_command(t, self.stop_dist, self.p)
+        if mode == "blind":
+            vx = min(vx, self.p["blind_max_vx"])
         if arrived and not self.dry_run:
             self._publish(0.0, 0.0, now)
             self._settle_since = now
-            self._set(State.SETTLE, f"arrived ({t.range:.2f} m); settling")
+            self._set(State.SETTLE, f"arrived ({t.range:.2f} m{', blind' if mode == 'blind' else ''}); settling")
         else:
             self._publish(vx, vyaw, now)
 
     def _tick_settle(self, now):
         self._publish(0.0, 0.0, now)
-        self._update_target(self._fresh_result(), now)
-        if self._check_common(now):
+        mode = self._refresh_target(now)
+        if self._check_standing():
+            return
+        if mode == "lost":
+            self._abort_lost()
+            return
+        if mode == "waiting":
             return
         t = self.target
         if t.range > self.stop_dist + self.p["stop_tolerance_m"] + 0.15:     # it moved away: go after it again

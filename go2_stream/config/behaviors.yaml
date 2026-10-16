@@ -18,6 +18,14 @@ safety:
   confirm_frames: 4           # a target must be seen in this many consecutive results before it can be chosen
   target_lost_s: 1.5          # abort if the target is not seen for this long
   stale_result_s: 0.7         # a detection result older than this is not used (robot stops while waiting)
+  # Blind approach: the camera is low and fixed, so a chair 1 m away is often out of view or only partly visible. If the
+  # target was last seen closer than blind_max_range_m, the last stretch is walked by dead reckoning from the robot's own
+  # pose (needs a pose source: sim pose, or the dog's sportmodestate odometry). Off if the pose and the sensor disagree.
+  blind_max_range_m: 2.0      # only if the target was last seen within this range
+  blind_max_s: 8.0            # at most this long without seeing it
+  track_gate_m: 0.9           # a sighting counts as the same object if it is within this of where the target was (world frame)
+  blind_max_vx: 0.15          # slower than a sighted approach
+  blind_consistency_m: 0.7    # pose/sensor disagreement (target estimate drift) that disables blind approach
   settle_s: 1.0               # stand still this long at the stop distance, target still there, before acting
   blocked_abort_s: 3.0        # abort if the path stays blocked this long (no autonomous obstacle avoidance)
   confirm_before_action: false  # true: stop at the object and wait for C in the video window before the action

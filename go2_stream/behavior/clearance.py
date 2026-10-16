@@ -52,3 +52,17 @@ def make_real_clearance(lidar_src, state_src, lidar_mod, lidar_frame_mode, corri
             return 0.0
         return corridor_obstacle_distance(cache["pts"], corridor, exclude_xy)
     return clearance
+
+
+def make_real_pose_fn(state_src, max_age_s=0.5):
+    """(x, y, yaw) from the dog's own odometry (rt/sportmodestate position + IMU quaternion w,x,y,z).
+    NOT yet verified on the real robot: that the quaternion and the position share a frame is assumed; the
+    mission cross-checks this against the sensor and disables blind approach if they disagree."""
+    def pose():
+        msg, _, stamp = state_src.sport.get()
+        if msg is None or time.monotonic() - stamp > max_age_s:
+            return None
+        w, x, y, z = (float(v) for v in msg.imu_state.quaternion)
+        yaw = math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+        return float(msg.position[0]), float(msg.position[1]), yaw
+    return pose

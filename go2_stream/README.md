@@ -286,6 +286,18 @@ older than 0.7 s (it stands still), the path blocked for 3 s, the approach takin
 standing, or the program exiting. Autonomous velocity requests expire after 0.3 s, so if the mission thread dies the dog
 stops; speeds are 0.25 m/s forward and 0.5 rad/s turning (never strafing or backing up), and Teleop's limits still apply.
 
+**Out-of-view finish ("blind approach"):** the camera is low and fixed, so a chair 1 m away is often partly or fully out of
+view and YOLO drops it. If the target was last seen within 2 m, the dog finishes the approach (slower, 0.15 m/s) by dead
+reckoning: it remembers where the target is in the world and walks the remaining distance using its own position (the sim pose,
+or the dog's `sportmodestate` odometry on the robot). It stays within the 8 s / 2 m limits, still obeys the path check and
+any key press, and is switched off for that mission if the position source and the sensor disagree. A target lost farther than
+2 m away, or with no position source, still aborts. The video says `(out of view: dead reckoning)` while this is happening.
+A second object of the same class that comes into view is never mistaken for the target (it must be within 0.9 m of where the
+target is in the world). **The real-robot version is unverified**: it assumes the dog's position and heading in
+`sportmodestate` share a frame. Check it in the dry run (step 2 below). In a dry run the program sends nothing, so move the dog
+with the **Unitree remote controller** (not the keyboard: any keyboard control key aborts the mission) while the chair stays in
+view. The log prints `pose drift X m (limit 0.7)`; it should stay well under the limit and "pose and sensor disagree" must not appear.
+
 **Safety limits you should know:**
 - The stop distance is what the *sensors* read, which was accurate to about 12% in a quick test (1 m read 1.12 m, 2 m read
   1.88 m, 3 m read about 3 m). Per-class stop distances are raised to at least 0.6 m.
@@ -301,6 +313,8 @@ stops; speeds are 0.25 m/s forward and 0.5 rad/s turning (never strafing or back
 2. Dry run: `--mission chair --mission-dry-run`, press R then B with a chair 2-3 m in front. The dog must not move. Check the
    printed commands: forward `vx > 0` when facing the chair, and `vyaw > 0` (turn left) when the chair is to its left; move
    the chair to the other side and the sign must flip. The printed range should match a tape measure within about 15%.
+   While the dry-run approach is still running (`MISSION DRY` on screen), walk the dog a metre or two with the Unitree remote
+   and watch `pose drift` (see the out-of-view finish above): it must stay well below 0.7 m.
 3. Stand 1 m from a wall, run the dry run again: it should report `path blocked`.
 4. Live, with `--allow-autonomy --max-speed 0.3`: 3 m of clear floor, chair straight ahead at about 2.5 m, remote in hand,
    a helper ready to hit Space. Press B, watch, abort at the slightest doubt. Then an off-centre chair, then a person.
