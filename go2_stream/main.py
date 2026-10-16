@@ -150,4 +150,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    code = 0
+    try:
+        main()
+    except SystemExit as e:
+        code = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # main() has already stopped the robot and closed everything. Skip interpreter teardown: live DDS/Open3D threads
+    # can abort it ("terminate called without an active exception") after a clean exit.
+    os._exit(code)
