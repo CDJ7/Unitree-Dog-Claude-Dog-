@@ -126,9 +126,10 @@ class FakeTeleop:
 class FakeWorld(threading.Thread):
     """Integrates the commands like Teleop would (with the 0.3 s deadman) and publishes detection results at 10 Hz."""
 
-    def __init__(self, teleop, objects, start=(0.0, 0.0, 0.0), drop_every=0):
+    def __init__(self, teleop, objects, start=(0.0, 0.0, 0.0), drop_every=0, blind_below=0.0):
         super().__init__(daemon=True)
         self.drop_every = drop_every
+        self.blind_below = blind_below        # objects closer than this are not detected (they left the camera's view)
         self.t, self.objects = teleop, dict(objects)
         self.x, self.y, self.yaw = start
         self.latest, self.seq, self.publish, self.stop_flag = None, 0, True, False
@@ -152,7 +153,8 @@ class FakeWorld(threading.Thread):
                     dx, dy = ox - self.x, oy - self.y
                     xb = math.cos(self.yaw) * dx + math.sin(self.yaw) * dy
                     yb = -math.sin(self.yaw) * dx + math.cos(self.yaw) * dy
-                    if not dropped and xb > 0.1 and abs(math.atan2(yb, xb)) < 0.9:   # inside the camera's view
+                    if not dropped and math.hypot(xb, yb) >= self.blind_below and xb > 0.1 \
+                            and abs(math.atan2(yb, xb)) < 0.9:                               # inside the camera's view
                         dets.append(Detection(0, name.split("#")[0], 0.9, (0, 0, 1, 1), 1.0, xyz_body=(xb, yb, 0.4)))
                 self.seq += 1
                 self.latest = NS(detections=dets, wall_time=time.time(), seq=self.seq)
@@ -163,9 +165,13 @@ class FakeWorld(threading.Thread):
         return math.hypot(ox - self.x, oy - self.y)
 
 
-def make(cfg=None, objects=None, start=(0.0, 0.0, 0.0), drop_every=0, **mission_kw):
+def make(cfg=None, objects=None, start=(0.0, 0.0, 0.0), drop_every=0, blind_below=0.0, pose="perfect", **mission_kw):
     t = FakeTeleop()
-    w = FakeWorld(t, objects if objects is not None else {"chair#1": (3.0, 0.5)}, start, drop_every)
+    w = FakeWorld(t, objects if objects is not None else {"chair#1": (3.0, 0.5)}, start, drop_every, blind_below)
+    if pose == "perfect":
+        mission_kw["pose_fn"] = lambda: (w.x, w.y, w.yaw)
+    elif isinstance(pose, float):                                    # a pose source with a heading error (radians)
+        mission_kw["pose_fn"] = lambda: (w.x, w.y, w.yaw + pose)
     m = Mission(cfg or fast_cfg(), lambda: w.latest, t, **mission_kw)
     w.start()
     m.start()
@@ -377,3 +383,83 @@ def test_a_refused_go_is_explained_on_the_video_text():
     m.go()
     assert "press R" in m.status_text()
     finish(t, w, m)
+
+
+# ----------------------------------------------------------------------------- blind (dead-reckoning) approach
+def test_the_chair_leaving_the_view_close_up_does_not_stop_the_mission():
+    """The dog stops seeing the chair at 1.4 m (camera is low and fixed) and must still finish and sit."""
+    t, w, m = make(blind_below=1.4)
+    assert ready(m)
+    assert m.go()[0]
+    blind_vx = []
+    while m.state not in (State.DONE, State.ABORTED) and len(blind_vx) < 4000:
+        if m._blind:
+            blind_vx.append(t.cmd[0])
+        time.sleep(0.02)
+    assert m.state == State.DONE, m.status_text()
+    finish(t, w, m)
+    stop = m.table["chair"][1]
+    assert abs(w.dist_to("chair#1") - stop) < 0.3, w.dist_to("chair#1")
+    assert w.dist_to("chair#1") > stop - 0.3                           # no collision
+    assert blind_vx and max(blind_vx) <= P["blind_max_vx"] + 1e-9      # it really went blind, and slowly
+    assert t.actions == ["sit", "rise"]
+
+
+def test_without_a_pose_source_losing_the_chair_still_aborts():
+    t, w, m = make(blind_below=1.4, pose=None)
+    assert ready(m)
+    assert m.go()[0]
+    assert wait_for(lambda: m.state == State.ABORTED, 15), m.status_text()
+    finish(t, w, m)
+    assert "lost" in m.message and t.actions == []
+
+
+def test_a_chair_lost_too_far_away_is_not_finished_blind():
+    t, w, m = make(blind_below=2.6)                                    # vanishes at 2.6 m, beyond blind_max_range_m
+    assert ready(m)
+    assert m.go()[0]
+    assert wait_for(lambda: m.state == State.ABORTED, 15), m.status_text()
+    finish(t, w, m)
+    assert "too far" in m.message and t.actions == []
+
+
+def test_a_pose_source_that_disagrees_with_the_sensor_disables_blind_approach():
+    t, w, m = make(blind_below=1.4, pose=1.2)                          # heading off by about 70 degrees
+    assert ready(m)
+    assert m.go()[0]
+    assert wait_for(lambda: m.state == State.ABORTED, 20), m.status_text()
+    finish(t, w, m)
+    assert "disagree" in m.message and t.actions == []
+
+
+def test_blind_approach_still_respects_the_corridor_check():
+    t, w, m = make(cfg=fast_cfg(blocked_abort_s=0.5), blind_below=1.4, clearance_fn=lambda exclude: None)
+    assert ready(m)
+    assert m.go()[0]
+    assert wait_for(lambda: m._blind, 15)                              # now out of view
+    m.clearance_fn = lambda exclude: 0.3                               # something appears in the way
+    assert wait_for(lambda: m.state == State.ABORTED, 6), m.status_text()
+    finish(t, w, m)
+    assert "blocked" in m.message and t.actions == []
+
+
+def test_a_key_press_aborts_a_blind_approach_too():
+    t, w, m = make(blind_below=1.4)
+    assert ready(m)
+    assert m.go()[0]
+    assert wait_for(lambda: m._blind, 15)
+    m.manual_input("s")
+    assert m.state == State.ABORTED and t.cmd == (0.0, 0.0, 0.0)
+    finish(t, w, m)
+
+
+def test_a_second_chair_is_never_mistaken_for_the_target_when_the_first_leaves_the_view():
+    """chair A drops out of view at 1.4 m while chair B is visible further to the side. The dog must finish at A."""
+    t, w, m = make(objects={"chair#A": (3.0, 0.0), "chair#B": (3.4, 1.2)}, blind_below=1.4)
+    assert ready(m)
+    assert m.candidate.range < 3.3                                       # nearest is A
+    assert m.go()[0]
+    assert wait_for(lambda: m.state in (State.DONE, State.ABORTED), 60), m.status_text()
+    finish(t, w, m)
+    assert m.state == State.DONE, m.message
+    assert w.dist_to("chair#A") < 1.3 and abs(w.y) < 0.45                # went to A, did not veer towards B

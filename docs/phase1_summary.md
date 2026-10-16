@@ -55,7 +55,7 @@ latest-value buffers, so a slow detector or window cannot stall robot control.
 | Object map + accuracy report in the sim | Works (results below) |
 | `preflight.py` | Output formatting and parsing tested with fakes; **never run against the robot** |
 | `--map` on the real robot | Written, **untested** |
-| Approach-and-act mission (`--mission`) | Logic and safety behaviours tested with a fake robot (20 tests) and end to end in the MuJoCo sim (3 tests): turns, walks, stops at the distance, sits, rises; a key press stops it; a large obstacle blocks it. **Not yet run on the real robot**; the real LiDAR corridor check and the real `Sit`/`RiseSit`/`Hello` behaviour are unverified |
+| Approach-and-act mission (`--mission`) | Logic and safety behaviours tested with a fake robot (20 tests) and end to end in the MuJoCo sim (3 tests): turns, walks, stops at the distance, sits, rises; a key press stops it; a large obstacle blocks it; finishes the approach by dead reckoning when the chair leaves the camera's view (tested in the sim; also checks a second chair is not mistaken for the target). **Not yet run on the real robot**; the real LiDAR corridor check and the real `Sit`/`RiseSit`/`Hello` behaviour are unverified |
 
 Why the sim is kinematic: Unitree's `unitree_mujoco` only accepts low-level joint commands. It has no `SportClient`
 service, camera or LiDAR, so walking commands are not supported. Perception is what Phase 1 needs, so the base is moved

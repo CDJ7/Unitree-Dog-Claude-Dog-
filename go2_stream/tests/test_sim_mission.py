@@ -26,7 +26,7 @@ BCFG = yaml.safe_load(open(os.path.join(ROOT, "config", "behaviors.yaml")))
 
 
 class Rig:
-    def __init__(self, bcfg=None, **start):
+    def __init__(self, bcfg=None, blind_below=0.0, **start):
         cfg = W.load_config()
         cfg["render"] = False
         cfg["camera"].update(width=160, height=90, fps=6)
@@ -41,14 +41,22 @@ class Rig:
         self.teleop = Teleop(CTRL, self.client)
         self.teleop.start(use_keyboard=False)
         self.teleop.standing = True                       # the dog starts standing in these tests
-        self.det = DetectionThread(GroundTruthDetector(self.world), self.world.buffer, DCFG,
-                                   fuse_fn=make_sim_fuse_fn(self.world, DCFG["fusion"]))
+        inner = make_sim_fuse_fn(self.world, DCFG["fusion"])
+
+        def fuse(frame, dets):                            # optionally hide anything closer than blind_below (out of view)
+            dets, uvr, status = inner(frame, dets)
+            if blind_below:
+                dets = [d for d in dets if d.xyz_body is None or math.hypot(d.xyz_body[0], d.xyz_body[1]) >= blind_below]
+            return dets, uvr, status
+
+        self.det = DetectionThread(GroundTruthDetector(self.world), self.world.buffer, DCFG, fuse_fn=fuse)
         self.det.start()
         b = copy.deepcopy(bcfg or BCFG)
         b["safety"].update(settle_s=0.5, confirm_frames=3)
         b["actions"]["sit"]["hold_s"] = 0.5
         self.mission = Mission(b, self.det.latest, self.teleop, classes=["chair"],
-                               clearance_fn=make_sim_clearance(self.world, b["safety"]["corridor"]))
+                               clearance_fn=make_sim_clearance(self.world, b["safety"]["corridor"]),
+                               pose_fn=lambda: self.world.pose)
         self.teleop.on_manual_input = self.mission.manual_input
         self.mission.start()
 
@@ -120,5 +128,23 @@ def test_a_large_obstacle_in_the_corridor_blocks_the_dog():
         assert r.wait(lambda: r.mission.state == State.ABORTED, 20), r.mission.status_text()
         assert "blocked" in r.mission.message
         assert math.hypot(r.world.pose[0] - start[0], r.world.pose[1] - start[1]) < 0.2
+    finally:
+        r.close()
+
+
+def test_the_dog_finishes_the_approach_and_sits_when_the_chair_leaves_the_view():
+    """What happened in the live sim: the chair drops out of detection in the last metre. Hidden here once closer than 1.4 m."""
+    r = Rig(blind_below=1.4, x=-2.4, y=0.0, yaw_deg=0.0)
+    try:
+        assert r.wait(lambda: r.mission.candidate is not None and r.mission._seen >= 3, 15), r.mission.status_text()
+        ok, msg = r.mission.go()
+        assert ok, msg
+        went_blind = r.wait(lambda: r.mission._blind or r.mission.state in (State.DONE, State.ABORTED), 60)
+        assert went_blind
+        assert r.wait(lambda: r.mission.state == State.DONE, 120), r.mission.status_text()
+        stop = r.mission.table["chair"][1]
+        d = chair_dist(r.world)
+        assert stop - 0.1 <= d <= stop + 0.6, f"final distance {d:.2f} m, stop distance {stop} m"
+        assert r.world.standing
     finally:
         r.close()

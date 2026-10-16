@@ -286,6 +286,17 @@ older than 0.7 s (it stands still), the path blocked for 3 s, the approach takin
 standing, or the program exiting. Autonomous velocity requests expire after 0.3 s, so if the mission thread dies the dog
 stops; speeds are 0.25 m/s forward and 0.5 rad/s turning (never strafing or backing up), and Teleop's limits still apply.
 
+**Out-of-view finish ("blind approach"):** the camera is low and fixed, so a chair 1 m away is often partly or fully out of
+view and YOLO drops it. If the target was last seen within 2 m, the dog finishes the approach (slower, 0.15 m/s) by dead
+reckoning: it remembers where the target is in the world and walks the remaining distance using its own position (the sim pose,
+or the dog's `sportmodestate` odometry on the robot). It stays within the 8 s / 2 m limits, still obeys the path check and
+any key press, and is switched off for that mission if the position source and the sensor disagree. A target lost farther than
+2 m away, or with no position source, still aborts. The video says `(out of view: dead reckoning)` while this is happening.
+A second object of the same class that comes into view is never mistaken for the target (it must be within 0.9 m of where the
+target is in the world). **The real-robot version is unverified**: it assumes the dog's position and heading in
+`sportmodestate` share a frame. Check it in the dry run (step 2 below): walk the dog by hand with the chair in view and
+watch for "pose and sensor disagree" in the log.
+
 **Safety limits you should know:**
 - The stop distance is what the *sensors* read, which was accurate to about 12% in a quick test (1 m read 1.12 m, 2 m read
   1.88 m, 3 m read about 3 m). Per-class stop distances are raised to at least 0.6 m.

@@ -36,7 +36,7 @@ def candidates(detections, classes, min_conf, t):
     return out
 
 
-def pick_target(cands: List[Target], prev: Optional[Target] = None, gate_bearing=0.6, gate_range=1.0):
+def pick_target(cands: List[Target], prev: Optional[Target] = None, gate_bearing=0.5, gate_range=0.6):
     """No previous target: the nearest candidate. With one: the same-class candidate closest to where it was
     (bearing/range gating, so the dog does not jump to another chair when one disappears)."""
     if not cands:
