@@ -88,6 +88,7 @@ class Mission(threading.Thread):
         self._first, self._anchor = [], None
         self._n_sightings, self._last_range = 0, 1e9
         self._pose_bad, self._blind = False, False
+        self._drift = None                     # how far the target's world estimate has wandered (for the dry-run printout)
 
     # ------------------------------------------------------------------ public API (UI / teleop threads)
     def _note(self, text, seconds=5.0):
@@ -199,8 +200,9 @@ class Mission(threading.Thread):
             if now - self._last_cmd_log > 0.5:
                 self._last_cmd_log = now
                 t = self.target
-                log.info("[dry run] would command vx=%+.2f vyaw=%+.2f   (target %.2f m ahead %.2f m left, bearing %+.0f deg)",
-                         vx, vyaw, t.x, t.y, 57.2958 * t.bearing)
+                drift = "" if self._drift is None else f"  pose drift {self._drift:.2f} m (limit {self.p['blind_consistency_m']})"
+                log.info("[dry run] would command vx=%+.2f vyaw=%+.2f   (target %.2f m ahead %.2f m left, bearing %+.0f deg)%s",
+                         vx, vyaw, t.x, t.y, 57.2958 * t.bearing, drift)
         else:
             self.teleop.set_autonomy(vx, 0.0, vyaw)
 
@@ -321,6 +323,7 @@ class Mission(threading.Thread):
         elif self._anchor is not None and self._n_sightings >= 10 and not self._pose_bad:
             m = self._median_xy(self._tw_hist)
             drift = math.hypot(m[0] - self._anchor[0], m[1] - self._anchor[1])
+            self._drift = drift
             if drift > self.p["blind_consistency_m"]:
                 self._pose_bad = True
                 log.warning("pose and sensor disagree (target estimate drifted %.2f m): blind approach disabled", drift)

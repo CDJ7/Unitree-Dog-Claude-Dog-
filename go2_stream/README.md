@@ -294,8 +294,9 @@ any key press, and is switched off for that mission if the position source and t
 2 m away, or with no position source, still aborts. The video says `(out of view: dead reckoning)` while this is happening.
 A second object of the same class that comes into view is never mistaken for the target (it must be within 0.9 m of where the
 target is in the world). **The real-robot version is unverified**: it assumes the dog's position and heading in
-`sportmodestate` share a frame. Check it in the dry run (step 2 below): walk the dog by hand with the chair in view and
-watch for "pose and sensor disagree" in the log.
+`sportmodestate` share a frame. Check it in the dry run (step 2 below). In a dry run the program sends nothing, so move the dog
+with the **Unitree remote controller** (not the keyboard: any keyboard control key aborts the mission) while the chair stays in
+view. The log prints `pose drift X m (limit 0.7)`; it should stay well under the limit and "pose and sensor disagree" must not appear.
 
 **Safety limits you should know:**
 - The stop distance is what the *sensors* read, which was accurate to about 12% in a quick test (1 m read 1.12 m, 2 m read
@@ -312,6 +313,8 @@ watch for "pose and sensor disagree" in the log.
 2. Dry run: `--mission chair --mission-dry-run`, press R then B with a chair 2-3 m in front. The dog must not move. Check the
    printed commands: forward `vx > 0` when facing the chair, and `vyaw > 0` (turn left) when the chair is to its left; move
    the chair to the other side and the sign must flip. The printed range should match a tape measure within about 15%.
+   While the dry-run approach is still running (`MISSION DRY` on screen), walk the dog a metre or two with the Unitree remote
+   and watch `pose drift` (see the out-of-view finish above): it must stay well below 0.7 m.
 3. Stand 1 m from a wall, run the dry run again: it should report `path blocked`.
 4. Live, with `--allow-autonomy --max-speed 0.3`: 3 m of clear floor, chair straight ahead at about 2.5 m, remote in hand,
    a helper ready to hit Space. Press B, watch, abort at the slightest doubt. Then an off-centre chair, then a person.
