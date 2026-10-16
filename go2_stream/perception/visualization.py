@@ -29,7 +29,7 @@ def draw_lidar_overlay(img, uvr):
 
 
 def draw_detections(frame, detections, infer_fps=0.0, display_fps=0.0, lidar_uvr=None,
-                    show_lidar=False, status=""):
+                    show_lidar=False, status="", mission_text=""):
     img = frame.copy()
     if show_lidar:
         draw_lidar_overlay(img, lidar_uvr)
@@ -52,5 +52,7 @@ def draw_detections(frame, detections, infer_fps=0.0, display_fps=0.0, lidar_uvr
         _text(img, status, (8, 40), (0, 200, 255))
     if any(getattr(d, "source", "yolo") == "ground_truth" for d in detections):
         _text(img, "GROUND TRUTH LABELS (from the simulator, not YOLO)", (8, 60), (255, 0, 255))
+    if mission_text:
+        _text(img, mission_text, (8, img.shape[0] - 34), (255, 255, 0), 0.6)
     _text(img, "L: LiDAR overlay   Esc: quit", (8, img.shape[0] - 10), (200, 200, 200), 0.45)
     return img

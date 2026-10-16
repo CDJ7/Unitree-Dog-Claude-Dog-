@@ -9,6 +9,8 @@ teleop as main.py runs alongside).
     python run_detection.py --iface enp0s31f6 --classes person chair --log det.csv
     python run_detection.py --iface enp0s31f6 --teleop         # also drive with WASD (see README)
     python run_detection.py --sim                              # MuJoCo sim instead of the robot (teleop on by default)
+    python run_detection.py --sim --mission chair              # sim: walk up to a chair and sit (B = go-ahead)
+    python run_detection.py --iface enp0s31f6 --teleop --mission chair --mission-dry-run   # robot: print only, no motion
     python run_detection.py --sim --gt                         # sim with GROUND TRUTH labels instead of YOLO
 """
 import argparse
@@ -49,6 +51,14 @@ def parse_args():
                     help="build an object map from the detections (needs distances: sim depth, or LiDAR on the robot) "
                          "and save results/object_map.json on exit")
     ap.add_argument("--map-config", default=os.path.join(HERE, "config", "mapping.yaml"))
+    ap.add_argument("--mission", nargs="*", metavar="CLASS", default=None,
+                    help="enable the approach-and-act mission for these classes (none given = all in config/behaviors.yaml). "
+                         "Needs teleop. The robot only moves after R (stand) and B (go-ahead) in the video window.")
+    ap.add_argument("--allow-autonomy", action="store_true",
+                    help="REAL ROBOT: required before a mission may move the dog (read config/behaviors.yaml first)")
+    ap.add_argument("--mission-dry-run", action="store_true",
+                    help="mission computes and prints the commands it WOULD send, but nothing is sent to the robot")
+    ap.add_argument("--behaviors-config", default=os.path.join(HERE, "config", "behaviors.yaml"))
     ap.add_argument("--results-dir", default=os.path.join(HERE, "results"))
     return ap.parse_args()
 
@@ -76,6 +86,43 @@ def run_image(args, dcfg):
     print("Saved", out)
 
 
+def setup_mission(args, teleop, det_thread, clearance_fn, real):
+    """Create and start the approach-and-act mission, or return None when --mission was not given."""
+    if args.mission is None:
+        return None
+    if teleop is None:
+        sys.exit("--mission needs keyboard teleop (add --teleop on the robot). Esc/Space/any control key always aborts it.")
+    from behavior.mission import Mission
+    bcfg = yaml.safe_load(open(args.behaviors_config))
+    allow = (not real) or args.allow_autonomy
+    try:
+        m = Mission(bcfg, det_thread.latest, teleop, classes=args.mission or None, clearance_fn=clearance_fn,
+                    dry_run=args.mission_dry_run, allow_autonomy=allow)
+    except ValueError as e:
+        sys.exit(f"mission config problem: {e}")
+    teleop.on_manual_input = m.manual_input
+    m.start()
+    log.warning("MISSION enabled for %s%s. Sequence: R (stand) -> wait for 'READY' in the video -> B (go-ahead). "
+                "ANY control key, Space, Esc or V aborts. Speeds capped at %.2f m/s.",
+                "/".join(m.classes), " [DRY RUN]" if args.mission_dry_run else "", bcfg["safety"]["max_vx"])
+    if real and not allow:
+        log.warning("Autonomy is DISABLED on the real robot: add --allow-autonomy after reading config/behaviors.yaml.")
+    return m
+
+
+def mission_key(mission, key):
+    """Window keys: B = go-ahead, C = confirm the action, V = cancel."""
+    if mission is None:
+        return
+    if key in (ord("b"), ord("B")):
+        ok, msg = mission.go()
+        log.info("go-ahead %s: %s", "ACCEPTED" if ok else "refused", msg)
+    elif key in (ord("c"), ord("C")):
+        mission.confirm()
+    elif key in (ord("v"), ord("V")):
+        mission.abort("cancelled by operator")
+
+
 def save_screenshot(results_dir, img, tag="screenshot"):
     out = os.path.join(results_dir, "screenshots")
     os.makedirs(out, exist_ok=True)
@@ -101,7 +148,7 @@ def run_sim(args, dcfg):
     gt_det = GroundTruthDetector(world)
     yolo = None if args.gt else build_detector(args, dcfg)
     detector = gt_det if args.gt else yolo
-    teleop = det_thread = logger = objmap = mcfg = None
+    teleop = det_thread = logger = objmap = mcfg = mission = None
     try:
         world.start()
         if not args.no_teleop:
@@ -126,6 +173,10 @@ def run_sim(args, dcfg):
         det_thread = DetectionThread(detector, world.buffer, dcfg, logger=logger,
                                      fuse_fn=make_sim_fuse_fn(world, dcfg["fusion"]), on_result=on_result)
         det_thread.start()
+        if args.mission is not None:
+            from behavior.clearance import make_sim_clearance
+            bcfg = yaml.safe_load(open(args.behaviors_config))
+            mission = setup_mission(args, teleop, det_thread, make_sim_clearance(world, bcfg["safety"]["corridor"]), real=False)
         topdown = TopDownMap(world)
         win = "go2_sim_detection"
         if not args.no_display:
@@ -141,7 +192,8 @@ def run_sim(args, dcfg):
                     times.pop(0)
                 dfps = (len(times) - 1) / (times[-1] - times[0]) if len(times) > 1 else 0.0
                 shown = draw_detections(res.frame, res.detections, res.infer_fps, dfps, None, False,
-                                        f"sim ({world.render_backend})  {res.status}")
+                                        f"sim ({world.render_backend})  {res.status}",
+                                        mission.status_text() if mission else "")
             if args.no_display:
                 time.sleep(0.05)
             else:
@@ -151,6 +203,7 @@ def run_sim(args, dcfg):
                 key = cv2.waitKey(15) & 0xFF
                 if key == 27 or cv2.getWindowProperty(win, cv2.WND_PROP_VISIBLE) < 1:
                     break
+                mission_key(mission, key)
                 if key in (ord("p"), ord("P")) and shown is not None:
                     save_screenshot(args.results_dir, shown, "detection")
                     save_screenshot(args.results_dir, topdown.draw(), "map")
@@ -168,6 +221,7 @@ def run_sim(args, dcfg):
     except Exception:
         log.exception("Fatal error")
     finally:
+        if mission: mission.stop()           # first: drop any autonomous velocity, then stop the robot
         if teleop:
             teleop.shutdown()
         if det_thread: det_thread.stop()
@@ -208,7 +262,7 @@ def main():
     log.info("Initialising DDS on %s", iface)
     ChannelFactoryInitialize(0, iface)
 
-    camera = lidar_src = state = teleop = det_thread = logger = objmap_real = None
+    camera = lidar_src = state = teleop = det_thread = logger = objmap_real = mission = None
     try:
         detector = build_detector(args, dcfg)          # load the model first: it can take a few seconds
         camera = CameraThread(cfg["camera"], iface)
@@ -235,6 +289,14 @@ def main():
             on_result = make_on_result(state, objmap_real)
         det_thread = DetectionThread(detector, camera.buffer, dcfg, lidar_src, state, lidar_mod, logger, on_result=on_result)
         det_thread.start()
+        if args.mission is not None:
+            if lidar_src is None:
+                sys.exit("--mission needs LiDAR distances (drop --no-lidar and fix the LiDAR subscription first).")
+            from behavior.clearance import make_real_clearance
+            bcfg = yaml.safe_load(open(args.behaviors_config))
+            clear = make_real_clearance(lidar_src, state, lidar_mod, dcfg["fusion"].get("lidar_frame", "auto"),
+                                        bcfg["safety"]["corridor"])
+            mission = setup_mission(args, teleop, det_thread, clear, real=True)
 
         win = "go2_detection"
         if not args.no_display:
@@ -252,7 +314,8 @@ def main():
                 if not args.no_display:
                     dfps = (len(times) - 1) / (times[-1] - times[0]) if len(times) > 1 else 0.0
                     shown = draw_detections(res.frame, res.detections, res.infer_fps, dfps,
-                                            res.lidar_uvr, show_lidar, res.status)
+                                            res.lidar_uvr, show_lidar, res.status,
+                                            mission.status_text() if mission else "")
             if args.no_display:
                 time.sleep(0.05)
             else:
@@ -263,6 +326,7 @@ def main():
                     break
                 if key in (ord("l"), ord("L")):
                     show_lidar = not show_lidar
+                mission_key(mission, key)
             if teleop and teleop.quit_event.is_set():
                 break
             if time.monotonic() - last_stale > 1.0:
@@ -274,6 +338,7 @@ def main():
     except Exception:
         log.exception("Fatal error")
     finally:
+        if mission: mission.stop()     # first: drop any autonomous velocity, then stop the robot
         if teleop:
             teleop.shutdown()          # always ends with StopMove
         if det_thread: det_thread.stop()
