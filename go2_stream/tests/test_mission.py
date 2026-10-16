@@ -126,8 +126,9 @@ class FakeTeleop:
 class FakeWorld(threading.Thread):
     """Integrates the commands like Teleop would (with the 0.3 s deadman) and publishes detection results at 10 Hz."""
 
-    def __init__(self, teleop, objects, start=(0.0, 0.0, 0.0)):
+    def __init__(self, teleop, objects, start=(0.0, 0.0, 0.0), drop_every=0):
         super().__init__(daemon=True)
+        self.drop_every = drop_every
         self.t, self.objects = teleop, dict(objects)
         self.x, self.y, self.yaw = start
         self.latest, self.seq, self.publish, self.stop_flag = None, 0, True, False
@@ -146,11 +147,12 @@ class FakeWorld(threading.Thread):
             n += 1
             if self.publish and n % 2 == 0:
                 dets = []
+                dropped = self.drop_every and (n // 2) % self.drop_every == 0
                 for name, (ox, oy) in self.objects.items():
                     dx, dy = ox - self.x, oy - self.y
                     xb = math.cos(self.yaw) * dx + math.sin(self.yaw) * dy
                     yb = -math.sin(self.yaw) * dx + math.cos(self.yaw) * dy
-                    if xb > 0.1 and abs(math.atan2(yb, xb)) < 0.9:             # inside the camera's view
+                    if not dropped and xb > 0.1 and abs(math.atan2(yb, xb)) < 0.9:   # inside the camera's view
                         dets.append(Detection(0, name.split("#")[0], 0.9, (0, 0, 1, 1), 1.0, xyz_body=(xb, yb, 0.4)))
                 self.seq += 1
                 self.latest = NS(detections=dets, wall_time=time.time(), seq=self.seq)
@@ -161,9 +163,9 @@ class FakeWorld(threading.Thread):
         return math.hypot(ox - self.x, oy - self.y)
 
 
-def make(cfg=None, objects=None, start=(0.0, 0.0, 0.0), **mission_kw):
+def make(cfg=None, objects=None, start=(0.0, 0.0, 0.0), drop_every=0, **mission_kw):
     t = FakeTeleop()
-    w = FakeWorld(t, objects if objects is not None else {"chair#1": (3.0, 0.5)}, start)
+    w = FakeWorld(t, objects if objects is not None else {"chair#1": (3.0, 0.5)}, start, drop_every)
     m = Mission(cfg or fast_cfg(), lambda: w.latest, t, **mission_kw)
     w.start()
     m.start()
@@ -349,4 +351,29 @@ def test_go_again_after_done_rearms_instead_of_driving_off():
     assert wait_for(lambda: m.state == State.DONE)
     ok, msg = m.go()
     assert not ok and m.state == State.READY
+    finish(t, w, m)
+
+
+def test_a_flickering_detection_still_becomes_ready():
+    """Confidence hovering around the threshold makes the chair vanish every 3rd result: it must still be confirmable."""
+    t, w, m = make(drop_every=3)
+    assert ready(m, 8.0), m.status_text()
+    ok, msg = m.go()
+    assert ok, msg
+    finish(t, w, m)
+
+
+def test_a_refused_go_is_explained_on_the_video_text():
+    t, w, m = make(objects={"chair#1": (6.0, 0.0)})                    # too far to start
+    assert ready(m)
+    assert "GO refused" not in m.status_text()
+    m.go()
+    assert "GO refused" in m.status_text() and "away" in m.status_text()
+    finish(t, w, m)
+
+    t, w, m = make()
+    assert ready(m)
+    t.standing = False
+    m.go()
+    assert "press R" in m.status_text()
     finish(t, w, m)

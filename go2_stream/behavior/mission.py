@@ -74,10 +74,21 @@ class Mission(threading.Thread):
         self._hold_until = 0.0
         self._last_cmd_log = 0.0
         self.last_cmd = (0.0, 0.0, 0.0)
+        self._notice, self._notice_until = "", 0.0
+        self._last_cand_t = 0.0
 
     # ------------------------------------------------------------------ public API (UI / teleop threads)
+    def _note(self, text, seconds=5.0):
+        self._notice, self._notice_until = text, time.monotonic() + seconds
+        return text
+
     def go(self):
-        """The go-ahead. Returns (started, message)."""
+        """The go-ahead. Returns (started, message). The result is also shown on the video for a few seconds."""
+        ok, msg = self._go()
+        self._note(("GO accepted: " if ok else "GO refused: ") + msg)
+        return ok, msg
+
+    def _go(self):
         with self._lock:
             if self.state in (State.DONE, State.ABORTED):
                 self._set(State.READY, "re-armed: wait for a target, then press the go key again")
@@ -125,6 +136,12 @@ class Mission(threading.Thread):
         self._zero()
 
     def status_text(self):
+        text = self._status_text()
+        if self._notice and time.monotonic() < self._notice_until and self.state in (State.READY, State.DONE, State.ABORTED):
+            text += "  >> " + self._notice
+        return text
+
+    def _status_text(self):
         with self._lock:
             s, c = self.state, self.candidate
             if s == State.READY:
@@ -228,14 +245,20 @@ class Mission(threading.Thread):
         if res is None or res.seq == self._last_seq:
             return
         self._last_seq = res.seq
+        now = time.monotonic()
         cands = candidates(res.detections, self.classes, self.p["min_conf"], res.wall_time)
         pick = pick_target(cands, self.candidate) if self.candidate is not None else None   # same object as before?
         if pick is not None:
             self._seen += 1
-        else:                                       # new or lost: start counting again from the nearest candidate
+            self._last_cand_t = now
+            self.candidate = pick
+        elif self.candidate is not None and now - self._last_cand_t < self.p.get("candidate_hold_s", 0.6):
+            pass                                    # a brief dropout (confidence flickering): keep counting
+        else:                                       # new or really lost: start again from the nearest candidate
             pick = pick_target(cands, None)
             self._seen = 1 if pick else 0
-        self.candidate = pick
+            self.candidate = pick
+            self._last_cand_t = now if pick else 0.0
 
     def _update_target(self, res, now):
         if res is not None and res.seq != self._last_target_seq:
