@@ -41,7 +41,10 @@ class TopDownMap:
         for cls, ex, ey in estimates or []:
             cv2.circle(img, self._px(ex, ey), 9, (0, 0, 0), 2)
         cv2.rectangle(img, (0, 0), (self.w - 1, self.h - 1), (80, 80, 80), 2)
-        state = "standing" if self.world.standing else "lying (press R)"
+        state = "standing" if self.world.standing else "lying/sitting (press R)"
+        act = self.world.current_action
+        if act:
+            state = f"ACTION: {act}"
         cv2.putText(img, f"x {x:+.2f} y {y:+.2f} yaw {(math.degrees(yaw) + 180) % 360 - 180:+.0f}  {state}", (8, self.h - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (30, 30, 30), 1, cv2.LINE_AA)
         return img

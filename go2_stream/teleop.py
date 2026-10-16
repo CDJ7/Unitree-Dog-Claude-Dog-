@@ -22,6 +22,11 @@ MOVE_KEYS = {
     "q": (2, +1), "e": (2, -1),   # +vyaw = counter-clockwise (left)
 }
 
+# Actions other code (the autonomous mission) may request. Deliberately small: no flips, jumps, handstands or Damp.
+SAFE_ACTIONS = ("sit", "hello", "stretch", "content", "rise")
+# Keys that count as "a human is taking over": they cancel any autonomous behaviour immediately.
+MANUAL_KEYS = set(MOVE_KEYS) | {"space", "esc", "r", "f", "x", "y", "+", "=", "-", "_"}
+
 HELP = """\
 Keys:  W/S fwd/back   A/D strafe L/R   Q/E turn L/R   +/- speed scale
        SPACE stop   R stand up + balance   F stand down   X then Y damp (collapses!)
@@ -49,6 +54,11 @@ class FakeSportClient:
     def BalanceStand(self): return self._rec("BalanceStand")
     def StandDown(self): return self._rec("StandDown")
     def Damp(self): return self._rec("Damp")
+    def Sit(self): return self._rec("Sit")
+    def RiseSit(self): return self._rec("RiseSit")
+    def Hello(self): return self._rec("Hello")
+    def Stretch(self): return self._rec("Stretch")
+    def Content(self): return self._rec("Content")
 
 
 class Teleop:
@@ -82,6 +92,10 @@ class Teleop:
         self._threads = []
         self._listener = None
         self._stall_reported = False
+        self._auto = None               # (vx, vy, wz, monotonic time) from an autonomous behaviour; expires after deadman_s
+        self._using_auto = False
+        self.on_manual_input = None     # callable(key): a human pressed a control key (the mission aborts on this)
+        self.standing = False           # True after R (stand) / rise, False after F / Damp / sit
 
     # ---------------------------------------------------------------- lifecycle
     def start(self, use_keyboard=True):
@@ -152,6 +166,14 @@ class Teleop:
 
     def key_down(self, name):
         now = time.monotonic()
+        if name in MANUAL_KEYS:
+            self._auto = None            # a human is in control: drop autonomous velocity at once
+            cb = self.on_manual_input
+            if cb is not None:
+                try:
+                    cb(name)
+                except Exception:
+                    log.exception("on_manual_input callback failed")
         if name in MOVE_KEYS:
             with self._lock:
                 fresh = name not in self._held
@@ -209,6 +231,7 @@ class Teleop:
     def _compute(self):
         now = time.monotonic()
         axes = [0.0, 0.0, 0.0]
+        self._using_auto = False
         with self._lock:
             for k in [k for k, exp in self._held.items() if exp < now]:
                 del self._held[k]          # deadman: key event too old -> treat as released
@@ -217,7 +240,32 @@ class Teleop:
             for k in self._held:
                 ax, sign = MOVE_KEYS[k]
                 axes[ax] += sign
-        return tuple(clamp(a, -1, 1) * lim * self.scale for a, lim in zip(axes, self.limits))
+            auto = self._auto
+        if any(axes):                      # a held key always wins over autonomy
+            return tuple(clamp(a, -1, 1) * lim * self.scale for a, lim in zip(axes, self.limits))
+        if auto is not None and now - auto[3] <= self.cfg["deadman_s"]:   # stale autonomy = stop
+            self._using_auto = True
+            return tuple(clamp(v, -lim, lim) for v, lim in zip(auto[:3], self.limits))
+        return 0.0, 0.0, 0.0
+
+    # ---------------------------------------------------------------- autonomy / action API (used by behavior/mission.py)
+    def set_autonomy(self, vx, vy, wz):
+        """Velocity request from an autonomous behaviour. Must be refreshed faster than deadman_s or it lapses;
+        clamped to the teleop limits; ignored while any manual key is held; cancelled by any manual key."""
+        self._auto = (float(vx), float(vy), float(wz), time.monotonic())
+
+    def clear_autonomy(self):
+        self._auto = None
+
+    def request_action(self, name):
+        if name not in SAFE_ACTIONS:
+            raise ValueError(f"action '{name}' is not allowed (allowed: {', '.join(SAFE_ACTIONS)})")
+        with self._lock:
+            self._queue_once(name)
+
+    def idle(self):
+        """True when no action is running or queued."""
+        return not self._busy and not self._actions
 
     def snapshot(self):
         return {"vx": self._cmd[0], "vy": self._cmd[1], "vyaw": self._cmd[2],
@@ -243,7 +291,7 @@ class Teleop:
                 if vx or vy or wz:
                     code = self._client.Move(vx, vy, wz)
                     moving = True
-                    self.status = "moving"
+                    self.status = "auto" if self._using_auto else "moving"
                     if code not in (0, None) and time.monotonic() - last_err > 2.0:
                         last_err = time.monotonic()
                         log.warning("Move returned code %s (is the dog standing? press R)", code)
@@ -278,11 +326,24 @@ class Teleop:
                 c.StopMove()
             elif action == "stand":
                 c.StopMove(); c.StandUp(); c.BalanceStand()
+                self.standing = True
             elif action == "down":
                 c.StopMove(); c.StandDown()
+                self.standing = False
             elif action == "damp":
                 log.warning("Damp confirmed: dog will go limp")
                 c.Damp()
+                self.standing = False
+            elif action == "sit":
+                c.StopMove(); c.Sit()
+                self.standing = False
+            elif action == "rise":
+                c.RiseSit(); c.BalanceStand()
+                self.standing = True
+            elif action in ("hello", "stretch", "content"):
+                c.StopMove()
+                {"hello": c.Hello, "stretch": c.Stretch, "content": c.Content}[action]()
+                c.BalanceStand()
             self.status = "idle"
         finally:
             self._busy = False

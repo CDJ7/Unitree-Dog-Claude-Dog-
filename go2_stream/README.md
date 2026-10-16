@@ -261,3 +261,46 @@ Real-robot launch (after `preflight.py` passes; dog lying down, 2 m clear around
 python main.py --iface enp0s31f6 --max-speed 0.3                     # camera + LiDAR + teleop
 python run_detection.py --iface enp0s31f6 --teleop --max-speed 0.3   # YOLO + LiDAR distances + teleop
 ```
+
+## 13. Approach an object and act (autonomous mission)
+
+The dog distinguishes objects by YOLO class, walks up to the chosen one, stops at a safe distance and performs a small
+action: **chair -> sit**, **person -> hello (greeting / handshake wave)**, **bottle -> content**. The class -> action ->
+stop distance table is `config/behaviors.yaml`. Only `sit`, `hello`, `stretch` and `content` exist; flips, jumps,
+handstands and Damp can never be requested.
+
+```bash
+python run_detection.py --sim --mission chair                  # try it in the simulator first (teleop is on by default)
+python run_detection.py --sim --gt --mission chair             # same with ground-truth labels
+python run_detection.py --iface enp0s31f6 --teleop --mission chair --mission-dry-run    # robot: prints, nothing moves
+python run_detection.py --iface enp0s31f6 --teleop --mission chair --allow-autonomy --max-speed 0.3   # robot: moves
+python behavior/try_action.py --iface enp0s31f6 sit            # one action on its own, asks you to type YES
+```
+
+**The go-ahead sequence:** R (stand, so the program knows the dog is standing) -> wait until the video shows
+`MISSION READY: chair 2.3 m -> sit @ 0.90 m [B = go]` -> press **B in the video window**. Nothing moves before B.
+`C` confirms the action if `confirm_before_action: true`; `V` cancels.
+
+**What stops it, always:** any teleop key (WASD/QE, Space, R, F, +/-, Esc), V, the target being lost for 1.5 s, detections
+older than 0.7 s (it stands still), the path blocked for 3 s, the approach taking longer than 45 s, the dog no longer
+standing, or the program exiting. Autonomous velocity requests expire after 0.3 s, so if the mission thread dies the dog
+stops; speeds are 0.25 m/s forward and 0.5 rad/s turning (never strafing or backing up), and Teleop's limits still apply.
+
+**Safety limits you should know:**
+- The stop distance is what the *sensors* read, which was accurate to about 12% in a quick test (1 m read 1.12 m, 2 m read
+  1.88 m, 3 m read about 3 m). Per-class stop distances are raised to at least 0.6 m.
+- The walking-corridor check uses the LiDAR (or the sim depth image). It reliably sees large surfaces (walls, furniture
+  fronts) but **not thin obstacles such as chair legs**, and it is untested on the real LiDAR. It is a safety net, not
+  obstacle avoidance. Keep the path clear yourself. If it cannot see the LiDAR it reports "blocked" and the dog stays put.
+- `person -> hello` makes the robot approach people. Use it only with a willing, informed adult and keep children and pets
+  clear. `Sit`, `RiseSit` and `Hello` behaviour on the real Go2 (does it return to standing by itself? how long does it take?)
+  is unverified: try each with `behavior/try_action.py` first.
+
+**Staged test on the real robot (do not skip steps):**
+1. `python behavior/try_action.py --iface enp0s31f6 sit` (and `hello`) with the dog standing and the remote in your hand.
+2. Dry run: `--mission chair --mission-dry-run`, press R then B with a chair 2-3 m in front. The dog must not move. Check the
+   printed commands: forward `vx > 0` when facing the chair, and `vyaw > 0` (turn left) when the chair is to its left; move
+   the chair to the other side and the sign must flip. The printed range should match a tape measure within about 15%.
+3. Stand 1 m from a wall, run the dry run again: it should report `path blocked`.
+4. Live, with `--allow-autonomy --max-speed 0.3`: 3 m of clear floor, chair straight ahead at about 2.5 m, remote in hand,
+   a helper ready to hit Space. Press B, watch, abort at the slightest doubt. Then an off-centre chair, then a person.

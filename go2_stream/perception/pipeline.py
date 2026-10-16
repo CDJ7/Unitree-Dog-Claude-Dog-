@@ -29,6 +29,20 @@ class DetectionResult:
     status: str = ""
 
 
+def cloud_to_body(cloud_msg, sport_state, mode, lidar_mod):
+    """LiDAR cloud -> ((N,3) float64 in the robot body frame, frame_id) or (None, reason)."""
+    pts = lidar_mod.pointcloud2_to_xyz(cloud_msg).astype(np.float64)
+    if not len(pts):
+        return None, "empty point cloud"
+    frame_id = str(getattr(cloud_msg.header, "frame_id", ""))
+    is_odom = mode == "odom" or (mode == "auto" and "odom" in frame_id.lower())
+    if is_odom:
+        if sport_state is None:
+            return None, "cloud is in odom frame but no sportmodestate pose yet"
+        pts = df.odom_to_body(pts, sport_state.position, sport_state.imu_state.quaternion)
+    return pts, frame_id
+
+
 def fuse_detections(detections, frame_shape, cloud_msg, sport_state, cfg, lidar_mod):
     """Attach distance / xyz to detections using one LiDAR cloud. Returns (detections, uvr, status)."""
     if cloud_msg is None:
@@ -36,17 +50,9 @@ def fuse_detections(detections, frame_shape, cloud_msg, sport_state, cfg, lidar_
     h, w = frame_shape[:2]
     cam = df.CameraModel.from_config(cfg["camera_model"], w, h)
     ext = cfg["extrinsics"]
-    pts = lidar_mod.pointcloud2_to_xyz(cloud_msg).astype(np.float64)
-    if not len(pts):
-        return detections, None, "empty point cloud"
-
-    frame_id = str(getattr(cloud_msg.header, "frame_id", ""))
-    mode = cfg["fusion"].get("lidar_frame", "auto")
-    is_odom = mode == "odom" or (mode == "auto" and "odom" in frame_id.lower())
-    if is_odom:
-        if sport_state is None:
-            return detections, None, "cloud is in odom frame but no sportmodestate pose yet"
-        pts = df.odom_to_body(pts, sport_state.position, sport_state.imu_state.quaternion)
+    pts, frame_id = cloud_to_body(cloud_msg, sport_state, cfg["fusion"].get("lidar_frame", "auto"), lidar_mod)
+    if pts is None:
+        return detections, None, frame_id
 
     pts_cam = df.body_to_camera(pts, ext["translation"], ext["pitch_deg"], ext["yaw_deg"], ext["roll_deg"])
     u, v, idx = df.project_points(pts_cam, cam)

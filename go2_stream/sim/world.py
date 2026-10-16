@@ -232,6 +232,22 @@ class SimWorld(threading.Thread):
                 self._cmd = (0.0, 0.0, 0.0)
         return 0
 
+    def crouch(self, p=0.45):
+        """Sit-like lowered posture (stand progress p in (0,1)); Move is refused until RiseSit/StandUp."""
+        with self._lock:
+            self._stand_target = p
+            self._stand_rate = 1.0 / STAND_TIME_S
+            self._cmd = (0.0, 0.0, 0.0)
+        return 0
+
+    def perform(self, name, seconds):
+        self._action = (name, time.monotonic() + seconds)
+
+    @property
+    def current_action(self):
+        a = getattr(self, "_action", None)
+        return a[0] if a and time.monotonic() < a[1] else ""
+
     @property
     def pose(self):
         with self._lock:
@@ -418,3 +434,23 @@ class SimSportClient:
     def BalanceStand(self): return 0
     def StandDown(self): return self.world.stand(False)
     def Damp(self): return self.world.stand(False, fast=True)
+
+    # Actions block for about as long as the real calls do (Teleop treats them as "busy").
+    def Sit(self):
+        self.world.crouch(0.45)
+        time.sleep(1.2)
+        return 0
+
+    def RiseSit(self):
+        self.world.stand(True)
+        time.sleep(1.6)
+        return 0
+
+    def _act(self, name, seconds):
+        self.world.perform(name, seconds)
+        time.sleep(seconds)
+        return 0
+
+    def Hello(self): return self._act("hello", 3.0)
+    def Stretch(self): return self._act("stretch", 3.0)
+    def Content(self): return self._act("content", 2.0)
