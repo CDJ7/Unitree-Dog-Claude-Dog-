@@ -1,0 +1,15 @@
+# Core (pure Python parts: spatter physics, BPA analysis, classifier, evaluation).
+# Tested with Python 3.10+; the laptop's go2venv version is still to be checked.
+numpy>=1.24
+pyyaml>=6.0
+matplotlib>=3.7
+pillow>=10.0
+scikit-learn>=1.3
+pytest>=7.4
+
+# Added in later parts (installed by scripts/setup.sh once on the laptop):
+#   mujoco==3.3.7            simulator (pinned to match robot-unitree-go2-mujoco)
+#   opencv-python            image I/O, overlays
+#   rfdetr[train,loggers]    stain detection / segmentation (Apache-2.0 seg sizes only)
+#   segment-anything, pycocotools, gdown   bloodstain SAM droplet segmentation
+#   fastapi, uvicorn[standard]             GUI backend

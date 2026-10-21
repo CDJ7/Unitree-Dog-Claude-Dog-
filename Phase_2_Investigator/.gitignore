@@ -1,0 +1,31 @@
+# Phase 2 Investigator: keep the repo small (nothing over ~50 MB, no weights or datasets)
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# third-party code fetched by scripts/setup.sh (pinned commits, not vendored)
+third_party/
+
+# model weights and checkpoints
+weights/
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.pkl
+*.joblib
+analysis/classifier/models/
+
+# datasets, renders and run outputs
+datasets/
+data/
+renders/
+runs/
+output/
+outputs/
+sim_env/build/
+evaluation/results/tmp/
+*.mp4
+*.npy
+*.npz

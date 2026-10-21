@@ -1,0 +1,41 @@
+# Scenario 3: accidental fall in a hallway (no weapon).
+# The head strikes the side table (low impact spatter), the person stays down
+# dripping, then gets up using the wall and leaves a hand smear.
+id: s3_hallway_fall
+title: "Hallway: fall against a side table"
+seed: 303
+room: {size: [6.0, 1.6, 2.5], materials: {floor: carpet, wall: plaster, ceiling: plaster}}
+furniture:
+  - {id: side_table, center: [3.0, 0.3, 0.40], size: [0.6, 0.5, 0.80], material: wood}
+distractors:
+  - {id: red_rug, kind: rug, center: [5.0, 0.8, 0.005], size: [0.9, 0.6, 0.01], color: [0.6, 0.08, 0.1]}
+  - {id: red_umbrella, kind: umbrella, center: [0.3, 1.4, 0.45], size: [0.08, 0.08, 0.9], color: [0.8, 0.1, 0.1]}
+mannequins:
+  - {id: victim, role: victim, position: [3.3, 0.8], yaw_deg: 0, posture: lying, height: 1.75}
+events:
+  - mechanism: impact
+    description: "Head strikes the corner of the side table during the fall"
+    origin: [3.1, 0.75, 0.80]
+    weapon_category: none
+    weapon: null
+    params: {n: 70, axis: [0.3, 1.0, 0.1], cone_deg: 70, speed: [1.0, 4.0], d_median_mm: 1.6}
+  - mechanism: drip
+    description: "Head wound drips while the person lies on the floor"
+    origin: [3.4, 0.9, 0.30]
+    weapon_category: none
+    params: {n: 12}
+  - mechanism: transfer
+    description: "Bloodied hand pushes against the wall to get up and slides"
+    surface: room_wall_y1
+    start: [3.6, 1.6, 0.9]
+    end: [4.2, 1.6, 1.05]
+    weapon_category: none
+    params: {width: 0.07}
+summary:
+  primary_event: 0
+  sequence:
+    - "Person walking along the hallway falls"
+    - "Head strikes the side table corner: low-speed impact spatter"
+    - "Lies on the floor while the wound drips"
+    - "Gets up using the wall, leaving a hand smear moving to the right"
+binding: {environment: null, note: "stand-alone hallway"}
