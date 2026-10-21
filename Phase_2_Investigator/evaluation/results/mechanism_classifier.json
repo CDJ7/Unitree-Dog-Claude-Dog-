@@ -1,0 +1,241 @@
+{
+ "n_scenarios": 600,
+ "seed": 0,
+ "groups": {
+  "train": 1080,
+  "val": 223,
+  "test": 250
+ },
+ "accuracy": {
+  "val": 0.9192825112107623,
+  "test": 0.94
+ },
+ "classes": [
+  "castoff",
+  "drip",
+  "impact",
+  "projected",
+  "transfer"
+ ],
+ "confusion_test": [
+  [
+   46,
+   0,
+   8,
+   0,
+   0
+  ],
+  [
+   0,
+   93,
+   0,
+   0,
+   0
+  ],
+  [
+   5,
+   0,
+   43,
+   0,
+   0
+  ],
+  [
+   1,
+   1,
+   0,
+   37,
+   0
+  ],
+  [
+   0,
+   0,
+   0,
+   0,
+   16
+  ]
+ ],
+ "feature_importance": {
+  "width_iqr_mm": 0.24649958660583082,
+  "width_max_mm": 0.15787531685823114,
+  "width_med_mm": 0.11261555989806496,
+  "log_n": 0.09436889047354106,
+  "max_area_cm2": 0.06386865757537044,
+  "alpha_med": 0.05795342172961341,
+  "height_med": 0.04417525258264914,
+  "frac_shallow": 0.039933429429921834,
+  "density_log": 0.03752892259636507,
+  "spread_minor_m": 0.030908877154181884,
+  "extent_m": 0.02967664961885816,
+  "linearity": 0.017635405481973506,
+  "alpha_iqr": 0.0145490295233044,
+  "frac_round": 0.013574888528555287,
+  "frac_usable": 0.01106371396135756,
+  "width_cv": 0.00712410510459284,
+  "along_axis": 0.006891910715246085,
+  "dir_resultant": 0.005511871656631541,
+  "curvature": 0.0024586446215930204,
+  "frac_wall": 0.0019020173743181407,
+  "frac_furniture": 0.0018730399111487371,
+  "convergence_frac": 0.0013635889037878009,
+  "frac_floor": 0.00041544952750248714,
+  "frac_ceiling": 0.0002317701673606246
+ },
+ "showcase": {
+  "s1_living_room_blunt": [
+   {
+    "true": "impact",
+    "pred": "impact",
+    "conf": 0.998,
+    "purity": 1.0,
+    "n": 83
+   },
+   {
+    "true": "impact",
+    "pred": "impact",
+    "conf": 0.732,
+    "purity": 1.0,
+    "n": 34
+   },
+   {
+    "true": "castoff",
+    "pred": "castoff",
+    "conf": 0.924,
+    "purity": 1.0,
+    "n": 34
+   },
+   {
+    "true": "impact",
+    "pred": "impact",
+    "conf": 0.984,
+    "purity": 1.0,
+    "n": 5
+   },
+   {
+    "true": "impact",
+    "pred": "castoff",
+    "conf": 0.92,
+    "purity": 1.0,
+    "n": 5
+   },
+   {
+    "true": "castoff",
+    "pred": "castoff",
+    "conf": 0.999,
+    "purity": 1.0,
+    "n": 5
+   },
+   {
+    "true": "castoff",
+    "pred": "castoff",
+    "conf": 0.92,
+    "purity": 1.0,
+    "n": 5
+   },
+   {
+    "true": "impact",
+    "pred": "castoff",
+    "conf": 0.941,
+    "purity": 1.0,
+    "n": 3
+   }
+  ],
+  "s2_kitchen_edged": [
+   {
+    "true": "projected",
+    "pred": "projected",
+    "conf": 1.0,
+    "purity": 1.0,
+    "n": 60
+   },
+   {
+    "true": "projected",
+    "pred": "projected",
+    "conf": 0.999,
+    "purity": 1.0,
+    "n": 33
+   },
+   {
+    "true": "drip",
+    "pred": "drip",
+    "conf": 1.0,
+    "purity": 1.0,
+    "n": 28
+   }
+  ],
+  "s3_hallway_fall": [
+   {
+    "true": "impact",
+    "pred": "impact",
+    "conf": 0.931,
+    "purity": 0.8,
+    "n": 55
+   },
+   {
+    "true": "impact",
+    "pred": "impact",
+    "conf": 0.976,
+    "purity": 1.0,
+    "n": 11
+   },
+   {
+    "true": "impact",
+    "pred": "castoff",
+    "conf": 0.74,
+    "purity": 1.0,
+    "n": 3
+   },
+   {
+    "true": "transfer",
+    "pred": "transfer",
+    "conf": 1.0,
+    "purity": 1.0,
+    "n": 1
+   }
+  ],
+  "s4_bedroom_castoff_edged": [
+   {
+    "true": "castoff",
+    "pred": "impact",
+    "conf": 0.632,
+    "purity": 0.72,
+    "n": 40
+   },
+   {
+    "true": "castoff",
+    "pred": "castoff",
+    "conf": 0.995,
+    "purity": 1.0,
+    "n": 21
+   },
+   {
+    "true": "castoff",
+    "pred": "castoff",
+    "conf": 0.998,
+    "purity": 1.0,
+    "n": 20
+   },
+   {
+    "true": "drip",
+    "pred": "drip",
+    "conf": 1.0,
+    "purity": 1.0,
+    "n": 19
+   },
+   {
+    "true": "castoff",
+    "pred": "castoff",
+    "conf": 0.998,
+    "purity": 0.8,
+    "n": 5
+   },
+   {
+    "true": "castoff",
+    "pred": "castoff",
+    "conf": 0.947,
+    "purity": 1.0,
+    "n": 5
+   }
+  ]
+ },
+ "note": "Synthetic data with idealised segmentation; real-image accuracy will be lower."
+}

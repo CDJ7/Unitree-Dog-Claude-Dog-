@@ -252,7 +252,11 @@ Results so far (synthetic, idealised segmentation; see
 | Impact angle error per stain (2,341 stains) | median 1.9 deg, 90th percentile 6.5 deg |
 | Direction error | median 0.6 deg, 1.7% reversed |
 | Area of origin, straight lines (33 events) | median 0.70 m (too high, as textbooks warn) |
-| Area of origin, gravity-corrected | see `bpa_eval.json` (final numbers in phase2_summary.md) |
+| Area of origin, gravity-corrected, impact events (22) | median 0.07 m |
+| Area of origin, gravity-corrected, projected events (11) | median 0.47 m (moving, sweeping source: the origin is a path, not a point) |
+| Truth inside the reported 95% ellipsoid | 88% of events (target 95%: projected ellipsoids still a little small) |
+| Camera: sim 320x240 front camera | 32-100% of 3 mm stains lost at 0.3-1.5 m; unusable for droplets |
+| Camera: 1920x1080, 40 deg evidence close-up | no stains lost up to 1.5 m; median angle error 1.1-2.0 deg up to 1 m |
 | Mechanism classifier, test groups (600 scenarios) | 94% accuracy (5 classes) |
 
 Honest caveats: these use perfect segmentation and the generator's own
