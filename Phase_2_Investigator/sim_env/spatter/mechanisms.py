@@ -142,7 +142,8 @@ def projected(origin, params, rng):
         for i in range(m):
             launches.append(Launch(src + rng.normal(0, 0.004, 3), dirs[i] * speeds[i], float(d[i]),
                                    float(t0 + 0.25 * period * prof[i])))
-    meta = {"origin": o.tolist(), "params": p, "jet_path": jet_path}
+    centroid = np.mean([j["source"] for j in jet_path], axis=0)
+    meta = {"origin": o.tolist(), "origin_centroid": centroid.tolist(), "params": p, "jet_path": jet_path}
     return launches, meta
 
 
