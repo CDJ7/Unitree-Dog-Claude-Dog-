@@ -1,12 +1,12 @@
 # Phase 2 plan: Crime Scene Investigator (simulation)
 
-Status: draft for approval, 21 Oct 2026. Parts 1 and 4 (pure Python) are
+Status: approved 21 Oct 2026 (decisions in section 12). Parts 1 and 4 (pure Python) are
 already built and tested; nothing that needs the simulator, Docker or the GPU
-has been started. Decisions marked **(needs your OK)** wait for you.
+has been started; that waits for the laptop.
 
 Contents
 1. What the three external repos actually give us
-2. Simulator route **(needs your OK)**
+2. Simulator route (decided: native)
 3. Architecture
 4. Folder layout
 5. Scenes, stains and the camera
@@ -16,7 +16,7 @@ Contents
 9. GUI
 10. Schedule, risks and scope cuts
 11. Laptop checklist (environment check deferred)
-12. Open questions
+12. Decisions
 13. Licenses
 
 ---
@@ -79,7 +79,7 @@ Contents
   masks. We keep a classical fallback (colour threshold + connected
   components) and measure both against simulator ground truth.
 
-## 2. Simulator route **(needs your OK)**
+## 2. Simulator route (decided: native)
 
 **Recommendation: native-only, no Docker, no ROS 2, no Robonix for the core
 demo.**
@@ -99,11 +99,12 @@ demo.**
 - Docker is then **not needed**. If later you want the ROS 2 topics (e.g. for
   RViz or Nav2), we add Docker plus an override compose file for native
   Ubuntu + NVIDIA; that is an optional extra, not on the critical path.
-- How the simulator is brought in: `scripts/setup.sh` clones it into
-  `Phase_2_Investigator/third_party/robot-unitree-go2-mujoco` at the pinned
-  commit `d6e5464` (gitignored). I prefer this to a git submodule because the
-  repo is ~880 MB, a submodule changes the repo root (`.gitmodules`) and makes
-  your partner's clone heavier. **(needs your OK: clone-by-script or submodule)**
+- How the simulator is brought in (decided): a **git submodule** at
+  `Phase_2_Investigator/third_party/robot-unitree-go2-mujoco`, pinned to
+  commit `d6e5464`, marked `shallow = true`. Git records the exact version,
+  GitHub shows it as a link to the upstream repo, and `scripts/setup.sh`
+  fetches only that commit (`git submodule update --init --depth 1`), so a
+  plain clone of our repo stays small and nothing of theirs is copied in.
 - Our scene packages live in `Phase_2_Investigator/sim_env/scene_packages/`,
   in the simulator's package format. A small builder makes an overlay assets
   folder (links to their assets + our packages + a merged manifest) so their
@@ -158,7 +159,7 @@ Phase_2_Investigator/
   tests/          pytest
   scripts/        setup.sh, download_weights.sh, run_demo.sh, generate_scenario.py
   docs/           plan.md, phase2_summary.md, architecture notes
-  third_party/    simulator clone (gitignored)
+  third_party/    simulator (git submodule, pinned, shallow)
 ```
 
 ## 5. Scenes, stains and the camera
@@ -190,15 +191,20 @@ Phase_2_Investigator/
 
 ## 6. Dataset and models
 
-**Classes (recommendation):** RF-DETR-Seg with **two classes, `spatter`
-(a region of droplet stains) and `contact` (smear/transfer/pool)**, and the
-mechanism decided by the separate pattern classifier.
-Reason: the mechanism is a property of the whole pattern (angles, directions,
-layout across a wall and ceiling), which one camera frame rarely shows, while
-"is this a bloodstain region" is visible in every frame. Per-mechanism detector
-classes would also split an already small dataset five ways.
-Distractor red objects are not a class; they appear unlabelled (hard
-negatives), and we report how often they are detected (false-positive rate).
+**Classes (decided): one per mechanism.** RF-DETR-Seg is trained with five
+classes, `impact`, `castoff`, `projected`, `drip` and `transfer`; each stain
+region is labelled with the mechanism of the event that made it (known from
+the generator's ground truth).
+- Because one frame often shows only part of a pattern, the detector's class
+  is treated as one opinion. The droplet-level pattern classifier (Part 4)
+  is the second. The report fuses both: a weighted average of the two
+  probability vectors, weighted by how many frames and droplets back each,
+  and shows when they disagree.
+- To keep five classes trainable on synthetic data, the dataset generator
+  balances mechanisms across scenarios (as the classifier training already
+  does) and we report per-class AP, not just mean mAP.
+- Distractor red objects are not a class; they appear unlabelled (hard
+  negatives), and we report how often they are detected (false-positive rate).
 
 **Synthetic dataset** (`training/build_coco_dataset.py`, Part 3):
 - 40-60 random scenarios + the four built-in ones, inside the two houses;
@@ -272,7 +278,7 @@ assumed impact speeds, which the report states.
   (adapting `frontier.py`), A* on the inflated grid, pure-pursuit to waypoints,
   reactive slow-down/stop from the LiDAR sector in front. Speed limits as in
   Phase 1 (0.3 m/s, 0.5 rad/s); all motion through `cmd_vel`.
-- RF-DETR runs on the live 320x240 stream. A detection of `spatter`/`contact`
+- RF-DETR runs on the live 320x240 stream. A detection of any mechanism class
   above threshold, back-projected with depth, becomes a point of interest
   (merged within 0.5 m).
 - Visiting a point of interest: plan to a standoff pose 0.5-0.6 m from the
@@ -353,21 +359,20 @@ Likely installs (I will ask before anything with sudo):
   (`sudo usermod -aG docker $USER`, log out/in, `docker run hello-world`) and
   the NVIDIA Container Toolkit steps then.
 
-## 12. Open questions
+## 12. Decisions
 
-1. Native-only simulator route (no Docker/ROS/Robonix), with our own
-   exploration: OK?
-2. Simulator brought in by a setup script into gitignored `third_party/`
-   (pinned commit) rather than a git submodule: OK?
-3. RF-DETR classes `spatter` + `contact`, mechanism from the separate
-   classifier: OK, or do you want per-mechanism detector classes?
-4. Evidence close-ups rendered at 1920x1080 from the robot's camera pose
-   (beyond the sim's default 320x240): OK?
-5. Which go2venv Python version do you have? (rfdetr needs 3.10+.)
+Answered 21 Oct 2026:
+1. Simulator route: **native**, no Docker/ROS/Robonix; our own exploration.
+2. Simulator dependency: **git submodule**, pinned and shallow (see 2).
+3. RF-DETR classes: **one per mechanism** (five classes), fused with the
+   pattern classifier (see 6).
+4. Evidence close-ups at **1920x1080**: yes.
+5. go2venv is **Python 3.12**: fine for everything (rfdetr needs >= 3.10;
+   mujoco 3.3.7 and onnxruntime 1.23.2 have 3.12 wheels).
 
 ## 13. Licenses
 
 Our code: same as this repo. Simulator: MIT / Apache-2.0 / BSD-3 (Go2 model) /
-MulanPSL-2.0 (explore skill) mix, used unmodified from `third_party/`; any
+MulanPSL-2.0 (explore skill) mix, used unmodified as a submodule in `third_party/`; any
 adapted frontier code keeps its MulanPSL-2.0 notice. RF-DETR: Apache-2.0, seg
 models Apache-2.0. Bloodstain SAM: code MIT, model Apache-2.0 (SAM).

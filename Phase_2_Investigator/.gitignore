@@ -4,8 +4,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 
-# third-party code fetched by scripts/setup.sh (pinned commits, not vendored)
-third_party/
+# third_party/robot-unitree-go2-mujoco is a git submodule (pinned commit, fetched shallow by scripts/setup.sh)
 
 # model weights and checkpoints
 weights/

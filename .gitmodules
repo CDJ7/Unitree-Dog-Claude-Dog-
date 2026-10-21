@@ -1,0 +1,4 @@
+[submodule "Phase_2_Investigator/third_party/robot-unitree-go2-mujoco"]
+	path = Phase_2_Investigator/third_party/robot-unitree-go2-mujoco
+	url = https://github.com/syswonder/robot-unitree-go2-mujoco.git
+	shallow = true

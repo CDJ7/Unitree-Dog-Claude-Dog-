@@ -16,7 +16,8 @@ exploration and the GUI come next. See [docs/plan.md](docs/plan.md).
 
 ```bash
 cd Phase_2_Investigator
-python -m pip install -r requirements.txt        # inside go2venv
+./scripts/setup.sh --check                       # read-only environment check
+./scripts/setup.sh                               # simulator submodule + Python packages into ~/go2venv
 python -m pytest                                 # unit tests (~10 s)
 
 # spatter + ground truth + decal textures + 3D preview for built-in scenario 1

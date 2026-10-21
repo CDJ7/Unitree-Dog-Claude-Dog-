@@ -1,5 +1,5 @@
 # Core (pure Python parts: spatter physics, BPA analysis, classifier, evaluation).
-# Tested with Python 3.10+; the laptop's go2venv version is still to be checked.
+# Python 3.10+ (the laptop's go2venv is 3.12). scripts/setup.sh installs these into the venv.
 numpy>=1.24
 pyyaml>=6.0
 matplotlib>=3.7
