@@ -37,10 +37,37 @@ echo "== System"
 . /etc/os-release 2>/dev/null && ok "$PRETTY_NAME" || warn "cannot read /etc/os-release"
 [[ "${VERSION_ID:-}" == "22.04" ]] || warn "tested target is Ubuntu 22.04"
 command -v git >/dev/null && ok "$(git --version)" || bad "git missing (sudo apt install git)"
+IS_WSL=0
+if grep -qi microsoft /proc/version 2>/dev/null || [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+  IS_WSL=1
+  if [[ -d /run/WSL || "$(uname -r)" == *WSL2* || "$(uname -r)" == *microsoft-standard* ]]; then
+    ok "WSL2 (${WSL_DISTRO_NAME:-unknown distro}, kernel $(uname -r))"
+  else
+    bad "this looks like WSL1: convert it in PowerShell with  wsl --set-version ${WSL_DISTRO_NAME:-Ubuntu-22.04} 2"
+  fi
+  case "$HERE" in
+    /mnt/*) warn "repo is on the Windows filesystem ($HERE): very slow; clone it under ~ instead" ;;
+    *) ok "repo is on the Linux filesystem" ;;
+  esac
+  if [[ -d /mnt/wslg && ( -n "${WAYLAND_DISPLAY:-}" || -n "${DISPLAY:-}" ) ]]; then
+    ok "WSLg present (DISPLAY=${DISPLAY:-unset}): the native MuJoCo viewer can open windows"
+  else
+    warn "WSLg not detected: run 'wsl --update' in PowerShell, then 'wsl --shutdown'"
+  fi
+fi
+for T in node uv docker; do
+  if command -v $T >/dev/null; then ok "$T: $($T --version 2>&1 | head -1)"
+  else warn "$T not installed (optional: only needed for the simulator's Docker/Robonix route)"; fi
+done
+if command -v docker >/dev/null; then
+  docker compose version >/dev/null 2>&1 && ok "$(docker compose version | head -1)" || warn "docker compose plugin missing"
+fi
 
 echo "== GPU and OpenGL"
 if command -v nvidia-smi >/dev/null && nvidia-smi -L >/dev/null 2>&1; then
   ok "$(nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader | head -1)"
+elif [[ $IS_WSL -eq 1 ]]; then
+  warn "nvidia-smi not working in WSL: update the NVIDIA driver on WINDOWS (never install a Linux NVIDIA driver inside WSL)"
 else
   warn "nvidia-smi not working: RF-DETR training will be CPU-only (very slow)"
 fi
@@ -90,6 +117,11 @@ if [[ $CHECK_ONLY -eq 0 && -x "$PY" ]]; then
   ok "packages installed"
 fi
 
+if [[ -x "$PY" ]] && "$PY" -c "import torch" 2>/dev/null; then
+  T="$("$PY" -c 'import torch; print(torch.__version__, "CUDA" if torch.cuda.is_available() else "no CUDA", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "")')"
+  [[ "$T" != *"no CUDA"* ]] && ok "PyTorch $T" || warn "PyTorch $T (Stage B training needs CUDA)"
+fi
+
 if [[ -x "$PY" ]] && "$PY" -c "import mujoco" 2>/dev/null; then
   echo "== MuJoCo rendering smoke test"
   for GL in egl glfw osmesa; do
@@ -97,8 +129,11 @@ if [[ -x "$PY" ]] && "$PY" -c "import mujoco" 2>/dev/null; then
 import mujoco
 m = mujoco.MjModel.from_xml_string("<mujoco><worldbody><light pos='0 0 2'/><geom type='sphere' size='.1'/></worldbody></mujoco>")
 r = mujoco.Renderer(m, 120, 160)
-r.update_scene(mujoco.MjData(m))
+d = mujoco.MjData(m)
+mujoco.mj_forward(m, d)
+r.update_scene(d)
 assert r.render().mean() > 0
+r.close()
 EOF
   done
 fi

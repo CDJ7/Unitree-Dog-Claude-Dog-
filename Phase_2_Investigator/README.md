@@ -6,11 +6,12 @@ impact angles, directionality, area of origin, pattern (mechanism)
 classification and the weapon categories the pattern is *consistent with*.
 Forensic-science education project; people appear only as simple mannequins.
 
-**Status (21 Oct 2026):** the pure-Python core works and is tested. That covers
-the physics-based spatter generator with full ground truth (Part 1), the BPA
-analysis maths (Part 4), and a first mechanism classifier and evaluation.
-Simulator integration, RF-DETR, the bloodstain SAM wrapper, autonomous
-exploration and the GUI come next. See [docs/plan.md](docs/plan.md).
+**Status (28 Oct 2026):** re-planned for the staged brief: Stage A
+(simulation) first, then Stage B (analysis + GUI); due 9 Nov 2026. The
+simulator's native Go2 runs and walks headlessly (Step 0). Already built
+earlier: the spatter generator with ground truth, and the BPA maths and
+mechanism classifier (Stage B, frozen until Stage A is confirmed).
+See [docs/plan.md](docs/plan.md).
 
 ## Quick start (no simulator needed)
 

@@ -1,378 +1,346 @@
-# Phase 2 plan: Crime Scene Investigator (simulation)
+# Phase 2 plan: Crime Scene Investigator
 
-Status: approved 21 Oct 2026 (decisions in section 12). Parts 1 and 4 (pure Python) are
-already built and tested; nothing that needs the simulator, Docker or the GPU
-has been started; that waits for the laptop.
+Status: **re-planned 28 Oct 2026 for the staged brief (Stage A simulation, then
+Stage B analysis + GUI), due Mon 9 Nov 2026. Waiting for approval.**
+The 21 Oct plan (native Ubuntu laptop, due 3 Nov) is replaced by this one; its
+decisions that still hold are carried over in section 11.
 
 Contents
-1. What the three external repos actually give us
-2. Simulator route (decided: native)
+0. Step 0: environment check
+1. What already exists (continued, not restarted)
+2. Simulator route
 3. Architecture
 4. Folder layout
-5. Scenes, stains and the camera
-6. Dataset and models
-7. BPA analysis (done) and first results
-8. Autonomous investigation
-9. GUI
-10. Schedule, risks and scope cuts
-11. Laptop checklist (environment check deferred)
-12. Decisions
-13. Licenses
+5. Stage A work items (A1-A6)
+6. Stage A to B interfaces
+7. Stage B outline (not started until Stage A is confirmed)
+8. Dataset strategy
+9. Schedule
+10. Risks and scope cuts
+11. Decisions
+12. Licenses
 
 ---
 
-## 1. What the three external repos actually give us
+## 0. Step 0: environment check
 
-**robot-unitree-go2-mujoco** (syswonder, HEAD `d6e5464`, 20 Sep 2026, ~880 MB)
-- A Robonix "body package": Go2 MJCF + meshes, six environments
-  (`scenesmith_house_185` 113 MB, `scenesmith_house_186` 100 MB,
-  `scenesmith_multilevel_house`, `yard`, two RL courses), a native Python
-  MuJoCo backend and a browser (WASM) backend.
-- The Go2 walks for real: a joint-torque trot gait (default) or an ONNX RL
-  policy. It is driven with velocity commands (`cmd_vel`: linearX, linearY,
-  angularZ). The gait clamps to 0.4 m/s forward, 0.15 m/s sideways, 0.5 rad/s;
-  a 0.35 s watchdog stops it.
-- Sensors (`sim/native/sensors.py`): "MID-360" LiDAR by ray casting (1536 rays,
-  -7 to 52 deg vertical, 10 Hz); IMU; front RGB-D camera `front_rgbd_camera`,
-  **320x240 RGB at 5 Hz, fovy 60 deg** (fx = fy = 207.8), depth ray-cast at
-  160x120 and upsampled.
-- **The native backend is plain Python** (`mujoco==3.3.7`, numpy). Its classes
-  can be imported directly, as `sim/tests/native_smoke.py` does:
-  `NativeSceneBuilder` (merges an environment + the robot into one scene),
-  `Go2Controller` (`.command({"type": "cmd_vel", ...})`, `.step()`),
-  `NativeSensorSuite` (`.camera()`, `.lidar()`, `.imu()`).
-- ROS 2 Humble is only used by a bridge node (`/cmd_vel`, `/odom`, `/scan`,
-  `/mid360/points`, `/front/rgb`, `/front/depth`, `/front/camera_info`, TF).
-  Mapping (RTAB-Map), Nav2 and frontier exploration are **external Robonix
-  services** fetched by `rbnx build`; they cannot run without Robonix.
-- Docker: `sim/start.sh` always uses Docker Compose, and
-  `sim/compose.native.yaml` is written for **WSL2** (`/dev/dxg`, `/mnt/wslg`);
-  on native Ubuntu it would most likely fail without an override. Base image
-  pulls and pip mirrors point at Chinese mirrors.
-- Scenes: `assets/environments/manifest.json` (schema 2) lists packages
-  (`scene.xml`, `index.json`, `spawn.json`, meshes). Geom groups:
-  1 = environment visual, 3 = environment collision; **LiDAR and depth rays
-  only hit groups 0, 3, 5**. So a stain decal added as a group-1 visual geom
-  shows in RGB but is invisible to LiDAR and depth, which is what we want.
-- Frontier exploration logic (`skills/explore/explore_skill/frontier.py`) is
-  pure numpy and reusable (MulanPSL-2.0).
+**Where the work happens.** Claude Code is running in a cloud container (Ubuntu
+24.04, CPU only, no GPU), not on your Windows/WSL2 machine. Everything in
+Stage A can be built and tested there headlessly: MuJoCo renders offscreen
+with EGL (Mesa), and the Go2 sim runs about 3x faster than real time. Things
+that need **your** machine:
+- the interactive MuJoCo viewer and keyboard teleop (WSLg window);
+- the GPU (RF-DETR training in Stage B);
+- the browser checks (GUI at `http://localhost:<port>` from Windows).
 
-**rf-detr** (Roboflow, 1.12.0.dev, Apache-2.0)
-- Segmentation models `RFDETRSegNano/Small/Medium/Large/XLarge/2XLarge`;
-  **all six seg sizes are Apache-2.0** (only some detection sizes are PML).
-- `pip install "rfdetr[train,loggers]"`, Python >= 3.10, torch >= 2.2.
-- COCO layout `train/ valid/ test/` each with `_annotations.coco.json`;
-  polygons preferred over RLE. `model.train(dataset_dir=..., epochs, batch_size,
-  lr, early_stopping=True, ...)` writes `metrics.csv` (box and mask mAP) and
-  `checkpoint_best_total.pth`. Resolution must be a multiple of 24 (Small and up).
-- Inference returns `supervision.Detections` with boolean masks (N, H, W).
+So for each milestone I push to `phase2-csi`, you `git pull` in WSL, and run the
+one-line commands in the README to confirm.
 
-**Bloodstain-Analysis-AI-Tool** (Zdong104, 2023, MIT code, Apache-2.0 model)
-- Only a Colab notebook calling stock `segment_anything` with a
-  **fine-tuned vit_b checkpoint hosted on Google Drive**
-  (file id `1mvh81GEjU7Z2ExLVQyUotMUV0l84UpO0`, no hash, size not stated).
-- No droplet post-processing, no ellipse fitting, no angle code, no training
-  code. It was tuned on lab high-speed video frames (drip/spatter), not
-  crime-scene photos, so expect a domain gap.
-- So the "wrapper" is mostly new code: load the checkpoint, run
-  `SamAutomaticMaskGenerator` on a stain crop, filter masks, return droplet
-  masks. We keep a classical fallback (colour threshold + connected
-  components) and measure both against simulator ground truth.
+**Results in the cloud container (28 Oct):**
 
-## 2. Simulator route (decided: native)
+| Check | Result |
+|---|---|
+| Simulator submodule `d6e5464` (= upstream HEAD, unchanged since 20 Sep) | fetched shallow, 519 MB working tree |
+| Simulator's own `sim/tests/native_smoke.py`, house 185 | **ok**: Go2 stands (base 0.29 m), LiDAR 720 scan returns + 1344 points, RGB-D camera valid |
+| Go2 walk test, `cmd_vel` 0.3 m/s for 4 s | moved 1.06 m, upright (z-axis 0.999), 0.31 s wall time per sim second |
+| Existing unit tests | 44 passed |
+| `MUJOCO_GL=egl` offscreen rendering | ok (software) |
 
-**Recommendation: native-only, no Docker, no ROS 2, no Robonix for the core
-demo.**
+**To run on your WSL2 machine** (read-only, no sudo), then paste me the output:
 
-- We run MuJoCo ourselves in the go2venv (`mujoco==3.3.7`, `MUJOCO_GL=egl`
-  for headless or `glfw` with a window) and import the simulator's own
-  `NativeSceneBuilder`, `Go2Controller` and `NativeSensorSuite`. The Go2
-  primitives stay untouched.
-- Why: Robonix brings a VLM key requirement, gRPC services, Chinese mirrors
-  and containers we don't need. The stock Docker native profile is WSL2-only.
-  Nav2/RTAB-Map only come through Robonix. Everything we need (stepping, cmd_vel,
-  RGB-D, LiDAR, pose) is reachable from Python in-process, which is also faster
-  to debug in two weeks.
-- What we give up: Nav2 and RTAB-Map. We implement our own occupancy grid
-  from LiDAR, frontier exploration (adapting the repo's frontier logic) and a
-  simple local planner with obstacle avoidance (Part 5).
-- Docker is then **not needed**. If later you want the ROS 2 topics (e.g. for
-  RViz or Nav2), we add Docker plus an override compose file for native
-  Ubuntu + NVIDIA; that is an optional extra, not on the critical path.
-- How the simulator is brought in (decided): a **git submodule** at
-  `Phase_2_Investigator/third_party/robot-unitree-go2-mujoco`, pinned to
-  commit `d6e5464`, marked `shallow = true`. Git records the exact version,
-  GitHub shows it as a link to the upstream repo, and `scripts/setup.sh`
-  fetches only that commit (`git submodule update --init --depth 1`), so a
-  plain clone of our repo stays small and nothing of theirs is copied in.
-- Our scene packages live in `Phase_2_Investigator/sim_env/scene_packages/`,
-  in the simulator's package format. A small builder makes an overlay assets
-  folder (links to their assets + our packages + a merged manifest) so their
-  tree is never modified.
+```bash
+lsb_release -a; uname -r; echo "WSL distro: $WSL_DISTRO_NAME"
+nvidia-smi
+pwd                       # must NOT start with /mnt/c
+cd Phase_2_Investigator && ./scripts/setup.sh --check
+```
+
+`setup.sh --check` now also covers: WSL1 vs WSL2, repo under `/mnt/c`, WSLg,
+Node, uv, Docker + Compose (marked optional), PyTorch + CUDA, and an offscreen
+MuJoCo render with egl / glfw / osmesa.
+
+What to do if something fails:
+- `nvidia-smi` fails inside WSL: update the NVIDIA driver **on Windows**
+  (GeForce/Studio or RTX Enterprise driver from nvidia.com). Never install a
+  Linux NVIDIA driver inside WSL.
+- WSLg missing (no windows open): in PowerShell `wsl --update`, then
+  `wsl --shutdown` and reopen Ubuntu. Test with `sudo apt install x11-apps`
+  then `xeyes` (I will ask before any sudo).
+- PyTorch without CUDA (Stage B only):
+  `pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124`.
+- Repo under `/mnt/c`: clone it again under `~` (10-50x faster file access).
+- **Docker is not needed** for the chosen route (section 2). If you want it
+  anyway: install Docker Desktop for Windows, Settings -> General ->
+  "Use the WSL 2 based engine", Settings -> Resources -> WSL Integration ->
+  enable `Ubuntu-22.04`, Apply & Restart; then in WSL `docker run hello-world`
+  and `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`.
+
+## 1. What already exists (continued, not restarted)
+
+Branch `phase2-csi` (5 commits, 21 Oct) already has:
+- **Spatter generator** (`sim_env/spatter/`): ballistic droplets with gravity +
+  quadratic drag for impact, cast-off, projected, drip and transfer; stains as
+  ellipses with sin(alpha) = W/L along the travel direction, tails, satellites;
+  full ground truth; RGBA decal textures per surface. It hits analytic box
+  surfaces; its `SurfaceSet.first_hit` was designed so a MuJoCo ray-cast
+  version can replace it.
+- **Scenarios**: 4 YAML configs (stand-alone rooms) + seeded random generator.
+- **Weapon mapping** YAML with reliability notes.
+- **BPA maths, mechanism classifier and evaluation** (`analysis/`, `training/`,
+  `evaluation/`). This is Stage B work done before the staging rule. It stays
+  as it is, its tests keep running, and I will **not extend it** until you
+  confirm Stage A.
+- `scripts/setup.sh`, `scripts/download_weights.sh`, README, 44 tests.
+
+## 2. Simulator route
+
+The brief lists three routes. **Recommendation: a hybrid of routes 2 and 3,
+"native in-process"**: run the syswonder simulator's own native Python
+classes (`NativeSceneBuilder`, `Go2Controller`, `NativeSensorSuite`) inside our
+process, with no Docker, ROS 2 or Robonix.
+
+- We get the repo's real Go2 (MJCF, walking gait driven by `cmd_vel`, clamped
+  to 0.4 m/s, 0.15 m/s sideways, 0.5 rad/s, 0.35 s watchdog), its MID-360
+  LiDAR model, IMU and front RGB-D camera, and its houses, all untouched.
+  That is more than route 3 (we don't re-implement sensors or the gait).
+- It already works (section 0), with no setup fight.
+- Why not the full Robonix stack (route 1): it needs the `rbnx` CLI and source
+  tree, gRPC services, a VLM key for Pilot/Scene, and Docker images built from
+  Chinese mirrors; Nav2/RTAB-Map/explore only come through it. That is several
+  days of risk for features we can replace with ~500 lines of our own code.
+- Why not route 2 as written (ROS 2 topics): the ROS 2 bridge lives in a
+  Docker container; going through it adds Docker + ROS 2 Humble to your WSL
+  for the same data we can read directly from Python.
+- What we give up: Nav2, RTAB-Map and the Robonix explore skill. We write our
+  own occupancy grid, frontier exploration (adapting the repo's
+  `frontier.py`, MulanPSL-2.0), A* and local obstacle avoidance (A4).
+- Our velocity interface mirrors ROS `cmd_vel` (`linear.x`, `linear.y`,
+  `angular.z`), so a ROS 2 or real-Go2 (`SportClient.Move`) backend can be
+  added later without touching navigation code.
+- The simulator stays a pinned, shallow **git submodule** at
+  `third_party/robot-unitree-go2-mujoco`. Our scenes are built into
+  `sim_env/build/` (gitignored) as environment packages in the simulator's
+  format (`scene.xml`, `index.json`, `spawn.json` + a merged
+  `manifest.json`), so their tree is never modified.
 
 ## 3. Architecture
 
 ```mermaid
 flowchart LR
-  subgraph SIM["Simulation (MuJoCo, in-process)"]
-    SC[Scenario YAML] --> GEN[Spatter generator<br/>physics + ground truth]
-    GEN --> DEC[Decal textures<br/>group-1 visual quads]
-    DEC --> SCENE[Scene package<br/>house + stains + mannequins + distractors]
-    SCENE --> MJ[MuJoCo + Go2Controller]
-    MJ --> SENS[RGB-D camera, LiDAR, pose]
+  subgraph A["Stage A: simulation"]
+    SC[Scenario YAML<br/>or random seed] --> GEN[Spatter generator<br/>ballistic + MuJoCo ray cast]
+    GEN --> GT[Ground truth JSON]
+    GEN --> DEC[Decal textures]
+    SC --> PKG[Scene package builder<br/>house + decals + mannequins<br/>+ obstacles + distractors]
+    DEC --> PKG
+    PKG --> SIM[MuJoCo + syswonder Go2<br/>gait, LiDAR, IMU, RGB-D]
+    SIM --> NAV[Occupancy grid, frontier<br/>exploration, A*, safety stop]
+    NAV -->|cmd_vel| SIM
+    GT -->|stain locations| INS[Inspect-point behaviour]
+    INS --> NAV
+    GT --> PLAY[Event playback<br/>mannequin + droplet flights]
+    SIM --> REC[Run recorder<br/>frames, depth, K, poses, LiDAR]
+    SIM --> COCO[COCO dataset renderer]
   end
-  SENS -->|320x240 RGB| DET[RF-DETR-Seg<br/>stain regions]
-  SENS -->|LiDAR| MAP[Occupancy grid]
-  MAP --> NAV[Frontier exploration<br/>+ obstacle avoidance]
-  DET -->|point of interest| NAV
-  NAV -->|cmd_vel| MJ
-  NAV -->|at standoff| EVC[Evidence close-ups<br/>1920x1080 render, 2-3 angles]
-  EVC --> SAM[Bloodstain SAM wrapper<br/>droplet masks]
-  SAM --> BPA[BPA analysis<br/>ellipses, angles, convergence, origin]
-  BPA --> CLS[Mechanism classifier<br/>+ weapon category]
-  CLS --> REP[Report + reenactment]
-  DET --> GUI[Web GUI<br/>FastAPI + WebSocket]
-  MAP --> GUI
-  BPA --> GUI
-  REP --> GUI
-  GEN -.ground truth.-> EVAL[Evaluation graphs]
-  BPA -.-> EVAL
+  subgraph B["Stage B: analysis + GUI (later)"]
+    DET[RF-DETR-Seg] --> SAM[Bloodstain SAM<br/>droplets]
+    SAM --> BPA[BPA analysis] --> CLS[Mechanism +<br/>weapon category]
+    CLS --> GUI[FastAPI GUI]
+  end
+  REC -.interfaces.-> DET
+  COCO -.training data.-> DET
+  CLS -.event description.-> PLAY
 ```
-
-The velocity interface (`navigation/velocity.py`) has two implementations:
-the simulator's `Go2Controller` and, later, the real Go2's
-`SportClient.Move` from Phase 1, with the same speed limits and dead-man.
 
 ## 4. Folder layout
 
 ```
 Phase_2_Investigator/
-  sim_env/        spatter/ (physics, stains, raster), scenarios/ (YAML + random),
-                  config/ (weapon mapping), scene_packages/ (MJCF), build/ (gitignored)
-  perception/     rfdetr_detector.py, bloodstain_sam.py, classical_droplets.py
-  analysis/       bpa/ (ellipse, projection, convergence, origin, measure), classifier/
-  navigation/     velocity.py, occupancy.py, frontier.py, planner.py, investigator.py
-  gui/            server.py (FastAPI), static/ (HTML/JS, three.js reenactment)
-  training/       build_coco_dataset.py, train_rfdetr.py, train_mechanism_classifier.py,
-                  ai_images/ (import + SAM-assisted labelling of your own images)
-  evaluation/     observe.py, run_bpa_eval.py, results/ (small PNG + JSON, committed)
-  tests/          pytest
-  scripts/        setup.sh, download_weights.sh, run_demo.sh, generate_scenario.py
-  docs/           plan.md, phase2_summary.md, architecture notes
-  third_party/    simulator (git submodule, pinned, shallow)
+  sim_env/        spatter/        physics, mechanisms, stains, raster (exists) + mj_surfaces.py (ray cast)
+                  scenarios/      configs/*.yaml (5), random_scenario.py
+                  config/         weapon_mapping.yaml
+                  scene_builder/  package.py (env package), decals.py, mannequins.py, props.py
+                  runtime.py      SimSession: load scenario, step, cmd_vel, sensors, collisions
+                  interfaces.py   dataclasses shared with Stage B (section 6)
+                  playback.py     event playback from an EventDescription
+                  build/          generated scene packages (gitignored)
+  navigation/     velocity.py, occupancy.py, frontier.py, planner.py (A*), local.py (safety),
+                  explorer.py, inspect.py, collisions.py
+  perception/     (Stage B) rfdetr_detector.py, bloodstain_sam.py, classical_droplets.py
+  analysis/       (exists, frozen) bpa/, classifier/
+  gui/            (Stage B) server.py, static/
+  training/       (exists) train_mechanism_classifier.py; build_coco_dataset.py (A6)
+  evaluation/     (exists) results/
+  tests/          pytest (unit tests run headless, no GPU)
+  scripts/        setup.sh, run_sim.sh, teleop.py, sensor_viewer.py, explore.py,
+                  inspect.py, playback.py, record_run.py, export_coco.py, make_media.sh
+  docs/           plan.md, recording_format.md, phase2_summary.md, media/
+  third_party/    robot-unitree-go2-mujoco (submodule, pinned, shallow)
 ```
 
-## 5. Scenes, stains and the camera
+## 5. Stage A work items
 
-- **Scenarios** (done, `sim_env/scenarios/configs/`): four hand-written events
-  (living room blunt blows + cast-off; kitchen projected + drip trail; hallway
-  fall with a hand smear, no weapon; bedroom edged-weapon cast-off) plus a
-  seeded random generator. Each defines room, furniture, mannequins,
-  distractor red objects and a sequence of events. They are standalone rooms
-  now; `binding:` will place them inside `scenesmith_house_185/186` rooms.
-- **Stains into MuJoCo**: per surface, the generator renders an RGBA decal
-  texture (done, `raster.decal_patch`). Each becomes a thin group-1 visual box
-  0.5 mm off the surface with that texture, `contype=0 conaffinity=0`.
-  Mannequins are capsules (visual + collision so LiDAR sees them).
-  Distractors are red boxes/cylinders (cushion, book, towel...).
-- **Camera resolution is the main design constraint.** The simulator's front
-  camera (320x240, 60 deg) makes one pixel about 5 mm at 1 m, the size of a
-  whole droplet. The evaluation (`evaluation/results/camera_standoff.png`)
-  shows it cannot measure droplets at any distance. Plan:
-  - detection (RF-DETR) runs on the normal 320x240 stream (stain *regions* are
-    big enough);
-  - for analysis the robot stops at 0.5-0.6 m and we render an **evidence
-    close-up** from the same camera pose at 1920x1080 with a 40 deg FOV
-    (MuJoCo `Renderer`). At 0.6 m a 3 mm stain is ~50-100 pixels and the angle
-    error is about 1.5 deg. The real Go2's front camera streamed 1920x1080 in
-    Phase 1, so this matches the hardware better than the sim default.
-- **Sim vs real** (noted in code): MID-360 LiDAR in sim vs the Go2's L1; ground
-  truth odometry in sim (we can add noise); camera intrinsics differ.
+**A1 Simulator running**
+- `sim_env/runtime.py` `SimSession`: builds the scene, loads the Go2, steps
+  physics, takes `cmd_vel`, returns sensors through the interfaces below.
+- `./scripts/run_sim.sh --scenario N [--mode teleop|explore|inspect|playback|record] [--headless]`.
+- Teleop in the native MuJoCo viewer (WSLg window): W/S forward/back,
+  A/D turn, Q/E strafe, Space stop. The passive viewer only reports key
+  presses, not releases, so each press steps the target speed up or down,
+  Space zeroes it, and the gait's 0.35 s watchdog is kept alive by our loop.
+  Headless fallback: an OpenCV window with the same keys.
+- `scripts/sensor_viewer.py`: live RGB, depth (colour map), 2D LiDAR scan
+  (polar plot), the 3D point cloud (top and side views), IMU and odometry
+  readouts; `--snapshot` writes PNGs to `docs/media/` as evidence.
 
-## 6. Dataset and models
+**A2 Procedural bloodstains in the sim**
+- Add `MjSurfaces.first_hit` using `mujoco.mj_ray` against the compiled scene's
+  collision geoms (house walls, floors, furniture), returning the same `Hit`
+  (point, normal, local u/v frame, surface id) as the analytic version, so the
+  existing generator lands droplets on real house surfaces.
+- Decals: for each hit surface patch, one thin group-1 visual box 0.5 mm off
+  the surface, carrying the generated RGBA texture (`contype=0`,
+  `conaffinity=0`; LiDAR/depth rays only hit groups 0, 3, 5, so decals don't
+  disturb the sensors). Texel size 0.5 mm, so stains read correctly from the
+  camera at 0.5-3 m.
+- `weapon_mapping.yaml` (exists) reviewed for the 5 mechanisms and 3 weapon
+  categories, with reliable / weak inference notes.
+- Tests (extend the existing 44): droplets land on the expected surfaces in a
+  MuJoCo test room; the fitted ellipse of each rendered stain matches
+  arcsin(W/L) within tolerance; directions point along travel; ray-cast and
+  analytic hits agree.
 
-**Classes (decided): one per mechanism.** RF-DETR-Seg is trained with five
-classes, `impact`, `castoff`, `projected`, `drip` and `transfer`; each stain
-region is labelled with the mechanism of the event that made it (known from
-the generator's ground truth).
-- Because one frame often shows only part of a pattern, the detector's class
-  is treated as one opinion. The droplet-level pattern classifier (Part 4)
-  is the second. The report fuses both: a weighted average of the two
-  probability vectors, weighted by how many frames and droplets back each,
-  and shows when they disagree.
-- To keep five classes trainable on synthetic data, the dataset generator
-  balances mechanisms across scenarios (as the classifier training already
-  does) and we report per-class AP, not just mean mAP.
-- Distractor red objects are not a class; they appear unlabelled (hard
-  negatives), and we report how often they are detected (false-positive rate).
+**A3 Scenarios (5)**
+1. House 185 living room: blunt blows (impact + cast-off), pipe.
+2. House 185 kitchen: edged weapon, projected (arterial-style) + drip trail.
+3. House 186 hallway: fall, no weapon (passive drip + transfer smear).
+4. House 186 bedroom: edged-weapon cast-off + impact.
+5. Simple room (fast to load, good for tests/demos): bat, impact + transfer.
+Each: mannequins (capsule stick figures, with collision so LiDAR sees them),
+1-3 extra obstacles in the robot's path, 2-3 red distractors (cushion, book,
+towel, mug). Ground truth JSON: origin, mechanism, weapon category, swing path,
+mannequin positions, every droplet's position, impact angle and direction.
+`random_scenario.py --seed N` picks a house room, mechanism, positions.
+The existing 4 configs move from stand-alone rooms into the house rooms
+(their `binding:` field), using room bounds read from the house's
+`index.json`/geometry.
 
-**Synthetic dataset** (`training/build_coco_dataset.py`, Part 3):
-- 40-60 random scenarios + the four built-in ones, inside the two houses;
-  for each, ~60-100 camera poses (robot heights, distances 0.4-3 m, yaw/pitch
-  jitter), lighting variation (light positions, intensities), random
-  floor/wall materials. Target ~4-6k images at 640x480 (and 320x240 copies).
-- Labels are automatic: render a second pass where only the decals are visible
-  in a flat colour per stain group, threshold, polygonise (OpenCV contours).
-- Split by scenario: 70 / 15 / 15, so no scenario appears in two splits.
-- **AI-generated images (optional)**: you supply a folder; a script imports
-  them into `datasets/ai/` and pre-labels them with SAM + a red-region prompt;
-  you review and fix in Roboflow (export COCO) or CVAT. Kept separate so we can
-  train with and without them and compare test mAP.
+**A4 Autonomous navigation**
+- Occupancy grid (5 cm) from the 2D scan + pose; frontier exploration;
+  A* on the inflated grid; pure pursuit; local safety layer that slows inside
+  0.6 m and stops at 0.35 m from any LiDAR return in the travel direction.
+  Speed limits 0.3 m/s, 0.5 rad/s.
+- Collisions logged from MuJoCo contacts between robot geoms and anything but
+  the floor; the run fails its check if any occur.
+- Inspect point: given a world point + surface normal, plan to a standoff
+  0.6 m along the normal, face it, capture 3 views (0, +25, -25 deg); for now
+  fed with ground-truth stain-cluster centres.
+- Sim vs real notes in `navigation/README.md`: MID-360 in sim vs L1 on the
+  real Go2; perfect odometry (optional noise); camera intrinsics differ.
 
-**RF-DETR fine-tuning** (Part 3): start with `RFDETRSegSmall` (384 px), try
-`RFDETRSegMedium` (432) if time allows; `lr=5e-5` (small data),
-`early_stopping=True`, ~50-100 epochs, batch 8 with grad accumulation 2 on
-the RTX 4000 Ada (20 GB). Log box and mask mAP50 / mAP50-95 from
-`metrics.csv`; weights stay in `weights/` (gitignored).
+**A5 Event playback**
+- `playback.py` takes an `EventDescription` (origin, mechanism, swing path,
+  weapon category, droplet launch list) and animates it: an attacker
+  mannequin (mocap capsules: torso, head, arm + weapon) performs the swing;
+  droplets (small red spheres from a fixed mocap pool) fly along their
+  trajectories and the decals appear when they land. Rendered live in the
+  viewer and to MP4/GIF headless. Built from ground truth now; Stage B fills
+  the same structure from the analysis.
 
-**Droplet segmentation**: the bloodstain SAM wrapper vs a classical
-threshold + connected-components baseline, both scored on simulator crops
-where every droplet mask is known (IoU, count recall, angle error after the
-ellipse fit). We use whichever wins; if the Drive checkpoint can't be fetched
-we fall back to stock `sam_vit_b_01ec64.pth`.
+**A6 Data export**
+- Run recorder: `runs/<scenario>_<time>/` with RGB PNG, depth as 16-bit PNG
+  (mm), `camera_info.json` (K, size, distortion = 0), `poses.jsonl`
+  (robot base + camera world pose per frame), LiDAR `.npz`, `ground_truth.json`,
+  `meta.json`. Documented in `docs/recording_format.md`.
+- COCO renderer: many robot poses per scenario, random lighting, floor/wall
+  materials, distances 0.4-3 m, distractors; labels from a second render
+  where only decals are visible (segmentation render), polygonised with
+  OpenCV. Classes: one per mechanism (decided 21 Oct). Split by scenario.
 
-**Mechanism classifier** (done, see 7): gradient boosting on 24 interpretable
-features per stain group, trained on synthetic ground truth.
+## 6. Stage A to B interfaces (`sim_env/interfaces.py`)
 
-## 7. BPA analysis (done) and first results
+```python
+CameraFrame(t, rgb: uint8[H,W,3], depth_m: float32[H,W], K: float[3,3],
+            T_world_cam: float[4,4], frame_id)
+LidarScan(t, ranges: float[N], angle_min, angle_increment,
+          points_world: float[M,3], T_world_lidar)
+RobotState(t, pose_xyz_yaw, T_world_base, twist, imu: {gyro, accel, quat})
+GroundTruth  (loaded from ground_truth.json; Stage B evaluation only)
+EventDescription(origin, mechanism, weapon_category, swing_path,
+                 launches, source: "ground_truth" | "analysis")
+```
+Camera convention: OpenCV (x right, y down, z forward), depth in metres along
+the optical axis. Every Stage B component consumes these, whether live or from
+a recorded run.
 
-Implemented in `analysis/bpa/` and tested (`tests/test_bpa_math.py`):
-- ellipse fit on the stain body (tail excluded) -> width, length,
-  alpha = arcsin(W/L), direction from the tail side; rejects stains that are too
-  small, too round (W/L > 0.9) or have no visible tail;
-- camera path: mask + depth + intrinsics + pose -> plane fit -> perspective
-  undone by ray-plane intersection -> ellipse in metric surface coordinates;
-- area of convergence (2D robust least squares), area of origin by 3D
-  straight lines (works across several surfaces), the classic tangent method,
-  and a **gravity-corrected** origin (back-traced ballistic curves with drag);
-- uncertainty: bootstrap + sensitivity to the assumed impact speeds +
-  a model-error term calibrated on synthetic events -> 95% ellipsoid;
-- mechanism classifier + weapon-category inference with "consistent with"
-  wording and an evidence list.
+## 7. Stage B outline (not started until Stage A is confirmed)
 
-Results so far (synthetic, idealised segmentation; see
-`evaluation/results/`):
+B1 RF-DETR-Seg Small fine-tune on the A6 dataset (GPU, your machine) + SAM
+droplet wrapper with an OpenCV fallback; B2 BPA (mostly exists) + projection
+from live frames + evaluation graphs; B3 live pipeline replacing ground-truth
+stain locations; B4 FastAPI + WebSocket GUI with three.js reenactment and HTML
+report. Detail from the 21 Oct plan stays valid and goes into this section
+when Stage B starts.
 
-| Measure | Result |
+## 8. Dataset strategy
+
+- ~40-60 random scenarios + the 5 built-in ones, 60-100 poses each,
+  ~4-6k images at 640x480 (detector input), evidence close-ups at 1920x1080
+  for droplet analysis (the sim camera at 320x240 is too coarse for droplets:
+  1 px ~ 5 mm at 1 m).
+- Rendering speed: in the CPU container a 320x240 frame is fast enough; the
+  dataset can be rendered there or on your machine. Datasets are gitignored.
+- Hard negatives: distractors are unlabelled; we report their false-positive
+  rate in Stage B.
+
+## 9. Schedule
+
+| Date | Target |
 |---|---|
-| Impact angle error per stain (2,341 stains) | median 1.9 deg, 90th percentile 6.5 deg |
-| Direction error | median 0.6 deg, 1.7% reversed |
-| Area of origin, straight lines (33 events) | median 0.70 m (too high, as textbooks warn) |
-| Area of origin, gravity-corrected, impact events (22) | median 0.07 m |
-| Area of origin, gravity-corrected, projected events (11) | median 0.47 m (moving, sweeping source: the origin is a path, not a point) |
-| Truth inside the reported 95% ellipsoid | 88% of events (target 95%: projected ellipsoids still a little small) |
-| Camera: sim 320x240 front camera | 32-100% of 3 mm stains lost at 0.3-1.5 m; unusable for droplets |
-| Camera: 1920x1080, 40 deg evidence close-up | no stains lost up to 1.5 m; median angle error 1.1-2.0 deg up to 1 m |
-| Mechanism classifier, test groups (600 scenarios) | 94% accuracy (5 classes) |
+| Oct 28 | Step 0 done (container), plan approved, route confirmed; **A1**: run_sim.sh, teleop, sensor viewer |
+| Oct 29-30 | **A2** ray-cast landing + decals in the house scenes + tests; **A3** 5 scenarios + random generator |
+| Oct 31-Nov 1 | **A4** exploration, safety, collision log, inspect behaviour |
+| Nov 2 | **A5** playback, **A6** recorder + COCO export, media, Stage A checklist -> you confirm |
+| Nov 3-4 | B1 RF-DETR + SAM wrapper; B2 BPA on sim frames + evaluation |
+| Nov 5-6 | B3 live pipeline; B4 GUI |
+| Nov 7-8 | Buffer, docs, phase2_summary.md, demo video |
+| Nov 9 | Submit |
 
-Honest caveats: these use perfect segmentation and the generator's own
-physics. The classifier leans on stain size, which reflects our droplet-size
-choices; accuracy on real images will be lower. With stains on only one
-surface the origin height cannot be fixed by geometry alone; it depends on the
-assumed impact speeds, which the report states.
+## 10. Risks and scope cuts
 
-## 8. Autonomous investigation (Part 5)
+- **WSLg viewer performance**: WSLg OpenGL goes through Mesa's D3D12 driver on
+  your NVIDIA GPU; usually fine. Fallback: headless rendering + OpenCV window.
+- **House scene load time / stain decal count**: many textured decals can slow
+  compile and rendering; we merge stains per surface patch (tens of decals, not
+  thousands).
+- **Gait limits**: 0.4 m/s max and a trot gait that may catch on rugs or
+  thresholds; we keep planners conservative and log stalls.
+- **Mapping houses to scenario rooms**: room bounds must be extracted from
+  house geometry; if that is slow, scenarios 3-4 use simple rooms.
+- **Your machine is not reachable from here**: viewer/teleop/GPU steps rely on
+  you running a command and sending me the output; I keep them to one-liners.
 
-- Occupancy grid (5 cm cells) from the LiDAR scan, robot pose from the sim.
-- Frontier exploration: pick the nearest reachable frontier cluster
-  (adapting `frontier.py`), A* on the inflated grid, pure-pursuit to waypoints,
-  reactive slow-down/stop from the LiDAR sector in front. Speed limits as in
-  Phase 1 (0.3 m/s, 0.5 rad/s); all motion through `cmd_vel`.
-- RF-DETR runs on the live 320x240 stream. A detection of any mechanism class
-  above threshold, back-projected with depth, becomes a point of interest
-  (merged within 0.5 m).
-- Visiting a point of interest: plan to a standoff pose 0.5-0.6 m from the
-  surface, take evidence close-ups from 2-3 angles (+-25 deg), run
-  SAM -> BPA -> classifier, store results, resume exploring.
-- Stop when no frontiers remain or after the time limit; compile the report
-  (pattern groups merged across views, origin estimates, mechanism, weapon
-  categories, sequence of events).
+Cuts if Stage A runs late (in order): fewer house-based scenarios (simple
+rooms instead); playback rendered to video only (no live viewer); then in
+Stage B skip RF-DETR fine-tuning and use colour-threshold detection.
 
-## 9. GUI (Part 6)
+## 11. Decisions
 
-FastAPI + WebSocket backend in the same process as the simulation loop;
-plain HTML/JS frontend (no build step), three.js from a CDN for the 3D view.
-Panels: live camera with RF-DETR masks; top-down map with path, stains and
-origin ellipse; per-group panel (crops, droplet ellipses, angle histogram,
-mechanism, confidence, explanation); final summary; reenactment (two
-mannequins at the estimated origin, the inferred motion, droplets along
-reconstructed trajectories; toggle to overlay the ground truth); export to
-HTML (and PDF via the browser's print-to-PDF, avoiding extra dependencies).
+Carried over from 21 Oct: simulator as a pinned shallow submodule; RF-DETR
+classes = one per mechanism, fused with the pattern classifier; 1920x1080
+evidence close-ups.
 
-## 10. Schedule, risks and scope cuts
+Open (needs your answer):
+1. Route: native in-process (section 2), no Docker / ROS 2 / Robonix.
+2. Branch: commits go to `phase2-csi`.
+3. Scenarios: 4 in houses 185/186 + 1 simple room (section 5, A3).
+4. Machine: the old plan assumed a native-Ubuntu laptop with an RTX 4000 Ada
+   and a Python 3.12 `~/go2venv`. Is the WSL2 machine the same computer, and
+   which GPU does it have?
 
-| Date | Target | Status |
-|---|---|---|
-| Oct 21 | Plan; Parts 1 and 4 pure Python + tests | **done (this branch)** |
-| Oct 22 | Laptop: environment check, simulator running natively, Go2 drivable in a house | waiting for laptop |
-| Oct 26 | Stains in the MuJoCo scene; Parts 1, 2, 4 end-to-end on sim camera images; evaluation graphs | minimum demoable version |
-| Oct 30 | Part 3 (dataset, RF-DETR, classifier) and Part 6 GUI with live feed, map, results | |
-| Nov 1 | Part 5 autonomous exploration, reenactment view | |
-| Nov 1-2 | Buffer, fixes, docs, demo video, phase2_summary.md | |
-| Nov 3 | Due | |
-
-Risks:
-- **Rendering on the laptop** (EGL/GLFW with the NVIDIA driver): check first
-  thing on Oct 22; fallback is CPU rendering (OSMesa) at lower resolution.
-- **Simulator integration** (importing their classes outside Docker): their
-  native runtime expects a bridge websocket; we bypass it and call the classes
-  directly. If that fails, fallback: our own minimal Go2 base driven
-  kinematically (as in Phase 1's simulator) in the same house scenes.
-- **Bloodstain SAM download** from Google Drive may be blocked or rate-limited;
-  fallback to stock SAM and the classical droplet segmenter.
-- **RF-DETR training time**: ~4-6k images, Small model, should train in a few
-  hours on the RTX 4000 Ada; if short of time, train fewer epochs or Nano.
-- **Synthetic-to-real gap**: everything is evaluated in simulation only.
-
-Scope cuts if we fall behind, in your priority order: drop the reenactment
-animation first (keep a static 3D plot), then autonomous exploration (use
-scripted waypoints), then RF-DETR fine-tuning (use the colour-threshold
-detector the dataset labels come from). The minimum demoable version is
-scenario + stains in the sim + BPA on sim images + evaluation graphs.
-
-## 11. Laptop checklist (environment check deferred)
-
-Read-only checks to run first on the laptop (no sudo):
-
-```bash
-lsb_release -ds; uname -r
-nvidia-smi                                   # driver + GPU visible
-~/go2venv/bin/python --version               # need >= 3.10 for rfdetr
-glxinfo -B | grep -E "OpenGL (renderer|version)"   # (mesa-utils) GPU OpenGL, not llvmpipe
-python -c "import mujoco; print(mujoco.__version__)"   # inside go2venv, if present
-git --version; node --version; uv --version; docker --version; docker compose version
-df -h ~ ; free -h
-```
-
-Likely installs (I will ask before anything with sudo):
-- Python packages into go2venv (no sudo): `mujoco==3.3.7`, the project
-  `requirements.txt`, later `rfdetr[train,loggers]`, `segment-anything`,
-  `pycocotools`, `gdown`, `fastapi`, `uvicorn[standard]`, `opencv-python`.
-- If `glxinfo` is missing: `sudo apt install mesa-utils`; for headless EGL
-  rendering `sudo apt install libegl1 libgl1` (usually already present with the
-  NVIDIA driver).
-- If go2venv is Python 3.8/3.9: create a new venv with Python 3.10
-  (`sudo apt install python3.10-venv` on 22.04, where 3.10 is the system Python).
-- **Docker, NVIDIA Container Toolkit, Node.js 20, uv and Robonix are not needed
-  for the recommended route.** If we later choose the ROS 2 route, I will give
-  the official Docker apt-repository commands, the docker-group step
-  (`sudo usermod -aG docker $USER`, log out/in, `docker run hello-world`) and
-  the NVIDIA Container Toolkit steps then.
-
-## 12. Decisions
-
-Answered 21 Oct 2026:
-1. Simulator route: **native**, no Docker/ROS/Robonix; our own exploration.
-2. Simulator dependency: **git submodule**, pinned and shallow (see 2).
-3. RF-DETR classes: **one per mechanism** (five classes), fused with the
-   pattern classifier (see 6).
-4. Evidence close-ups at **1920x1080**: yes.
-5. go2venv is **Python 3.12**: fine for everything (rfdetr needs >= 3.10;
-   mujoco 3.3.7 and onnxruntime 1.23.2 have 3.12 wheels).
-
-## 13. Licenses
+## 12. Licenses
 
 Our code: same as this repo. Simulator: MIT / Apache-2.0 / BSD-3 (Go2 model) /
-MulanPSL-2.0 (explore skill) mix, used unmodified as a submodule in `third_party/`; any
-adapted frontier code keeps its MulanPSL-2.0 notice. RF-DETR: Apache-2.0, seg
-models Apache-2.0. Bloodstain SAM: code MIT, model Apache-2.0 (SAM).
+MulanPSL-2.0 (explore skill), used unmodified as a submodule; adapted frontier
+code keeps its MulanPSL-2.0 notice. RF-DETR and its seg models: Apache-2.0.
+Bloodstain SAM: code MIT, model Apache-2.0.
