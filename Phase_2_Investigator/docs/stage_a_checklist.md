@@ -82,8 +82,20 @@ Contact sheets and videos in `media/a5_*`:
 ## A6: data export
 
 - **Recorded run** (S2, 33 s of exploration): 162 camera frames, 324 LiDAR scans, 324 robot states and the ground truth, 19 MB. It reads back with `RunReader` (round-trip test in `tests/test_playback_and_data.py`).
-- **COCO dataset:** see `datasets/csi_coco/stats.json` after `--mode dataset`. Sample labels are in `media/a6_coco_samples.jpg`. DATASET_NUMBERS
+- **COCO dataset:** see `datasets/csi_coco/stats.json` after `--mode dataset`. Sample labels are in `media/a6_coco_samples.jpg`. Quick build (`--random 10 --per-scenario 30`, 17 MB, ~25 min on CPU):
+
+| Split | Images | Regions | Frames without stains | impact | castoff | projected | drip | transfer |
+|---|---|---|---|---|---|---|---|---|
+| train (8 random) | 240 | 545 | 59 | 423 | 52 | 48 | 22 | 0 |
+| valid (2 random) | 60 | 139 | 19 | 122 | 11 | 0 | 6 | 0 |
+| test (5 hand-made) | 150 | 215 | 51 | 106 | 51 | 17 | 39 | 2 |
+
+Class imbalance to fix in Stage B before training:
+- impact dominates;
+- the random generator makes no transfer smears.
+
+Plan: a larger build (`--random 40 --per-scenario 80`, fast on your GPU), with the random generator balancing mechanisms and adding smears.
 
 ## Tests
 
-`python -m pytest`: TEST_RESULT
+`python -m pytest`: 77 passed (2 min on CPU; simulator tests skip if the submodule is missing).

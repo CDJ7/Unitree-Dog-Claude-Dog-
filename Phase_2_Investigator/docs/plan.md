@@ -315,7 +315,7 @@ when Stage B starts.
 | Oct 28 | Step 0 done (container), plan approved, route confirmed; **A1**: run_sim.sh, teleop, sensor viewer |
 | Oct 29-30 | **A2** ray-cast landing + decals in the house scenes + tests; **A3** 5 scenarios + random generator |
 | Oct 31-Nov 1 | **A4** exploration, safety, collision log, inspect behaviour |
-| Nov 2 | **A5** playback, **A6** recorder + COCO export, media, Stage A checklist -> you confirm |
+| Nov 2 | **A5** playback, **A6** recorder + COCO export, media, Stage A checklist -> you confirm (**all done 29 Oct, ahead of schedule**) |
 | Nov 3-4 | B1 RF-DETR + SAM wrapper; B2 BPA on sim frames + evaluation |
 | Nov 5-6 | B3 live pipeline; B4 GUI |
 | Nov 7-8 | Buffer, docs, phase2_summary.md, demo video |
