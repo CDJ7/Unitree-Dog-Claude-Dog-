@@ -70,7 +70,7 @@ class VideoHook:
         chase = self.sim.render_view(640, 480, distance=2.4, elevation=-35)
         front = cv2.resize(self.sim.camera().rgb, (320, 240))
         g = nav.grid
-        m = (map_image(g, nav.coverage) * 255).astype(np.uint8)[::-1]
+        m = np.ascontiguousarray((map_image(g, nav.coverage) * 255).astype(np.uint8)[::-1])
         def px(x, y):
             return int((x - g.origin[0]) / g.res), int(g.shape[0] - 1 - (y - g.origin[1]) / g.res)
         if self.gt:
@@ -87,7 +87,7 @@ class VideoHook:
         if len(xs):
             y0, y1 = g.shape[0] - 1 - ys.max(), g.shape[0] - 1 - ys.min()
             x0, x1 = xs.min(), xs.max()
-            m = m[max(y0 - 10, 0):y1 + 10, max(x0 - 10, 0):x1 + 10]
+            m = np.ascontiguousarray(m[max(y0 - 10, 0):y1 + 10, max(x0 - 10, 0):x1 + 10])
         m = cv2.resize(m, (320, 240), interpolation=cv2.INTER_NEAREST)
         frame = np.hstack([chase, np.vstack([front, m])])
         txt = (f"t={self.sim.time:5.0f}s  path {sum(np.hypot(*np.diff(np.array([(x, y) for _, x, y, _ in nav.log.path]), axis=0).T)) if len(nav.log.path) > 1 else 0:.1f} m  "

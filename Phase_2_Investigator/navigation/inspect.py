@@ -95,7 +95,7 @@ def standoff_views(nav, center, normal, n_views=3, spread_deg=25.0, radius=0.2):
         search = [0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90, 120, -120, 150, -150, 180]
     clear = nav.grid.obstacle_distance()
     free = nav.grid.free()
-    for min_clear in (0.40, 0.32):
+    for min_clear in (0.40, 0.32, 0.28):
         views = _pick_views(nav, center, base, dist, wanted, search, clear, free, min_clear, n_views)
         if views:
             return views
