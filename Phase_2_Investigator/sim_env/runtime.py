@@ -268,7 +268,7 @@ class SimSession:
         return out
 
     # ---------------------------------------------------------------- rendering
-    def render_view(self, width=640, height=480, distance=2.2, azimuth=None, elevation=-30.0,
+    def render_view(self, width=640, height=480, distance=1.6, azimuth=None, elevation=-35.0,
                     lookat=None, camera=None):
         """Third-person view (chase camera behind the robot by default)."""
         key = (width, height)

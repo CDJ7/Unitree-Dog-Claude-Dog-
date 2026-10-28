@@ -194,7 +194,7 @@ Plan for A1 as written:
   A/D turn, Q/E strafe, Space stop. The passive viewer only reports key
   presses, not releases, so each press steps the target speed up or down,
   Space zeroes it, and the gait's 0.35 s watchdog is kept alive by our loop.
-  Headless fallback: an OpenCV window with the same keys.
+  Fallback: a simple GLFW camera window with the same keys (`--mode teleop-simple`).
 - `scripts/sensor_viewer.py`: live RGB, depth (colour map), 2D LiDAR scan
   (polar plot), the 3D point cloud (top and side views), IMU and odometry
   readouts; `--snapshot` writes PNGs to `docs/media/` as evidence.
@@ -315,7 +315,7 @@ when Stage B starts.
 ## 10. Risks and scope cuts
 
 - **WSLg viewer performance**: WSLg OpenGL goes through Mesa's D3D12 driver on
-  your NVIDIA GPU; usually fine. Fallback: headless rendering + OpenCV window.
+  your NVIDIA GPU; usually fine. Fallback: offscreen rendering shown in a plain GLFW window.
 - **House scene load time / stain decal count**: many textured decals can slow
   compile and rendering; we merge stains per surface patch (tens of decals, not
   thousands).

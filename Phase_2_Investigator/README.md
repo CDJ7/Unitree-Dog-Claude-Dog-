@@ -27,7 +27,7 @@ python -m pytest               # unit tests (~40 s)
 
 WSL notes:
 - GPU: `nvidia-smi` must work inside WSL. That comes from the **Windows** NVIDIA driver; never install a Linux NVIDIA driver inside WSL.
-- Windows: the MuJoCo viewer and OpenCV windows open through WSLg. If no window appears, run `wsl --update` in PowerShell, then `wsl --shutdown`.
+- Windows: the MuJoCo viewer and our sensor/teleop windows (both GLFW, no Qt) open through WSLg. If no window appears, run `wsl --update` in PowerShell, then `wsl --shutdown`.
 - Docker, ROS 2 and Robonix are not needed. We run the simulator's own Python classes in-process ([plan section 2](docs/plan.md#2-simulator-route)).
 - On native Ubuntu everything is the same; windows open on the normal desktop.
 
@@ -36,7 +36,7 @@ WSL notes:
 ```bash
 ./scripts/run_sim.sh --scenario 1                      # teleop in the MuJoCo viewer
 ./scripts/run_sim.sh --scenario 1 --mode sensors       # live sensor viewer; drive with the same keys
-./scripts/run_sim.sh --mode teleop-cv                  # teleop in an OpenCV window (fallback)
+./scripts/run_sim.sh --mode teleop-simple              # teleop in a simple camera window (fallback)
 ./scripts/run_sim.sh --mode check                      # headless A1 check: walking + every sensor
 ./scripts/run_sim.sh --env scenesmith_house_186 --mode sensors --spawn 4.5 2.4 -0.5
 ```
