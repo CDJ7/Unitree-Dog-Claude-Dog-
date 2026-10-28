@@ -1,0 +1,69 @@
+# Bloodstain mechanism -> weapon category.
+#
+# Used by analysis/classifier/inference.py: P(category) = sum over mechanisms of
+# P(mechanism | stains) * weight(category | mechanism). The weights are teaching
+# priors written for this project, not statistics from casework. Treat every
+# output as "consistent with", never as an identification.
+#
+# Categories:
+#   blunt  - blunt swung object (bat, pipe, hammer)
+#   edged  - edged / sharp weapon (knife)
+#   none   - no weapon: a fall, a nosebleed, a moving injured person
+
+categories:
+  blunt: {label: "blunt swung object (e.g. bat, pipe, hammer)"}
+  edged: {label: "edged weapon (e.g. knife)"}
+  none:  {label: "no weapon (fall, drip from an existing injury)"}
+
+mechanisms:
+  impact:
+    label: "impact spatter (medium velocity)"
+    weights: {blunt: 0.70, edged: 0.10, none: 0.20}
+    reliability: medium
+    notes: >-
+      Many small stains (mostly 1-4 mm) radiating from one area show a force was
+      applied to a blood source. Blunt-force blows are the classic cause, but a
+      head striking furniture in a fall can leave a similar pattern. The area of
+      origin is the most reliable output here; the weapon is not.
+  castoff:
+    label: "cast-off from a swung object"
+    weights: {blunt: 0.55, edged: 0.40, none: 0.05}
+    reliability: medium-weak
+    notes: >-
+      A linear or gently curved trail of stains, often on the ceiling or upper
+      walls, with directions along the trail, shows a bloodied object was swung.
+      It says little about what the object was. The number of trails can hint at
+      a minimum number of swings (weak). Width of the trail is a very weak hint of
+      object size.
+  projected:
+    label: "projected / arterial-style pattern"
+    weights: {blunt: 0.10, edged: 0.55, none: 0.35}
+    reliability: weak
+    notes: >-
+      Large stains in arcs or zig-zags from a pulsing source suggest blood under
+      pressure, commonly an arterial breach. That points to an injury, not a
+      weapon; sharp-force injuries are a frequent cause, so edged is only mildly
+      favoured.
+  drip:
+    label: "passive drip"
+    weights: {blunt: 0.15, edged: 0.15, none: 0.70}
+    reliability: strong-for-mechanism, none-for-weapon
+    notes: >-
+      Round drops of similar size (about 4-5 mm) show blood falling under gravity
+      alone. Elongated drops in a line show the source was moving and in which
+      direction. Says nothing about a weapon.
+  transfer:
+    label: "transfer / smear"
+    weights: {blunt: 0.10, edged: 0.20, none: 0.70}
+    reliability: weak
+    notes: >-
+      A wipe or swipe shows a bloodied object or hand touched the surface and
+      moved; the feathered end shows the direction of movement. A knife-shaped
+      wipe could suggest an edged weapon, but that is not modelled here.
+
+# Which inferences to state with what strength in the GUI and report.
+reliability_wording:
+  strong: "is consistent with"
+  medium: "is consistent with, though other explanations are possible,"
+  medium-weak: "may be consistent with"
+  weak: "is weakly consistent with"

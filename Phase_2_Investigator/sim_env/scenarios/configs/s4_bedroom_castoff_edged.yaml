@@ -1,0 +1,40 @@
+# Scenario 4: repeated overhead stabbing motion in a bedroom.
+# Two cast-off trails from a short, fast edged-weapon swing, plus a drip pool.
+id: s4_bedroom_castoff_edged
+title: "Bedroom: overhead swings with an edged weapon"
+seed: 404
+room: {size: [4.5, 4.0, 2.6], materials: {floor: wood, wall: plaster, ceiling: plaster}}
+furniture:
+  - {id: bed, center: [3.2, 2.9, 0.30], size: [1.6, 2.0, 0.60], material: fabric}
+  - {id: wardrobe, center: [0.35, 3.2, 1.0], size: [0.6, 1.2, 2.0], material: wood}
+distractors:
+  - {id: red_pillow, kind: pillow, center: [3.2, 3.7, 0.68], size: [0.5, 0.3, 0.15], color: [0.78, 0.05, 0.1]}
+  - {id: red_bag, kind: bag, center: [1.5, 0.3, 0.2], size: [0.35, 0.2, 0.4], color: [0.6, 0.06, 0.06]}
+mannequins:
+  - {id: victim, role: victim, position: [2.0, 2.5], yaw_deg: 270, posture: kneeling, height: 1.70}
+  - {id: attacker, role: attacker, position: [2.0, 1.8], yaw_deg: 90, posture: standing, height: 1.80}
+events:
+  - mechanism: castoff
+    description: "First overhead swing"
+    origin: [2.0, 1.8, 1.45]
+    weapon_category: edged
+    weapon: knife
+    params: {n: 30, heading_deg: 90, radius: 0.75, omega: 13.0, release_deg: [50, 160]}
+  - mechanism: castoff
+    description: "Second overhead swing, slightly turned"
+    origin: [2.05, 1.75, 1.45]
+    weapon_category: edged
+    weapon: knife
+    params: {n: 28, heading_deg: 75, radius: 0.75, omega: 12.0, release_deg: [50, 160]}
+  - mechanism: drip
+    description: "Blood drips from the victim kneeling on the floor"
+    origin: [2.0, 2.5, 0.8]
+    weapon_category: none
+    params: {n: 15}
+summary:
+  primary_event: 0
+  sequence:
+    - "Attacker stands over the kneeling victim"
+    - "Two overhead swings throw cast-off trails onto the ceiling and the wall behind"
+    - "The victim drips onto the floor"
+binding: {environment: null, note: "bind to a scenesmith bedroom later"}

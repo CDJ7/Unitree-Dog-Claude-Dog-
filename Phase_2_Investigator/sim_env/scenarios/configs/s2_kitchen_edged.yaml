@@ -1,0 +1,35 @@
+# Scenario 2: edged-weapon injury in a kitchen.
+# A neck-height pulsing (arterial-style) pattern onto the cabinets and wall,
+# then a drip trail as the victim walks toward the door.
+id: s2_kitchen_edged
+title: "Kitchen: projected pattern and drip trail"
+seed: 202
+room: {size: [4.0, 3.5, 2.5], materials: {floor: tile, wall: plaster, ceiling: plaster}}
+furniture:
+  - {id: counter, center: [2.0, 3.2, 0.45], size: [3.0, 0.6, 0.90], material: laminate}
+  - {id: table, center: [1.2, 1.2, 0.38], size: [1.0, 0.8, 0.76], material: wood}
+distractors:
+  - {id: red_kettle, kind: kettle, center: [3.1, 3.2, 1.0], size: [0.2, 0.2, 0.2], color: [0.8, 0.08, 0.06]}
+  - {id: red_towel, kind: towel, center: [0.05, 2.2, 1.0], size: [0.02, 0.3, 0.45], color: [0.7, 0.1, 0.1]}
+mannequins:
+  - {id: victim, role: victim, position: [2.4, 2.4], yaw_deg: 90, posture: standing, height: 1.70}
+  - {id: attacker, role: attacker, position: [2.4, 1.7], yaw_deg: 90, posture: standing, height: 1.80}
+events:
+  - mechanism: projected
+    description: "Pulsing spurts from a neck injury onto the counter and wall"
+    origin: [2.4, 2.45, 1.40]
+    weapon_category: edged
+    weapon: knife
+    params: {azimuth_deg: 75, elevation_deg: 15, sweep_deg: 40, duration: 2.5, source_vel: [-0.15, 0.0, -0.1]}
+  - mechanism: drip
+    description: "Victim walks toward the door, dripping"
+    origin: [2.2, 2.3, 1.10]
+    weapon_category: none
+    params: {end: [3.7, 0.4, 1.0], n: 22, walk_speed: 0.8}
+summary:
+  primary_event: 0
+  sequence:
+    - "Victim stands at the counter; the attacker is behind and to the side"
+    - "An injury at neck height produces pulsing spurts onto the counter and wall"
+    - "The victim walks toward the door, leaving a drip trail on the floor"
+binding: {environment: null, note: "bind to the scenesmith_house_186 kitchen later"}
