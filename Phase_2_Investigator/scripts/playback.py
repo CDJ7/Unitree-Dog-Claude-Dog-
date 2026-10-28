@@ -68,7 +68,10 @@ def main():
         if a.snapshots:
             from PIL import Image
             strike = [s["t1"] for s in P.swings] + [d["release"] + 0.05 for d in P.droplets[:1]]
-            ts = sorted(set(np.round(np.r_[np.linspace(0.6, P.duration - 0.1, 6), strike[:2]], 2)))[:8]
+            ts = sorted(set(np.round(np.r_[np.linspace(0.6, P.duration - 0.1, 8 - len(strike[:2])), strike[:2]], 2)))
+            while len(ts) < 8:                       # always a full 2x4 sheet
+                ts = sorted(set(ts) | {round(float(np.random.uniform(0.6, P.duration)), 2)})
+            ts = ts[:8]
             imgs = [pb.snapshot(t, (480, 270)) for t in ts]
             sheet = out_dir / f"{scn['id']}_{tag}_sheet.jpg"
             Image.fromarray(np.vstack([np.hstack(imgs[:4]), np.hstack(imgs[4:])])).save(sheet, quality=85)

@@ -88,5 +88,5 @@ datasets/csi_coco/
   red distractor (10%, hard negative) or anywhere (25%); fovy 45/52/60 deg; randomised headlight,
   room lights and wall/floor tints. Each image entry also stores `K`, `T_world_cam`, `scenario`,
   `kind`.
-- Split by scenario: the five hand-made scenarios are `test`; random scenarios are split 80/20
-  into `train`/`valid` by a hash of their id. No scenario appears in two splits.
+- Split by scenario: the five hand-made scenarios are `test`; of the random scenarios every fifth
+  goes to `valid` and the rest to `train`. No scenario appears in two splits.

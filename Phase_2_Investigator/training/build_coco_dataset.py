@@ -19,7 +19,7 @@ How images are made (all inside the simulator, scenario by scenario):
   mechanism of the cluster (impact, castoff, projected, drip, transfer);
 - distractors are never labelled; frames with no stains are kept as negatives;
 - the split is by scenario (no scenario in two splits): the five hand-made
-  scenarios are the test set, random scenarios are split 80/20 train/valid.
+  scenarios are the test set; of the random scenarios every fifth is valid, the rest train.
 """
 import argparse
 import hashlib
@@ -49,9 +49,12 @@ CAT_ID = {m: i + 1 for i, m in enumerate(MECHANISMS)}
 W, H = 640, 480
 
 
-def split_of(scn_id, n_handmade_ids):
-    if scn_id in n_handmade_ids:
+def split_of(scn_id, handmade_ids, random_index=None):
+    """Hand-made scenarios -> test; every 5th random scenario -> valid; the rest -> train."""
+    if scn_id in handmade_ids:
         return "test"
+    if random_index is not None:
+        return "valid" if random_index % 5 == 4 else "train"
     h = int(hashlib.md5(scn_id.encode()).hexdigest(), 16) % 100
     return "train" if h < 80 else "valid"
 
@@ -205,9 +208,13 @@ def build(specs, out_dir, per_scenario, seed, handmade_ids, preview=None):
              for s in data}
     previews = []
     ann_id = img_id = 0
+    n_random = 0
     for spec in specs:
         scn = load_scenario_config(spec)
-        split = split_of(scn["id"], handmade_ids)
+        rand_idx = None
+        if scn["id"] not in handmade_ids:
+            rand_idx, n_random = n_random, n_random + 1
+        split = split_of(scn["id"], handmade_ids, rand_idx)
         (out_dir / split).mkdir(parents=True, exist_ok=True)
         sim, gt = open_scenario(scn)
         try:
