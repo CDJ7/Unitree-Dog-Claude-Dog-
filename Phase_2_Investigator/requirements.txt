@@ -6,10 +6,14 @@ matplotlib>=3.7
 pillow>=10.0
 scikit-learn>=1.3
 pytest>=7.4
+opencv-python>=4.8       # teleop / sensor viewer windows, image I/O, COCO polygons
+
+# Simulator (versions pinned by robot-unitree-go2-mujoco, sim/bridge/requirements.txt)
+mujoco==3.3.7
+onnxruntime==1.23.2
+websockets
 
 # Added in later parts (installed by scripts/setup.sh once on the laptop):
-#   mujoco==3.3.7            simulator (pinned to match robot-unitree-go2-mujoco)
-#   opencv-python            image I/O, overlays
 #   rfdetr[train,loggers]    stain detection / segmentation (Apache-2.0 seg sizes only)
 #   segment-anything, pycocotools, gdown   bloodstain SAM droplet segmentation
 #   fastapi, uvicorn[standard]             GUI backend

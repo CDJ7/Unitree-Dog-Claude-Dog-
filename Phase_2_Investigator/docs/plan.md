@@ -1,7 +1,7 @@
 # Phase 2 plan: Crime Scene Investigator
 
-Status: **re-planned 28 Oct 2026 for the staged brief (Stage A simulation, then
-Stage B analysis + GUI), due Mon 9 Nov 2026. Waiting for approval.**
+Status: approved 28 Oct 2026 (native in-process route, branch `phase2-csi`).
+Due Mon 9 Nov 2026. **Stage A progress: A1 done (28 Oct).**
 The 21 Oct plan (native Ubuntu laptop, due 3 Nov) is replaced by this one; its
 decisions that still hold are carried over in section 11.
 
@@ -180,7 +180,13 @@ Phase_2_Investigator/
 
 ## 5. Stage A work items
 
-**A1 Simulator running**
+**A1 Simulator running: DONE 28 Oct.** Evidence in `docs/media/`:
+- `a1_check.json`: `run_sim.sh --mode check` passes 15/15 checks in houses 185 and 186. The Go2 stands, and walks forward, back, turns, strafes and stops on cmd_vel. RGB works. Depth matches an independent ray cast to under 1 mm. The 720-ray scan and ~1,350-point cloud work. IMU reads |a| = 9.81 m/s^2. Pose is reported, and there are no collisions.
+- `a1_teleop_viewer.png`: the MuJoCo viewer with a camera that follows the robot. Teleop was tested with injected key presses on a virtual X display.
+- `a1_sensor_viewer_live.png`, `a1_sensors_house185.png/.gif`, `a1_sensors_house186.png`.
+- Found and fixed: `mj_multiRay` holes in depth (section 10).
+
+Plan for A1 as written:
 - `sim_env/runtime.py` `SimSession`: builds the scene, loads the Go2, steps
   physics, takes `cmd_vel`, returns sensors through the interfaces below.
 - `./scripts/run_sim.sh --scenario N [--mode teleop|explore|inspect|playback|record] [--headless]`.
@@ -324,19 +330,20 @@ Cuts if Stage A runs late (in order): fewer house-based scenarios (simple
 rooms instead); playback rendered to video only (no live viewer); then in
 Stage B skip RF-DETR fine-tuning and use colour-threshold detection.
 
+- **mj_multiRay misses (found 28 Oct)**: MuJoCo 3.3.7's batched ray cast misses some box geoms that `mj_ray` hits. This affects up to ~9% of depth pixels near doorways, ~0.5% of 3D LiDAR rays, and 0% of the 2D scan. Fixed for depth by re-casting only the missing pixels (+~10 ms per frame). The simulator itself is untouched.
+- **GPU: RTX 3060 Ti, 8 GB** (confirmed 28 Oct). For Stage B, use RF-DETR-Seg Small or Nano with batch 2-4 and gradient accumulation 4-8. Mixed precision is on. Expect several hours for ~5k images; Nano is the fallback. Stage A needs no GPU.
+
 ## 11. Decisions
 
 Carried over from 21 Oct: simulator as a pinned shallow submodule; RF-DETR
 classes = one per mechanism, fused with the pattern classifier; 1920x1080
 evidence close-ups.
 
-Open (needs your answer):
+Answered 28 Oct 2026:
 1. Route: native in-process (section 2), no Docker / ROS 2 / Robonix.
 2. Branch: commits go to `phase2-csi`.
 3. Scenarios: 4 in houses 185/186 + 1 simple room (section 5, A3).
-4. Machine: the old plan assumed a native-Ubuntu laptop with an RTX 4000 Ada
-   and a Python 3.12 `~/go2venv`. Is the WSL2 machine the same computer, and
-   which GPU does it have?
+4. Machine: Windows + WSL2 Ubuntu 22.04 with an RTX 3060 Ti (8 GB).
 
 ## 12. Licenses
 

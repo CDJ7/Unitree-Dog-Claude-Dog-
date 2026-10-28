@@ -1,0 +1,205 @@
+{
+ "ok": true,
+ "results": [
+  {
+   "environment": "scenesmith_house_185",
+   "checks": [
+    {
+     "name": "stands",
+     "ok": true,
+     "detail": "base z=0.289 m, upright=1.000"
+    },
+    {
+     "name": "walk forward",
+     "ok": true,
+     "detail": "cmd (0.3, 0, 0) for 2.0s -> dx=+0.47 m, dy=-0.01 m, dyaw=+1 deg"
+    },
+    {
+     "name": "walk backward",
+     "ok": true,
+     "detail": "cmd (-0.2, 0, 0) for 2.0s -> dx=-0.38 m, dy=+0.01 m, dyaw=-0 deg"
+    },
+    {
+     "name": "walk turn left",
+     "ok": true,
+     "detail": "cmd (0, 0, 0.5) for 2.0s -> dx=-0.04 m, dy=+0.01 m, dyaw=+68 deg"
+    },
+    {
+     "name": "walk turn right",
+     "ok": true,
+     "detail": "cmd (0, 0, -0.5) for 2.0s -> dx=-0.01 m, dy=-0.01 m, dyaw=-72 deg"
+    },
+    {
+     "name": "walk strafe left",
+     "ok": true,
+     "detail": "cmd (0, 0.15, 0) for 2.0s -> dx=-0.03 m, dy=+0.22 m, dyaw=+9 deg"
+    },
+    {
+     "name": "walk strafe right",
+     "ok": true,
+     "detail": "cmd (0, -0.15, 0) for 2.0s -> dx=+0.01 m, dy=-0.20 m, dyaw=-2 deg"
+    },
+    {
+     "name": "walk stop",
+     "ok": true,
+     "detail": "cmd (0, 0, 0) for 1.0s -> dx=-0.00 m, dy=-0.04 m, dyaw=-0 deg"
+    },
+    {
+     "name": "RGB camera",
+     "ok": true,
+     "detail": "320x240, pixel std 56.9"
+    },
+    {
+     "name": "depth",
+     "ok": true,
+     "detail": "100% valid, range 0.62-2.98 m, median error vs ray cast 0.6 mm (depth is ray cast at 160x120, upsampled)"
+    },
+    {
+     "name": "LiDAR 2D scan",
+     "ok": true,
+     "detail": "720/720 returns, nearest 0.98 m"
+    },
+    {
+     "name": "LiDAR 3D cloud",
+     "ok": true,
+     "detail": "1350 points"
+    },
+    {
+     "name": "IMU",
+     "ok": true,
+     "detail": "|accel|=9.81 m/s2 standing, |gyro|=0.001 rad/s"
+    },
+    {
+     "name": "odometry/pose",
+     "ok": true,
+     "detail": "x=4.98 y=1.69 yaw=4.6 deg"
+    },
+    {
+     "name": "no collisions",
+     "ok": true,
+     "detail": "none"
+    }
+   ],
+   "load_s": 5.6,
+   "realtime_factor": 2.89,
+   "camera_K": [
+    [
+     207.846,
+     0.0,
+     159.5
+    ],
+    [
+     0.0,
+     207.846,
+     119.5
+    ],
+    [
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "ok": true
+  },
+  {
+   "environment": "scenesmith_house_186",
+   "checks": [
+    {
+     "name": "stands",
+     "ok": true,
+     "detail": "base z=0.289 m, upright=1.000"
+    },
+    {
+     "name": "walk forward",
+     "ok": true,
+     "detail": "cmd (0.3, 0, 0) for 2.0s -> dx=+0.47 m, dy=-0.01 m, dyaw=+1 deg"
+    },
+    {
+     "name": "walk backward",
+     "ok": true,
+     "detail": "cmd (-0.2, 0, 0) for 2.0s -> dx=-0.38 m, dy=+0.01 m, dyaw=-0 deg"
+    },
+    {
+     "name": "walk turn left",
+     "ok": true,
+     "detail": "cmd (0, 0, 0.5) for 2.0s -> dx=-0.04 m, dy=+0.01 m, dyaw=+68 deg"
+    },
+    {
+     "name": "walk turn right",
+     "ok": true,
+     "detail": "cmd (0, 0, -0.5) for 2.0s -> dx=-0.01 m, dy=-0.01 m, dyaw=-72 deg"
+    },
+    {
+     "name": "walk strafe left",
+     "ok": true,
+     "detail": "cmd (0, 0.15, 0) for 2.0s -> dx=-0.03 m, dy=+0.22 m, dyaw=+9 deg"
+    },
+    {
+     "name": "walk strafe right",
+     "ok": true,
+     "detail": "cmd (0, -0.15, 0) for 2.0s -> dx=+0.01 m, dy=-0.20 m, dyaw=-2 deg"
+    },
+    {
+     "name": "walk stop",
+     "ok": true,
+     "detail": "cmd (0, 0, 0) for 1.0s -> dx=-0.00 m, dy=-0.04 m, dyaw=-0 deg"
+    },
+    {
+     "name": "RGB camera",
+     "ok": true,
+     "detail": "320x240, pixel std 53.2"
+    },
+    {
+     "name": "depth",
+     "ok": true,
+     "detail": "100% valid, range 0.67-0.75 m, median error vs ray cast 0.1 mm (depth is ray cast at 160x120, upsampled)"
+    },
+    {
+     "name": "LiDAR 2D scan",
+     "ok": true,
+     "detail": "720/720 returns, nearest 0.77 m"
+    },
+    {
+     "name": "LiDAR 3D cloud",
+     "ok": true,
+     "detail": "1380 points"
+    },
+    {
+     "name": "IMU",
+     "ok": true,
+     "detail": "|accel|=9.81 m/s2 standing, |gyro|=0.001 rad/s"
+    },
+    {
+     "name": "odometry/pose",
+     "ok": true,
+     "detail": "x=4.38 y=2.87 yaw=-175.4 deg"
+    },
+    {
+     "name": "no collisions",
+     "ok": true,
+     "detail": "none"
+    }
+   ],
+   "load_s": 6.1,
+   "realtime_factor": 2.83,
+   "camera_K": [
+    [
+     207.846,
+     0.0,
+     159.5
+    ],
+    [
+     0.0,
+     207.846,
+     119.5
+    ],
+    [
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "ok": true
+  }
+ ]
+}
