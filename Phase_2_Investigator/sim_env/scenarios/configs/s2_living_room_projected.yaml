@@ -1,0 +1,37 @@
+# Scenario 2: house 185, desk corner and bathroom. Edged weapon: projected (arterial-style) + drip trail.
+id: s2_living_room_projected
+title: "Desk corner: edged weapon, projected pattern and drip trail"
+seed: 202
+environment: scenesmith_house_185
+spawn: [1.5, 2.0, 0.0]
+mannequins:
+  - {id: victim, role: victim, position: [6.3, 2.7], yaw_deg: 0, posture: sitting, height: 1.7,
+     event_position: [5.2, 2.85], event_yaw_deg: 0, event_posture: standing}
+  - {id: attacker, role: attacker, present: false, position: [4.5, 2.9], yaw_deg: 0, posture: standing,
+     height: 1.8, event_position: [4.5, 2.9], event_yaw_deg: 0, event_posture: standing}
+obstacles:
+  - {id: ottoman, kind: box, center: [4.0, 1.9], size: [0.5, 0.5, 0.42], color: [0.35, 0.30, 0.45]}
+  - {id: waste_bin, kind: bin, center: [3.0, 2.6], radius: 0.16, height: 0.38, color: [0.30, 0.30, 0.32]}
+distractors:
+  - {id: red_notebook, kind: book, center: [5.72, 3.75], z: auto, size: [0.21, 0.15, 0.02], color: [0.70, 0.05, 0.07]}
+  - {id: red_towel, kind: towel, center: [7.45, 2.65], z: auto, size: [0.45, 0.30, 0.05], color: [0.72, 0.07, 0.09]}
+  - {id: red_cushion, kind: cushion, center: [3.2, 0.55], z: auto, size: [0.38, 0.15, 0.36], color: [0.78, 0.07, 0.10]}
+events:
+  - mechanism: projected
+    description: "Cut to the neck: pulsing arterial-style jet onto the east wall"
+    origin: [5.2, 2.85, 1.38]
+    weapon_category: edged
+    weapon: knife
+    params: {azimuth_deg: 0, elevation_deg: 12, sweep_deg: 35, duration: 2.5, speed: [2.2, 3.8]}
+  - mechanism: drip
+    description: "Victim walks, bleeding, through the bathroom door"
+    origin: [5.3, 2.55, 1.0]
+    weapon_category: edged
+    params: {n: 22, end: [6.65, 2.0, 1.0], walk_speed: 0.7}
+summary:
+  primary_event: 0
+  sequence:
+    - "Victim stands near the desk facing the east wall"
+    - "Cut to the neck: projected (arterial-style) pattern of pulses on the east wall"
+    - "Victim walks into the bathroom, leaving a drip trail through the doorway"
+    - "Victim slumps against the bathroom wall"

@@ -1,38 +1,38 @@
-# Scenario 1: blunt-force blows in a living room.
-# A standing victim is struck from the front (impact spatter onto the wall
-# behind them); the back-swing between blows throws cast-off onto the ceiling
-# and the wall behind the attacker.
+# Scenario 1: house 185 living room. Blunt-force blows with a pipe.
 id: s1_living_room_blunt
-title: "Living room: blunt-force blows"
+title: "Living room: blunt-force blows (pipe)"
 seed: 101
-room: {size: [5.0, 4.0, 2.6], materials: {floor: wood, wall: plaster, ceiling: plaster}}
-furniture:
-  - {id: sofa, center: [1.4, 3.45, 0.40], size: [2.0, 0.9, 0.80], material: fabric}
-  - {id: coffee_table, center: [1.6, 2.4, 0.22], size: [1.0, 0.6, 0.44], material: wood}
-  - {id: bookshelf, center: [4.75, 0.6, 0.90], size: [0.4, 1.0, 1.80], material: wood}
-distractors:   # red objects that are NOT blood, to test false positives
-  - {id: red_cushion, kind: cushion, center: [0.9, 3.35, 0.88], size: [0.45, 0.15, 0.40], color: [0.75, 0.06, 0.08]}
-  - {id: red_book, kind: book, center: [1.75, 2.35, 0.465], size: [0.22, 0.16, 0.05], color: [0.65, 0.05, 0.06]}
+environment: scenesmith_house_185
+spawn: [5.0, 1.3, 3.1416]          # x, y, yaw: east side of the room, facing west
 mannequins:
-  - {id: victim, role: victim, position: [3.6, 2.0], yaw_deg: 180, posture: standing, height: 1.75}
-  - {id: attacker, role: attacker, position: [2.75, 2.0], yaw_deg: 0, posture: standing, height: 1.80}
+  - {id: victim, role: victim, position: [0.75, 1.95], yaw_deg: 90, posture: lying, height: 1.75,
+     event_position: [0.8, 2.4], event_yaw_deg: 0, event_posture: standing}
+  - {id: attacker, role: attacker, present: false, position: [1.6, 2.35], yaw_deg: 180, posture: standing,
+     height: 1.8, event_position: [1.6, 2.35], event_yaw_deg: 180, event_posture: standing}
+obstacles:
+  - {id: storage_box, kind: box, center: [3.6, 1.95], size: [0.45, 0.35, 0.35], color: [0.55, 0.45, 0.32]}
+  - {id: laundry_basket, kind: basket, center: [4.3, 2.8], radius: 0.22, height: 0.45, color: [0.75, 0.75, 0.70]}
+distractors:   # red objects that are not blood (false-positive tests)
+  - {id: red_cushion, kind: cushion, center: [2.4, 0.55], z: auto, size: [0.40, 0.15, 0.38], color: [0.75, 0.06, 0.08]}
+  - {id: red_book, kind: book, center: [2.8, 1.62], z: auto, size: [0.22, 0.16, 0.04], color: [0.62, 0.04, 0.06]}
+  - {id: red_mug, kind: mug, center: [5.62, 3.45], z: auto, radius: 0.04, height: 0.10, color: [0.80, 0.08, 0.10]}
 events:
   - mechanism: impact
-    description: "Blow to the head of the standing victim"
-    origin: [3.6, 2.0, 1.55]
+    description: "Blow to the head of the standing victim; spatter onto the west wall"
+    origin: [0.8, 2.4, 1.55]
     weapon_category: blunt
     weapon: pipe
-    params: {n: 160, axis: [1.0, 0.0, 0.2], cone_deg: 60, speed: [2.0, 7.0]}
+    params: {n: 240, axis: [-1.0, 0.2, 0.12], cone_deg: 40, speed: [2.0, 7.0], d_median_mm: 1.6}
   - mechanism: castoff
     description: "Back-swing of the bloodied pipe between blows"
-    origin: [2.75, 2.0, 1.45]          # attacker's shoulder (swing pivot)
+    origin: [1.6, 2.35, 1.45]
     weapon_category: blunt
     weapon: pipe
-    params: {n: 45, heading_deg: 0, radius: 0.95, omega: 10.0, release_deg: [40, 150]}
+    params: {n: 45, heading_deg: 180, radius: 0.95, omega: 10.0, release_deg: [40, 150]}
 summary:
   primary_event: 0
   sequence:
-    - "Attacker faces the victim near the middle of the room"
-    - "First blow to the victim's head: impact spatter onto the wall behind the victim"
-    - "Back-swing for a further blow: cast-off onto the ceiling and the wall behind the attacker"
-binding: {environment: null, note: "stand-alone room; bind to scenesmith_house_185 living room later"}
+    - "Attacker faces the victim near the west wall of the living room"
+    - "Blow to the victim's head: impact spatter onto the west wall and floor"
+    - "Back-swing for a further blow: cast-off line onto the floor behind the attacker"
+    - "Victim falls to the floor by the west wall"

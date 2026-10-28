@@ -1,0 +1,44 @@
+# Scenario 5: simple room (fast to load). Blunt (bat): impact, drag smear on the floor, drip trail.
+id: s5_simple_room_bat
+title: "Simple room: baseball bat, impact + drag smear + drip trail"
+seed: 505
+environment: csi_simple_room
+spawn: [4.6, 2.0, 3.1416]
+mannequins:
+  - {id: victim, role: victim, position: [3.08, 0.92], yaw_deg: 180, posture: lying, height: 1.75,
+     event_position: [2.2, 0.85], event_yaw_deg: 90, event_posture: standing}
+  - {id: attacker, role: attacker, present: false, position: [2.2, 1.6], yaw_deg: -90, posture: standing,
+     height: 1.85, event_position: [2.2, 1.6], event_yaw_deg: -90, event_posture: standing}
+obstacles:
+  - {id: storage_box, kind: box, center: [3.5, 2.5], size: [0.45, 0.35, 0.35], color: [0.55, 0.45, 0.32]}
+  - {id: laundry_basket, kind: basket, center: [4.8, 1.0], radius: 0.22, height: 0.45, color: [0.75, 0.75, 0.70]}
+distractors:
+  - {id: red_cushion, kind: cushion, center: [1.2, 4.4], z: auto, size: [0.40, 0.15, 0.38], color: [0.75, 0.06, 0.08]}
+  - {id: red_book, kind: book, center: [1.6, 3.3], z: auto, size: [0.22, 0.16, 0.04], color: [0.62, 0.04, 0.06]}
+  - {id: red_mug, kind: mug, center: [3.05, 4.55], z: auto, radius: 0.04, height: 0.10, color: [0.80, 0.08, 0.10]}
+events:
+  - mechanism: impact
+    description: "Bat strike to the head: impact spatter onto the south wall"
+    origin: [2.2, 0.85, 1.5]
+    weapon_category: blunt
+    weapon: bat
+    params: {n: 260, axis: [0.0, -1.0, 0.12], cone_deg: 40, speed: [2.0, 7.5], d_median_mm: 1.6}
+  - mechanism: transfer
+    description: "Victim's bloodied head/hair dragged along the floor"
+    start: [1.95, 0.95, 0.0]
+    end: [1.45, 0.90, 0.0]
+    normal: [0, 0, 1]
+    weapon_category: blunt
+    params: {width: 0.09}
+  - mechanism: drip
+    description: "Blood drips from the bat as the attacker walks away"
+    origin: [2.35, 1.6, 0.75]
+    weapon_category: blunt
+    params: {n: 20, end: [4.4, 3.2, 0.75], walk_speed: 1.1, d_range_mm: [3.0, 4.5]}
+summary:
+  primary_event: 0
+  sequence:
+    - "Attacker faces the victim in the middle of the room"
+    - "Bat strike to the head: impact spatter onto the south wall"
+    - "Victim falls; the head is dragged a short way across the floor (smear)"
+    - "Attacker walks toward the armchair; blood drips from the bat"

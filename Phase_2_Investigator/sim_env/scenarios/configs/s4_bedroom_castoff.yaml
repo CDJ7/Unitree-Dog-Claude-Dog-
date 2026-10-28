@@ -1,0 +1,44 @@
+# Scenario 4: house 186 bedroom, by the desk. Edged weapon: cast-off from two overhead swings + stab.
+id: s4_bedroom_castoff
+title: "Bedroom desk area: edged-weapon cast-off"
+seed: 404
+environment: scenesmith_house_186
+spawn: [4.48, 2.78, 3.1416]
+mannequins:
+  - {id: victim, role: victim, position: [2.75, 0.24], yaw_deg: 90, posture: sitting, height: 1.75,
+     event_position: [2.75, 0.45], event_yaw_deg: 90, event_posture: standing}
+  - {id: attacker, role: attacker, present: false, position: [2.75, 1.1], yaw_deg: -90, posture: standing,
+     height: 1.8, event_position: [2.75, 1.1], event_yaw_deg: -90, event_posture: standing}
+obstacles:
+  - {id: suitcase, kind: box, center: [3.9, 1.55], size: [0.55, 0.25, 0.42], color: [0.20, 0.25, 0.35]}
+  - {id: waste_bin, kind: bin, center: [4.6, 3.6], radius: 0.16, height: 0.38, color: [0.30, 0.30, 0.32]}
+distractors:
+  - {id: red_blanket, kind: towel, center: [2.6, 2.6], z: auto, size: [0.60, 0.40, 0.03], color: [0.70, 0.06, 0.08]}
+  - {id: red_book, kind: book, center: [4.28, 0.50], z: auto, size: [0.20, 0.15, 0.04], color: [0.64, 0.04, 0.06]}
+  - {id: red_cushion, kind: cushion, center: [1.20, 1.50], z: auto, size: [0.38, 0.14, 0.34], color: [0.76, 0.06, 0.08]}
+events:
+  - mechanism: impact
+    description: "Stab to the chest: small impact pattern onto the south wall"
+    origin: [2.75, 0.45, 1.25]
+    weapon_category: edged
+    weapon: knife
+    params: {n: 120, axis: [0.0, -1.0, 0.1], cone_deg: 38, speed: [1.5, 4.5], d_median_mm: 1.4}
+  - mechanism: castoff
+    description: "First overhead swing: blood flung off the blade"
+    origin: [2.75, 1.1, 1.45]
+    weapon_category: edged
+    weapon: knife
+    params: {n: 35, heading_deg: -90, radius: 0.75, omega: 11.0, release_deg: [45, 150], d_median_mm: 1.1}
+  - mechanism: castoff
+    description: "Second overhead swing, slightly to the left"
+    origin: [2.70, 1.15, 1.45]
+    weapon_category: edged
+    weapon: knife
+    params: {n: 30, heading_deg: -105, radius: 0.75, omega: 11.0, release_deg: [45, 150], d_median_mm: 1.0}
+summary:
+  primary_event: 1
+  sequence:
+    - "Attacker faces the victim between the bench and the south wall"
+    - "Stab to the chest: small impact pattern on the south wall"
+    - "Two overhead swings: two cast-off lines on the floor and bench behind the attacker"
+    - "Victim slumps against the south wall"

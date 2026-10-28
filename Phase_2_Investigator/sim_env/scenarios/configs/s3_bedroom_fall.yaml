@@ -1,0 +1,42 @@
+# Scenario 3: house 186 bedroom. Accidental fall, no weapon: low impact, drip, hand smear.
+id: s3_bedroom_fall
+title: "Bedroom: fall against the nightstand (no weapon)"
+seed: 303
+environment: scenesmith_house_186
+spawn: [4.48, 2.78, 3.1416]
+mannequins:
+  - {id: victim, role: victim, position: [0.22, 3.62], yaw_deg: 0, posture: sitting, height: 1.72,
+     event_position: [1.45, 3.3], event_yaw_deg: 160, event_posture: standing}
+obstacles:
+  - {id: storage_box, kind: box, center: [4.0, 1.4], size: [0.45, 0.35, 0.35], color: [0.55, 0.45, 0.32]}
+  - {id: laundry_basket, kind: basket, center: [3.9, 3.25], radius: 0.2, height: 0.42, color: [0.75, 0.75, 0.70]}
+distractors:
+  - {id: red_cushion, kind: cushion, center: [1.25, 1.45], z: auto, size: [0.38, 0.14, 0.34], color: [0.76, 0.06, 0.08]}
+  - {id: red_book, kind: book, center: [3.8, 4.0], z: auto, size: [0.20, 0.15, 0.04], color: [0.64, 0.04, 0.06]}
+  - {id: red_mug, kind: mug, center: [2.15, 1.25], z: auto, radius: 0.04, height: 0.10, color: [0.82, 0.08, 0.10]}
+events:
+  - mechanism: impact
+    description: "Head strikes the corner of the nightstand during the fall"
+    origin: [1.15, 3.72, 0.56]
+    weapon_category: none
+    weapon: null
+    params: {n: 90, axis: [-1.0, -0.45, 0.3], cone_deg: 55, speed: [1.0, 4.0], d_median_mm: 1.6}
+  - mechanism: drip
+    description: "Head wound drips while the person sits against the wall"
+    origin: [0.40, 3.58, 0.62]
+    weapon_category: none
+    params: {n: 14}
+  - mechanism: transfer
+    description: "Bloodied hand pushes against the wall to get up and slides"
+    start: [0.06, 3.32, 0.80]
+    end: [0.06, 3.92, 1.02]
+    normal: [1, 0, 0]
+    weapon_category: none
+    params: {width: 0.07}
+summary:
+  primary_event: 0
+  sequence:
+    - "Person trips by the bed in the north-west corner"
+    - "Head strikes the nightstand corner: low-speed impact spatter on the floor and west wall"
+    - "Sits against the west wall while the wound drips"
+    - "Pushes against the wall to get up, leaving a hand smear"

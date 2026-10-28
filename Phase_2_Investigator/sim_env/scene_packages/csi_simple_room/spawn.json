@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "position": [4.6, 2.0],
+  "yaw": 3.141592653589793,
+  "clearanceMeters": 1.0,
+  "robotRadiusMeters": 0.5,
+  "method": "hand-placed",
+  "sceneId": "csi_simple_room"
+}

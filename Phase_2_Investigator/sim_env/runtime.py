@@ -35,6 +35,8 @@ if not os.environ.get("MUJOCO_GL"):
 
 import mujoco  # noqa: E402
 
+from sim_env.environments import overlay_root  # noqa: E402
+from sim_env.scene_xml import base_patch  # noqa: E402
 from sim_env.interfaces import (  # noqa: E402
     CameraFrame, Contact, ImuReading, LidarScan, RobotState,
     intrinsics_from_fovy, pose_matrix, quat_to_mat, yaw_from_quat,
@@ -61,7 +63,7 @@ def _import_simulator():
 def list_environments():
     _import_simulator()
     import json
-    manifest = json.loads((SIM_ROOT / "assets/environments/manifest.json").read_text())
+    manifest = json.loads((overlay_root(SIM_ROOT) / "assets/environments/manifest.json").read_text())
     return [e["id"] for e in manifest["environments"] if e.get("visualMode") == "mesh"]
 
 
@@ -78,7 +80,7 @@ class SimSession:
                  cmd_timeout=0.5, fix_depth_misses=True):
         Builder, Controller, Sensors, limits, self._pinhole_directions = _import_simulator()
         self.gait_limits = np.array(limits, dtype=float)    # 0.4 m/s, 0.15 m/s, 0.5 rad/s
-        self.builder = Builder(SIM_ROOT)
+        self.builder = Builder(overlay_root(SIM_ROOT))
         if spawn is not None:
             env = self.builder.environment(environment)
             env.pop("spawnPath", None)
@@ -86,6 +88,7 @@ class SimSession:
                             "yaw": float(spawn[2]) if len(spawn) > 2 else 0.0}
         self.scene_path, self.environment, self.robot = self.builder.build(environment, "go2")
         try:
+            base_patch(self.scene_path)
             if scene_patch is not None:
                 scene_patch(self.scene_path)
             self.model = mujoco.MjModel.from_xml_path(str(self.scene_path))

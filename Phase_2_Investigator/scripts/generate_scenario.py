@@ -2,7 +2,7 @@
 """Generate a scenario's spatter: ground-truth JSON, decal textures and a 3D preview.
 
     python scripts/generate_scenario.py --scenario 1
-    python scripts/generate_scenario.py --config sim_env/scenarios/configs/s2_kitchen_edged.yaml
+    python scripts/generate_scenario.py --config sim_env/scenarios/analytic/s2_kitchen_edged.yaml
     python scripts/generate_scenario.py --random 42 --out outputs/random42
 
 Outputs (default outputs/<scenario id>/, gitignored):
@@ -21,7 +21,7 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np  # noqa: E402
 
-from sim_env.scenarios import scenario_paths  # noqa: E402
+from sim_env.scenarios import analytic_paths as scenario_paths  # noqa: E402
 from sim_env.scenarios.random_scenario import random_scenario  # noqa: E402
 from sim_env.spatter import generate, load_scenario, save_ground_truth, summary  # noqa: E402
 from sim_env.spatter.raster import decal_patch, stain_bounds  # noqa: E402

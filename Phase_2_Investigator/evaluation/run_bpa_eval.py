@@ -31,7 +31,7 @@ from analysis.bpa.origin import MODEL_SD, SPEED_PRIORS, gravity_corrected_origin
 from analysis.bpa.projection import Intrinsics, look_at  # noqa: E402
 from analysis.bpa.synthetic import render_plane_view  # noqa: E402
 from evaluation.observe import observe  # noqa: E402
-from sim_env.scenarios import scenario_paths  # noqa: E402
+from sim_env.scenarios import analytic_paths as scenario_paths  # noqa: E402
 from sim_env.scenarios.random_scenario import random_scenario  # noqa: E402
 from sim_env.spatter import generate, load_scenario  # noqa: E402
 from sim_env.spatter.geometry import Rect  # noqa: E402

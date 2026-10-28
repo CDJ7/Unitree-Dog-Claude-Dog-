@@ -18,6 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+import sim_env  # noqa: E402,F401  (first: picks the offscreen GL backend before mujoco loads)
+
 from sim_env.runtime import SimSession  # noqa: E402  (first: picks the headless GL backend)
 
 import mujoco  # noqa: E402

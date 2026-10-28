@@ -27,7 +27,7 @@ from analysis.bpa.measure import group_observations  # noqa: E402
 from analysis.classifier.features import FEATURE_NAMES, group_features  # noqa: E402
 from analysis.classifier.model import DEFAULT_MODEL, MechanismClassifier  # noqa: E402
 from evaluation.observe import label_group, observe  # noqa: E402
-from sim_env.scenarios import scenario_paths  # noqa: E402
+from sim_env.scenarios import analytic_paths as scenario_paths  # noqa: E402
 from sim_env.scenarios.random_scenario import MECHS, random_scenario  # noqa: E402
 from sim_env.spatter import generate, load_scenario  # noqa: E402
 
