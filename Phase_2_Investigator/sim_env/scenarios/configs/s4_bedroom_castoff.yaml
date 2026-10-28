@@ -10,8 +10,8 @@ mannequins:
   - {id: attacker, role: attacker, present: false, position: [2.75, 1.1], yaw_deg: -90, posture: standing,
      height: 1.8, event_position: [2.75, 1.1], event_yaw_deg: -90, event_posture: standing}
 obstacles:
-  - {id: suitcase, kind: box, center: [3.9, 1.55], size: [0.55, 0.25, 0.42], color: [0.20, 0.25, 0.35]}
-  - {id: waste_bin, kind: bin, center: [4.6, 3.6], radius: 0.16, height: 0.38, color: [0.30, 0.30, 0.32]}
+  - {id: suitcase, kind: box, center: [3.95, 2.45], size: [0.55, 0.25, 0.42], yaw_deg: 90, color: [0.20, 0.25, 0.35]}
+  - {id: waste_bin, kind: bin, center: [4.85, 1.15], radius: 0.16, height: 0.38, color: [0.30, 0.30, 0.32]}
 distractors:
   - {id: red_blanket, kind: towel, center: [2.6, 2.6], z: auto, size: [0.60, 0.40, 0.03], color: [0.70, 0.06, 0.08]}
   - {id: red_book, kind: book, center: [4.28, 0.50], z: auto, size: [0.20, 0.15, 0.04], color: [0.64, 0.04, 0.06]}

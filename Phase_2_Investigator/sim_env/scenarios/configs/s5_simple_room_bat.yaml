@@ -33,6 +33,7 @@ events:
   - mechanism: drip
     description: "Blood drips from the bat as the attacker walks away"
     origin: [2.35, 1.6, 0.75]
+    actor: attacker
     weapon_category: blunt
     params: {n: 20, end: [4.4, 3.2, 0.75], walk_speed: 1.1, d_range_mm: [3.0, 4.5]}
 summary:

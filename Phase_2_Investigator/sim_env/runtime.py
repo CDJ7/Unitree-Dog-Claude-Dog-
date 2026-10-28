@@ -114,6 +114,16 @@ class SimSession:
         self.robot_bodies = {b for b in range(m.nbody) if int(m.body_rootid[b]) == root}
         self.robot_geoms = {g for g in range(m.ngeom) if int(m.geom_bodyid[g]) in self.robot_bodies}
         self.foot_geoms = {mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, n) for n in FOOT_GEOMS}
+        mujoco.mj_forward(m, self.data)
+        # flat static things the feet walk on (rugs, bath mats, shower trays): count as floor
+        self.floorlike_geoms = set()
+        for g in range(m.ngeom):
+            if g in self.robot_geoms or m.body_mocapid[m.geom_bodyid[g]] >= 0:
+                continue
+            R = self.data.geom_xmat[g].reshape(3, 3)
+            ext = np.abs(R) @ m.geom_size[g] if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_BOX else None
+            if ext is not None and self.data.geom_xpos[g][2] + ext[2] < 0.03:
+                self.floorlike_geoms.add(g)
         self.camera_key = next(iter(self.sensors.cameras))
         self.camera_mj_id = self.sensors.camera_ids[self.camera_key]
         self.imu_quat_sensor = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, "imu_quat")
@@ -208,6 +218,28 @@ class SimSession:
                            K=intrinsics_from_fovy(W, H, f["fovyDeg"]),
                            T_world_cam=self.camera_pose(), frame_id=self.camera_key)
 
+    def depth_points(self, stride=2):
+        """World points of the front depth camera (ray cast only, no RGB render; cheap).
+
+        Used by navigation to see low obstacles the LiDAR misses up close."""
+        cfg = self.sensors.cameras[self.camera_key]
+        i = self.camera_mj_id
+        w, h = int(cfg.get("depthWidth", cfg["width"])), int(cfg.get("depthHeight", cfg["height"]))
+        key = ("dirs", w, h, stride)
+        if key not in self._renderers:
+            dirs = self._pinhole_directions(w, h, float(self.model.cam_fovy[i])).reshape(h, w, 3)
+            self._renderers[key] = np.ascontiguousarray(dirs[::stride, ::stride].reshape(-1, 3))
+        local = self._renderers[key]
+        R = self.data.cam_xmat[i].reshape(3, 3)
+        world = local @ R.T
+        n = len(local)
+        dist = np.empty(n)
+        geom = np.empty(n, np.int32)
+        mujoco.mj_multiRay(self.model, self.data, self.data.cam_xpos[i], world.reshape(-1), self.sensors.geom_group,
+                           1, int(self.model.cam_bodyid[i]), geom, dist, n, float(cfg["maxDepth"]))
+        ok = (dist > 0) & (dist * -local[:, 2] <= float(cfg["maxDepth"]))
+        return self.data.cam_xpos[i] + world[ok] * dist[ok, None]
+
     def _recast_depth_misses(self, depth, fovy_deg):
         """Re-cast missing depth pixels one ray at a time.
 
@@ -248,6 +280,7 @@ class SimSession:
 
         A contact counts when a non-foot robot geom touches anything outside the
         robot, or a foot touches something on a steep face (furniture, walls).
+        Feet on flat floor coverings (boxes under 3 cm: rugs, mats) never count.
         """
         m, d = self.model, self.data
         out = []
@@ -259,7 +292,7 @@ class SimSession:
                 continue
             rg, og = (g1, g2) if r1 else (g2, g1)
             normal = np.array(con.frame[:3])
-            if rg in self.foot_geoms and abs(normal[2]) > 0.7:
+            if rg in self.foot_geoms and (abs(normal[2]) > 0.7 or og in self.floorlike_geoms):
                 continue
             f6 = np.zeros(6)
             mujoco.mj_contactForce(m, d, i, f6)
@@ -289,6 +322,67 @@ class SimSession:
         r.update_scene(self.data, camera=camera, scene_option=self.sensors.render_option)
         return r.render().copy()
 
+    def render_camera(self, position, forward, fovy=40.0, width=1920, height=1080, depth=True,
+                      frame_id="evidence", segmentation=False):
+        """Render a pinhole camera at `position` looking along `forward` (no roll).
+
+        Used for evidence close-ups: the robot's camera position with an emulated
+        body pitch, at a higher resolution than the 320x240 sensor (see docs/plan.md).
+        Depth is the rendered z-depth (includes the stains, which sit 0.8 mm proud).
+        segmentation=True also returns a (H, W) array of geom ids (-1 = background).
+        """
+        f = np.asarray(forward, float)
+        f /= np.linalg.norm(f)
+        key = (width, height)
+        r = self._renderers.get(key)
+        if r is None:
+            r = self._renderers[key] = mujoco.Renderer(self.model, height=height, width=width)
+        cam = mujoco.MjvCamera()
+        cam.type = mujoco.mjtCamera.mjCAMERA_FREE
+        cam.lookat[:] = np.asarray(position, float) + f
+        cam.distance = 1.0
+        cam.azimuth = float(np.degrees(np.arctan2(f[1], f[0])))
+        cam.elevation = float(np.degrees(np.arcsin(np.clip(f[2], -1, 1))))
+        old = float(self.model.vis.global_.fovy)
+        self.model.vis.global_.fovy = fovy
+        try:
+            r.update_scene(self.data, camera=cam, scene_option=self.sensors.render_option)
+            rgb = r.render().copy()
+            if depth:
+                r.enable_depth_rendering()
+                r.update_scene(self.data, camera=cam, scene_option=self.sensors.render_option)
+                d = r.render().astype(np.float32)
+                r.disable_depth_rendering()
+                d[d >= self.model.stat.extent * self.model.vis.map.zfar * 0.99] = np.inf
+            else:
+                d = np.full(rgb.shape[:2], np.inf, np.float32)
+            seg = None
+            if segmentation:
+                r.enable_segmentation_rendering()
+                r.update_scene(self.data, camera=cam, scene_option=self.sensors.render_option)
+                s = r.render()
+                r.disable_segmentation_rendering()
+                seg = np.where(s[..., 1] == int(mujoco.mjtObj.mjOBJ_GEOM), s[..., 0], -1).astype(np.int32)
+        finally:
+            self.model.vis.global_.fovy = old
+        x = np.cross(f, [0.0, 0.0, 1.0])
+        x = x / np.linalg.norm(x) if np.linalg.norm(x) > 1e-9 else np.array([0.0, -1.0, 0.0])
+        y = np.cross(f, x)
+        T = pose_matrix(np.asarray(position, float), np.column_stack([x, y, f]))
+        frame = CameraFrame(t=self.time, rgb=rgb, depth_m=d, K=intrinsics_from_fovy(width, height, fovy),
+                            T_world_cam=T, frame_id=frame_id)
+        return (frame, seg) if segmentation else frame
+
+    def evidence_frame(self, target, fovy=40.0, width=1920, height=1080, max_pitch_deg=40.0):
+        """Close-up from the robot's camera position toward a world point (pitch clamped)."""
+        cam = self.camera_pose()[:3, 3]
+        d = np.asarray(target, float) - cam
+        yaw = np.arctan2(d[1], d[0])
+        pitch = np.clip(np.arctan2(d[2], np.hypot(d[0], d[1])), -np.radians(max_pitch_deg),
+                        np.radians(max_pitch_deg))
+        fwd = np.array([np.cos(pitch) * np.cos(yaw), np.cos(pitch) * np.sin(yaw), np.sin(pitch)])
+        return self.render_camera(cam, fwd, fovy, width, height)
+
     # -------------------------------------------------------------------- close
     def close(self):
         if self._closed:
@@ -296,7 +390,8 @@ class SimSession:
         self._closed = True
         self.sensors.close()
         for r in self._renderers.values():
-            r.close()
+            if hasattr(r, "close"):
+                r.close()
         self._renderers.clear()
         self.builder.cleanup(self.scene_path)
 

@@ -71,7 +71,8 @@ def generate(scn, seed=None, satellites=True, surfaces=None):
     for ei, ev in enumerate(scn["events"]):
         mech = ev["mechanism"]
         record = {"index": ei, "mechanism": mech, "weapon_category": ev.get("weapon_category"),
-                  "weapon": ev.get("weapon"), "description": ev.get("description", "")}
+                  "weapon": ev.get("weapon"), "description": ev.get("description", ""),
+                  "actor": ev.get("actor")}
         if mech == "transfer":
             sm, meta = _transfer(ei, ev, surfaces, rng)
             smears.append(sm.to_dict())

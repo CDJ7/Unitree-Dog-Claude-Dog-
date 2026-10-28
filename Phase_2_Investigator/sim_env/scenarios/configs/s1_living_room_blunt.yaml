@@ -10,8 +10,8 @@ mannequins:
   - {id: attacker, role: attacker, present: false, position: [1.6, 2.35], yaw_deg: 180, posture: standing,
      height: 1.8, event_position: [1.6, 2.35], event_yaw_deg: 180, event_posture: standing}
 obstacles:
-  - {id: storage_box, kind: box, center: [3.6, 1.95], size: [0.45, 0.35, 0.35], color: [0.55, 0.45, 0.32]}
-  - {id: laundry_basket, kind: basket, center: [4.3, 2.8], radius: 0.22, height: 0.45, color: [0.75, 0.75, 0.70]}
+  - {id: storage_box, kind: box, center: [4.0, 1.25], size: [0.45, 0.35, 0.35], color: [0.55, 0.45, 0.32]}
+  - {id: laundry_basket, kind: basket, center: [5.4, 2.6], radius: 0.22, height: 0.45, color: [0.75, 0.75, 0.70]}
 distractors:   # red objects that are not blood (false-positive tests)
   - {id: red_cushion, kind: cushion, center: [2.4, 0.55], z: auto, size: [0.40, 0.15, 0.38], color: [0.75, 0.06, 0.08]}
   - {id: red_book, kind: book, center: [2.8, 1.62], z: auto, size: [0.22, 0.16, 0.04], color: [0.62, 0.04, 0.06]}

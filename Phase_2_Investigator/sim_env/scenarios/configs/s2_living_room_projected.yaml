@@ -26,6 +26,7 @@ events:
   - mechanism: drip
     description: "Victim walks, bleeding, through the bathroom door"
     origin: [5.3, 2.55, 1.0]
+    actor: victim
     weapon_category: edged
     params: {n: 22, end: [6.65, 2.0, 1.0], walk_speed: 0.7}
 summary:

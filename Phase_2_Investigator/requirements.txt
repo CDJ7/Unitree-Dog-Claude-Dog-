@@ -6,8 +6,11 @@ matplotlib>=3.7
 pillow>=10.0
 scikit-learn>=1.3
 scipy>=1.10
+scikit-image>=0.21     # minimum-cost path planning (navigation)
 pytest>=7.4
-opencv-python>=4.8       # teleop / sensor viewer windows, image I/O, COCO polygons
+opencv-python>=4.8       # image I/O, ellipse fitting, COCO polygons
+imageio>=2.31
+imageio-ffmpeg>=0.4     # MP4 videos (bundles ffmpeg)
 
 # Simulator (versions pinned by robot-unitree-go2-mujoco, sim/bridge/requirements.txt)
 mujoco==3.3.7
