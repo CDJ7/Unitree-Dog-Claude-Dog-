@@ -103,12 +103,12 @@ Missing for Test 2:
 ## 2. Design
 
 ### Q2: data and simulation (built first)
-- `sim/go2_env.py`, class `CrimeSceneGo2`: wraps `open_scenario(...)` and loads the learned policy. Its interface:
+- `go2sim/go2_env.py`, class `CrimeSceneGo2`: wraps `open_scenario(...)` and loads the learned policy. Its interface:
   - `set_velocity_command(vx, vy, yaw_rate)` (clipped to 0.4 m/s, 0.15 m/s strafe, 0.5 rad/s);
   - `step(dt)`;
   - `sensors()`, returning RGB, IMU, joints (q, dq, tau from `qfrc_actuator`), foot contacts, base pose and velocity, and the command.
 - **Front camera:** I keep the simulator's Go2 head camera, check its mount against the Go2 spec (front of the head, about 0.28 m forward and 0.06 m up of the base), and document it.
-- `sim/waypoint_follower.py` follows waypoints in this order:
+- `go2sim/waypoint_follower.py` follows waypoints in this order:
   1. A* path on the inflated occupancy grid (reused);
   2. pure pursuit to get `cmd_vel`;
   3. the safety layer.
@@ -195,7 +195,7 @@ Missing for Test 2:
 Test2/
   README.md  PLAN.md  requirements.txt  .gitignore
   config/      zones.yaml, routes.yaml, collect.yaml, q1_train.yaml, rl_config.yaml, layout_*.json
-  sim/         paths.py (finds Phase_2_Investigator + submodule), go2_env.py, waypoint_follower.py,
+  go2sim/      paths.py (finds Phase_2_Investigator + submodule), go2_env.py, waypoint_follower.py,
                randomization.py, render.py
   q2_data_simulation/  collect_dataset.py, analyze.py, make_gif.py
   q1_supervised/       dataset.py, models.py, train.py, baselines.py, evaluate.py, gradcam.py, demo.py, Q1_colab.ipynb
@@ -207,7 +207,7 @@ Test2/
 ```
 
 - Scripts run from `Test2/`.
-- `sim/paths.py` adds `../Phase_2_Investigator` to `sys.path`. Nothing outside `Test2/` is edited, except the one "Test 2" section you asked for in the root `README.md`.
+- `go2sim/paths.py` adds `../Phase_2_Investigator` to `sys.path`. Nothing outside `Test2/` is edited, except the one "Test 2" section you asked for in the root `README.md`.
 
 ## 4. Milestones (I commit at each, and show you results before the next)
 1. Plan approved; branch set up (Q-A).

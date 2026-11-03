@@ -1,0 +1,9 @@
+# Test 2: keep large generated data out of git (see data/README.md for how to regenerate)
+data/full/
+data/test/
+runs/
+tb/
+__pycache__/
+*.pyc
+results/q3/checkpoints/
+results/**/tmp/
