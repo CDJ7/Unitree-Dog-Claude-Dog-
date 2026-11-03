@@ -66,7 +66,7 @@ def main():
     cam = GradCAM(model, model.layer4)
     pred = pd.read_csv(TEST2 / cfg["results_dir"] / a.model / "test_predictions.csv")
     pos = {(r, f): i for i, (r, f) in enumerate(zip(frames.run, frames.frame))}
-    pred["conf"] = pred[[f"p_{n}" for n in zones.names]].max(1)
+    pred["conf"] = pred[[f"p_{n}" for n in zones.names]].max(axis=1)
     picks = []
     for zi, zname in enumerate(zones.names):
         ok = pred[(pred.true == zi) & (pred.pred == zi)].sort_values("conf", ascending=False)

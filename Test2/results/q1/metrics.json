@@ -1,0 +1,563 @@
+{
+ "split": {
+  "train": [
+   "run_001",
+   "run_002",
+   "run_004",
+   "run_005",
+   "run_006",
+   "run_008",
+   "run_009",
+   "run_011",
+   "run_012",
+   "run_013",
+   "run_015",
+   "run_016",
+   "run_019",
+   "run_020",
+   "run_022",
+   "run_023",
+   "run_024",
+   "run_026",
+   "run_027",
+   "run_029"
+  ],
+  "val": [
+   "run_003",
+   "run_010",
+   "run_017",
+   "run_018",
+   "run_025"
+  ],
+  "test": [
+   "run_000",
+   "run_007",
+   "run_014",
+   "run_021",
+   "run_028",
+   "run_030",
+   "run_031",
+   "run_032",
+   "run_033",
+   "run_034",
+   "run_035"
+  ]
+ },
+ "n_test_frames": 4276,
+ "test_scenes_held_out": [
+  "r1854"
+ ],
+ "models": {
+  "resnet18": {
+   "label": "ResNet18 (ImageNet, fine-tuned)",
+   "accuracy": 0.8817,
+   "macro_f1": 0.8875,
+   "accuracy_unseen_scene": 0.8803,
+   "accuracy_unseen_routes_seen_scenes": 0.8829,
+   "accuracy_smoothed_1s": 0.8686,
+   "macro_f1_smoothed_1s": 0.873,
+   "accuracy_by_distance_to_zone_boundary": {
+    "0-0.3 m": {
+     "acc": 0.8286,
+     "n": 2678
+    },
+    "0.3-0.6 m": {
+     "acc": 0.9693,
+     "n": 1010
+    },
+    "0.6-1.0 m": {
+     "acc": 0.9725,
+     "n": 582
+    },
+    "1.0-9 m": {
+     "acc": 1.0,
+     "n": 6
+    }
+   },
+   "per_class": {
+    "victim_area": {
+     "precision": 0.8598,
+     "recall": 0.8326,
+     "f1": 0.846,
+     "support": 663
+    },
+    "bed_area": {
+     "precision": 0.8043,
+     "recall": 0.9037,
+     "f1": 0.8511,
+     "support": 623
+    },
+    "lounge_area": {
+     "precision": 0.8969,
+     "recall": 0.8571,
+     "f1": 0.8766,
+     "support": 1645
+    },
+    "desk_entry_area": {
+     "precision": 0.8812,
+     "recall": 0.9034,
+     "f1": 0.8922,
+     "support": 870
+    },
+    "bathroom": {
+     "precision": 0.9766,
+     "recall": 0.9663,
+     "f1": 0.9714,
+     "support": 475
+    }
+   },
+   "confusion": [
+    [
+     552,
+     27,
+     74,
+     5,
+     5
+    ],
+    [
+     9,
+     563,
+     48,
+     2,
+     1
+    ],
+    [
+     41,
+     110,
+     1410,
+     84,
+     0
+    ],
+    [
+     39,
+     0,
+     40,
+     786,
+     5
+    ],
+    [
+     1,
+     0,
+     0,
+     15,
+     459
+    ]
+   ],
+   "train": {
+    "params": 11179077,
+    "weights_source": "ONNX Model Zoo resnet18-v1-7 (ImageNet-1k), converted to torchvision resnet18",
+    "epochs": 8,
+    "best_epoch": 8,
+    "best_val_macro_f1": 0.921309795843068,
+    "wall_time_s": 2524.0
+   }
+  },
+  "smallcnn": {
+   "label": "Small CNN (from scratch)",
+   "accuracy": 0.7881,
+   "macro_f1": 0.7936,
+   "accuracy_unseen_scene": 0.7382,
+   "accuracy_unseen_routes_seen_scenes": 0.8322,
+   "accuracy_smoothed_1s": 0.7862,
+   "macro_f1_smoothed_1s": 0.7914,
+   "accuracy_by_distance_to_zone_boundary": {
+    "0-0.3 m": {
+     "acc": 0.7181,
+     "n": 2678
+    },
+    "0.3-0.6 m": {
+     "acc": 0.8723,
+     "n": 1010
+    },
+    "0.6-1.0 m": {
+     "acc": 0.9622,
+     "n": 582
+    },
+    "1.0-9 m": {
+     "acc": 1.0,
+     "n": 6
+    }
+   },
+   "per_class": {
+    "victim_area": {
+     "precision": 0.8044,
+     "recall": 0.6576,
+     "f1": 0.7237,
+     "support": 663
+    },
+    "bed_area": {
+     "precision": 0.6817,
+     "recall": 0.7528,
+     "f1": 0.7155,
+     "support": 623
+    },
+    "lounge_area": {
+     "precision": 0.7989,
+     "recall": 0.7872,
+     "f1": 0.793,
+     "support": 1645
+    },
+    "desk_entry_area": {
+     "precision": 0.7625,
+     "recall": 0.8264,
+     "f1": 0.7932,
+     "support": 870
+    },
+    "bathroom": {
+     "precision": 0.9357,
+     "recall": 0.9495,
+     "f1": 0.9425,
+     "support": 475
+    }
+   },
+   "confusion": [
+    [
+     436,
+     52,
+     145,
+     30,
+     0
+    ],
+    [
+     23,
+     469,
+     92,
+     39,
+     0
+    ],
+    [
+     46,
+     165,
+     1295,
+     137,
+     2
+    ],
+    [
+     32,
+     2,
+     88,
+     719,
+     29
+    ],
+    [
+     5,
+     0,
+     1,
+     18,
+     451
+    ]
+   ],
+   "train": {
+    "params": 1174501,
+    "weights_source": "random init (trained from scratch)",
+    "epochs": 12,
+    "best_epoch": 9,
+    "best_val_macro_f1": 0.8062178132406285,
+    "wall_time_s": 6602.6
+   }
+  },
+  "hist_hsv_grid": {
+   "label": "HSV histogram 2x2 grid + LR",
+   "accuracy": 0.4114,
+   "macro_f1": 0.4265,
+   "accuracy_unseen_scene": 0.3776,
+   "accuracy_unseen_routes_seen_scenes": 0.4412,
+   "accuracy_smoothed_1s": 0.4111,
+   "macro_f1_smoothed_1s": 0.4323,
+   "accuracy_by_distance_to_zone_boundary": {
+    "0-0.3 m": {
+     "acc": 0.3816,
+     "n": 2678
+    },
+    "0.3-0.6 m": {
+     "acc": 0.3663,
+     "n": 1010
+    },
+    "0.6-1.0 m": {
+     "acc": 0.6203,
+     "n": 582
+    },
+    "1.0-9 m": {
+     "acc": 1.0,
+     "n": 6
+    }
+   },
+   "per_class": {
+    "victim_area": {
+     "precision": 0.2565,
+     "recall": 0.4495,
+     "f1": 0.3266,
+     "support": 663
+    },
+    "bed_area": {
+     "precision": 0.2531,
+     "recall": 0.297,
+     "f1": 0.2733,
+     "support": 623
+    },
+    "lounge_area": {
+     "precision": 0.5765,
+     "recall": 0.3848,
+     "f1": 0.4615,
+     "support": 1645
+    },
+    "desk_entry_area": {
+     "precision": 0.3449,
+     "recall": 0.2851,
+     "f1": 0.3121,
+     "support": 870
+    },
+    "bathroom": {
+     "precision": 0.6979,
+     "recall": 0.8316,
+     "f1": 0.7589,
+     "support": 475
+    }
+   },
+   "confusion": [
+    [
+     298,
+     141,
+     140,
+     73,
+     11
+    ],
+    [
+     188,
+     185,
+     156,
+     85,
+     9
+    ],
+    [
+     421,
+     275,
+     633,
+     281,
+     35
+    ],
+    [
+     236,
+     105,
+     165,
+     248,
+     116
+    ],
+    [
+     19,
+     25,
+     4,
+     32,
+     395
+    ]
+   ],
+   "train": {
+    "wall_time_s": 164.1,
+    "C_selected": 0.003,
+    "feature_dim": 2048
+   }
+  },
+  "hist_hsv": {
+   "label": "HSV histogram + LR",
+   "accuracy": 0.3618,
+   "macro_f1": 0.3839,
+   "accuracy_unseen_scene": 0.3202,
+   "accuracy_unseen_routes_seen_scenes": 0.3985,
+   "accuracy_smoothed_1s": 0.3697,
+   "macro_f1_smoothed_1s": 0.3947,
+   "accuracy_by_distance_to_zone_boundary": {
+    "0-0.3 m": {
+     "acc": 0.3159,
+     "n": 2678
+    },
+    "0.3-0.6 m": {
+     "acc": 0.3149,
+     "n": 1010
+    },
+    "0.6-1.0 m": {
+     "acc": 0.6478,
+     "n": 582
+    },
+    "1.0-9 m": {
+     "acc": 1.0,
+     "n": 6
+    }
+   },
+   "per_class": {
+    "victim_area": {
+     "precision": 0.2171,
+     "recall": 0.3982,
+     "f1": 0.281,
+     "support": 663
+    },
+    "bed_area": {
+     "precision": 0.2045,
+     "recall": 0.2488,
+     "f1": 0.2245,
+     "support": 623
+    },
+    "lounge_area": {
+     "precision": 0.5179,
+     "recall": 0.2997,
+     "f1": 0.3797,
+     "support": 1645
+    },
+    "desk_entry_area": {
+     "precision": 0.3404,
+     "recall": 0.3138,
+     "f1": 0.3266,
+     "support": 870
+    },
+    "bathroom": {
+     "precision": 0.6606,
+     "recall": 0.7621,
+     "f1": 0.7077,
+     "support": 475
+    }
+   },
+   "confusion": [
+    [
+     264,
+     133,
+     162,
+     86,
+     18
+    ],
+    [
+     190,
+     155,
+     193,
+     76,
+     9
+    ],
+    [
+     500,
+     317,
+     493,
+     312,
+     23
+    ],
+    [
+     250,
+     109,
+     102,
+     273,
+     136
+    ],
+    [
+     12,
+     44,
+     2,
+     55,
+     362
+    ]
+   ],
+   "train": {
+    "wall_time_s": 88.7,
+    "C_selected": 0.003,
+    "feature_dim": 512
+   }
+  },
+  "hist_rgb": {
+   "label": "RGB histogram + LR",
+   "accuracy": 0.3099,
+   "macro_f1": 0.3336,
+   "accuracy_unseen_scene": 0.2928,
+   "accuracy_unseen_routes_seen_scenes": 0.325,
+   "accuracy_smoothed_1s": 0.319,
+   "macro_f1_smoothed_1s": 0.3458,
+   "accuracy_by_distance_to_zone_boundary": {
+    "0-0.3 m": {
+     "acc": 0.2763,
+     "n": 2678
+    },
+    "0.3-0.6 m": {
+     "acc": 0.2614,
+     "n": 1010
+    },
+    "0.6-1.0 m": {
+     "acc": 0.5412,
+     "n": 582
+    },
+    "1.0-9 m": {
+     "acc": 1.0,
+     "n": 6
+    }
+   },
+   "per_class": {
+    "victim_area": {
+     "precision": 0.2141,
+     "recall": 0.4887,
+     "f1": 0.2978,
+     "support": 663
+    },
+    "bed_area": {
+     "precision": 0.1949,
+     "recall": 0.3531,
+     "f1": 0.2511,
+     "support": 623
+    },
+    "lounge_area": {
+     "precision": 0.5198,
+     "recall": 0.2158,
+     "f1": 0.305,
+     "support": 1645
+    },
+    "desk_entry_area": {
+     "precision": 0.3012,
+     "recall": 0.1724,
+     "f1": 0.2193,
+     "support": 870
+    },
+    "bathroom": {
+     "precision": 0.6093,
+     "recall": 0.5811,
+     "f1": 0.5948,
+     "support": 475
+    }
+   },
+   "confusion": [
+    [
+     324,
+     153,
+     107,
+     63,
+     16
+    ],
+    [
+     231,
+     220,
+     102,
+     56,
+     14
+    ],
+    [
+     607,
+     477,
+     355,
+     175,
+     31
+    ],
+    [
+     304,
+     211,
+     89,
+     150,
+     116
+    ],
+    [
+     47,
+     68,
+     30,
+     54,
+     276
+    ]
+   ],
+   "train": {
+    "wall_time_s": 37.7,
+    "C_selected": 0.001,
+    "feature_dim": 512
+   }
+  }
+ }
+}

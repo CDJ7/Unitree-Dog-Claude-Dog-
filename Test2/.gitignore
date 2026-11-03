@@ -8,3 +8,4 @@ __pycache__/
 results/q3/checkpoints/
 results/**/tmp/
 data/full/_q1_cache/
+results/q1/*/best_fp32.pt
