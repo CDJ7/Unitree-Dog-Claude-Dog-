@@ -146,6 +146,8 @@ class EventDescription:
     confidence: float = 1.0
     source: str = "ground_truth"   # ground_truth | analysis
     notes: str = ""
+    params: dict = field(default_factory=dict)       # mechanism parameters (axis, heading_deg, end, ...)
+    description: str = ""
 
 
 def quat_to_mat(q):

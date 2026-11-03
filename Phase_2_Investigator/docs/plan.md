@@ -1,7 +1,8 @@
 # Phase 2 plan: Crime Scene Investigator
 
 Status: approved 28 Oct 2026 (native in-process route, branch `phase2-csi`).
-Due Mon 9 Nov 2026. **Stage A progress: A1 done (28 Oct).**
+Due Mon 9 Nov 2026. **Stage A progress: A1-A6 built (28-29 Oct); checklist with evidence in
+[stage_a_checklist.md](stage_a_checklist.md), waiting for your confirmation before Stage B.**
 The 21 Oct plan (native Ubuntu laptop, due 3 Nov) is replaced by this one; its
 decisions that still hold are carried over in section 11.
 
@@ -194,10 +195,18 @@ Plan for A1 as written:
   A/D turn, Q/E strafe, Space stop. The passive viewer only reports key
   presses, not releases, so each press steps the target speed up or down,
   Space zeroes it, and the gait's 0.35 s watchdog is kept alive by our loop.
-  Headless fallback: an OpenCV window with the same keys.
+  Fallback: a simple GLFW camera window with the same keys (`--mode teleop-simple`).
 - `scripts/sensor_viewer.py`: live RGB, depth (colour map), 2D LiDAR scan
   (polar plot), the 3D point cloud (top and side views), IMU and odometry
   readouts; `--snapshot` writes PNGs to `docs/media/` as evidence.
+
+**Status of A2-A6 (29 Oct): built.** These changed from the plan below:
+- Stains are geometry, not textures. MuJoCo 3.3.7 drops texture alpha, so each stain is a flat ellipsoid with the exact ground-truth size and direction, plus a tail and satellites.
+- Droplets land on the visible meshes (ray cast), not on the houses' coarse collision boxes.
+- Two house-186 areas behind the bed are unreachable for the robot, so S3 moved to the bedroom's north-east corner.
+- Exploration is LiDAR frontiers followed by a camera-coverage patrol: the LiDAR sees a whole room from one spot, but the camera needs to get close.
+- Inspection close-ups emulate the Go2's body pitch, which the sim gait cannot do.
+- Evidence is in `docs/media/` and `stage_a_checklist.md`.
 
 **A2 Procedural bloodstains in the sim**
 - Add `MjSurfaces.first_hit` using `mujoco.mj_ray` against the compiled scene's
@@ -306,7 +315,7 @@ when Stage B starts.
 | Oct 28 | Step 0 done (container), plan approved, route confirmed; **A1**: run_sim.sh, teleop, sensor viewer |
 | Oct 29-30 | **A2** ray-cast landing + decals in the house scenes + tests; **A3** 5 scenarios + random generator |
 | Oct 31-Nov 1 | **A4** exploration, safety, collision log, inspect behaviour |
-| Nov 2 | **A5** playback, **A6** recorder + COCO export, media, Stage A checklist -> you confirm |
+| Nov 2 | **A5** playback, **A6** recorder + COCO export, media, Stage A checklist -> you confirm (**all done 29 Oct, ahead of schedule**) |
 | Nov 3-4 | B1 RF-DETR + SAM wrapper; B2 BPA on sim frames + evaluation |
 | Nov 5-6 | B3 live pipeline; B4 GUI |
 | Nov 7-8 | Buffer, docs, phase2_summary.md, demo video |
@@ -315,7 +324,7 @@ when Stage B starts.
 ## 10. Risks and scope cuts
 
 - **WSLg viewer performance**: WSLg OpenGL goes through Mesa's D3D12 driver on
-  your NVIDIA GPU; usually fine. Fallback: headless rendering + OpenCV window.
+  your NVIDIA GPU; usually fine. Fallback: offscreen rendering shown in a plain GLFW window.
 - **House scene load time / stain decal count**: many textured decals can slow
   compile and rendering; we merge stains per surface patch (tens of decals, not
   thousands).

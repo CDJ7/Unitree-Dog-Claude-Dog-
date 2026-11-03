@@ -161,43 +161,40 @@ def _fig_image(fig):
 
 
 def run_live(sim, fig_obj):
-    """Interactive mode: the figure is drawn offscreen and shown in an OpenCV window,
-    so no GUI toolkit for matplotlib (Tk/Qt) is needed; works in WSLg."""
-    import cv2
+    """Interactive mode: the figure is drawn offscreen (matplotlib Agg) and shown in a
+    GLFW window, so neither a matplotlib GUI toolkit nor OpenCV's Qt is needed."""
+    from sim_env.display import ImageWindow
 
     tele = KeyTeleop()
-    win = "Go2 sensors (click here, then drive with the keys)"
-    cv2.namedWindow(win, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(win, 1350, 774)
+    win = ImageWindow("Go2 sensors (click here, then drive with the keys)", 1350, 774)
     sim0, wall0 = sim.time, time.monotonic()
     seen, count = set(), [0]
     next_frame = 0.0
     print(HELP)
-    while not tele.quit_requested:
-        if tele.reset_requested:
-            sim.reset()
-            tele.reset_requested = False
-        sim.cmd_vel(*tele.target)
-        target = sim0 + time.monotonic() - wall0
-        n = 0
-        while sim.time < target and n < 125:
-            sim.step(steps=1)
-            n += 1
-        if sim.time < target - 0.25:
-            sim0, wall0 = sim.time, time.monotonic()
-        seen = collect(sim, seen, count)
-        fig_obj.track(sim)
-        if sim.time >= next_frame:
-            fig_obj.update(sim, sim.camera(), sim.lidar(), count[0], tele.status())
-            next_frame = sim.time + 0.2       # camera 5 Hz like the simulator's
-            img = np.asarray(_fig_image(fig_obj.fig))
-            cv2.imshow(win, cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-        k = cv2.waitKey(1)
-        if k != -1:
-            tele.press(k & 0xFF)
-        if cv2.getWindowProperty(win, cv2.WND_PROP_AUTOSIZE) < 0:
-            break
-    cv2.destroyAllWindows()
+    try:
+        while not tele.quit_requested and not win.closed:
+            for k in win.keys():
+                tele.press(k)
+            if tele.reset_requested:
+                sim.reset()
+                tele.reset_requested = False
+            sim.cmd_vel(*tele.target)
+            target = sim0 + time.monotonic() - wall0
+            n = 0
+            while sim.time < target and n < 125:
+                sim.step(steps=1)
+                n += 1
+            if sim.time < target - 0.25:
+                sim0, wall0 = sim.time, time.monotonic()
+            seen = collect(sim, seen, count)
+            fig_obj.track(sim)
+            if sim.time >= next_frame:
+                fig_obj.update(sim, sim.camera(), sim.lidar(), count[0], tele.status())
+                next_frame = sim.time + 0.2       # camera 5 Hz like the simulator's
+                win.show(np.asarray(_fig_image(fig_obj.fig)))
+            time.sleep(0.001)
+    finally:
+        win.close()
     print(f"collisions: {count[0]}")
 
 
@@ -210,7 +207,7 @@ def main():
     args = ap.parse_args()
 
     import matplotlib
-    matplotlib.use("Agg")      # live mode shows the rendered figure in an OpenCV window
+    matplotlib.use("Agg")      # live mode shows the rendered figure in a GLFW window
     import matplotlib.pyplot as plt
     headless = bool(args.snapshot or args.gif)
 

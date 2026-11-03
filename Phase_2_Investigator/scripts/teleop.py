@@ -2,7 +2,7 @@
 """Drive the simulated Go2 with the keyboard.
 
     python scripts/teleop.py                 # MuJoCo viewer window (WSLg / desktop)
-    python scripts/teleop.py --cv            # OpenCV window: chase view + front camera
+    python scripts/teleop.py --simple        # simple window: chase view + front camera
     python scripts/teleop.py --scenario 2 --env scenesmith_house_186
 
 Keys (click the window first): W/S forward/back, A/D turn, Q/E strafe,
@@ -101,44 +101,48 @@ def run_viewer(sim, tele, log):
             time.sleep(0.001)
 
 
-def run_cv(sim, tele, log):
-    import cv2
+def run_window(sim, tele, log):
+    """Simple window (GLFW, no Qt): third-person view + front camera side by side."""
+    import cv2   # drawing text and resizing only
+
+    from sim_env.display import ImageWindow
 
     clock = {"sim0": sim.time, "wall0": time.monotonic()}
-    win = "Go2 teleop (click here, then use the keys)"
-    cv2.namedWindow(win)
+    win = ImageWindow("Go2 teleop (click here, then use the keys)", 960, 400)
     next_cam = next_print = next_chase = 0.0
     front = chase = None
-    while not tele.quit_requested:
-        step_realtime(sim, tele, clock)
-        log.update(sim)
-        if sim.time >= next_cam:
-            front = sim.camera().rgb
-            next_cam = sim.time + 0.2
-        f = cv2.resize(front, (480, 360), interpolation=cv2.INTER_NEAREST)
-        if time.monotonic() >= next_chase:       # third-person view at <= 10 Hz
-            chase = sim.render_view(480, 360)
-            next_chase = time.monotonic() + 0.1
-        img = cv2.cvtColor(np.hstack([chase, f]), cv2.COLOR_RGB2BGR)
-        cv2.putText(img, status_line(sim, tele, log).strip()[:110], (8, 350),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.38, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(img, HELP, (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.imshow(win, img)
-        if time.monotonic() >= next_print:
-            print(status_line(sim, tele, log), end="", flush=True)
-            next_print = time.monotonic() + 0.25
-        k = cv2.waitKey(1)
-        if k != -1:
-            tele.press(k & 0xFF)
-        if cv2.getWindowProperty(win, cv2.WND_PROP_AUTOSIZE) < 0:   # window closed
-            break
-    cv2.destroyAllWindows()
+    try:
+        while not tele.quit_requested and not win.closed:
+            for k in win.keys():
+                tele.press(k)
+            step_realtime(sim, tele, clock)
+            log.update(sim)
+            if sim.time >= next_cam:
+                front = sim.camera().rgb
+                next_cam = sim.time + 0.2
+            if time.monotonic() >= next_chase:       # third-person view at <= 10 Hz
+                chase = sim.render_view(480, 360)
+                next_chase = time.monotonic() + 0.1
+                f = cv2.resize(front, (480, 360), interpolation=cv2.INTER_NEAREST)
+                img = np.vstack([np.hstack([chase, f]), np.zeros((40, 960, 3), np.uint8)])
+                cv2.putText(img, HELP, (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1,
+                            cv2.LINE_AA)
+                cv2.putText(img, status_line(sim, tele, log).strip()[:120], (8, 390),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+                win.show(img)
+            if time.monotonic() >= next_print:
+                print(status_line(sim, tele, log), end="", flush=True)
+                next_print = time.monotonic() + 0.25
+            time.sleep(0.001)
+    finally:
+        win.close()
 
 
 def main():
     ap = add_sim_args(argparse.ArgumentParser(description=__doc__,
                                               formatter_class=argparse.RawDescriptionHelpFormatter))
-    ap.add_argument("--cv", action="store_true", help="OpenCV window instead of the MuJoCo viewer")
+    ap.add_argument("--cv", "--simple", dest="cv", action="store_true",
+                    help="simple camera window instead of the MuJoCo viewer")
     args = ap.parse_args()
     sim, _ = session_from_args(args)
     print(f"environment {sim.environment_id}; standing up...")
@@ -146,7 +150,7 @@ def main():
     print(HELP)
     tele, log = KeyTeleop(), CollisionLog()
     try:
-        (run_cv if args.cv else run_viewer)(sim, tele, log)
+        (run_window if args.cv else run_viewer)(sim, tele, log)
     except KeyboardInterrupt:
         pass
     finally:
