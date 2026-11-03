@@ -83,6 +83,7 @@ class WaypointFollower:
         goal_eff = path[-1]
         t0 = self.dog.time
         best, best_t = np.inf, t0
+        last_replan = -np.inf
         while self.dog.time - t0 < max_time:
             x, y, yaw = self.dog.pose2d()
             p = np.array([x, y])
@@ -98,11 +99,15 @@ class WaypointFollower:
                 return False
             d = np.linalg.norm(path - p, axis=1)
             i = int(np.argmin(d))
-            if d[i] > cfg.replan_dev:
+            if d[i] > cfg.replan_dev and self.dog.time - last_replan > 1.0:
+                # off the path: replan from here (at most once a second; always step afterwards,
+                # so a path that starts away from the dog cannot stall the simulation)
+                last_replan = self.dog.time
                 new = self.map.plan(p, goal_xy)
                 if new is not None:
                     path, goal_eff = new, new[-1]
-                    continue
+                    d = np.linalg.norm(path - p, axis=1)
+                    i = int(np.argmin(d))
             # look-ahead point
             j = i
             while j < len(path) - 1 and np.linalg.norm(path[j] - p) < cfg.lookahead:

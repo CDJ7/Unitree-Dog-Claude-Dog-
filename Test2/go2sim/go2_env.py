@@ -212,13 +212,14 @@ class CrimeSceneGo2:
         x0, x1, y0, y1 = extent
         w, h = int(round((x1 - x0) * px_per_m)), int(round((y1 - y0) * px_per_m))
         m = self.model
-        fovy0 = float(m.vis.global_.fovy)
+        fovy0, ortho0 = float(m.vis.global_.fovy), int(m.vis.global_.orthographic)
         cam = mujoco.MjvCamera()
         cam.type = mujoco.mjtCamera.mjCAMERA_FREE
         cam.orthographic = 1
         cam.lookat[:] = [(x0 + x1) / 2, (y0 + y1) / 2, 0.0]
         cam.distance, cam.azimuth, cam.elevation = 10.0, 90.0, -90.0
         m.vis.global_.fovy = y1 - y0               # orthographic: vertical extent in metres
+        m.vis.global_.orthographic = 1
         opt = mujoco.MjvOption()
         mujoco.mjv_defaultOption(opt)
         opt.geomgroup[:] = self.sim.sensors.render_option.geomgroup
@@ -229,6 +230,7 @@ class CrimeSceneGo2:
             return r.render().copy()
         finally:
             m.vis.global_.fovy = fovy0
+            m.vis.global_.orthographic = ortho0
 
     # ------------------------------------------------------------------ randomisation
     def set_lighting(self, headlight_ambient=1.0, headlight_diffuse=1.0, tint=(1, 1, 1),
