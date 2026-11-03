@@ -28,3 +28,4 @@ evaluation/results/tmp/
 *.mp4
 *.npy
 *.npz
+sim_env/scenarios/generated/

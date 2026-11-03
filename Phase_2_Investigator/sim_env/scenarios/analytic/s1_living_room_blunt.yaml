@@ -1,0 +1,38 @@
+# Scenario 1: blunt-force blows in a living room.
+# A standing victim is struck from the front (impact spatter onto the wall
+# behind them); the back-swing between blows throws cast-off onto the ceiling
+# and the wall behind the attacker.
+id: s1_living_room_blunt
+title: "Living room: blunt-force blows"
+seed: 101
+room: {size: [5.0, 4.0, 2.6], materials: {floor: wood, wall: plaster, ceiling: plaster}}
+furniture:
+  - {id: sofa, center: [1.4, 3.45, 0.40], size: [2.0, 0.9, 0.80], material: fabric}
+  - {id: coffee_table, center: [1.6, 2.4, 0.22], size: [1.0, 0.6, 0.44], material: wood}
+  - {id: bookshelf, center: [4.75, 0.6, 0.90], size: [0.4, 1.0, 1.80], material: wood}
+distractors:   # red objects that are NOT blood, to test false positives
+  - {id: red_cushion, kind: cushion, center: [0.9, 3.35, 0.88], size: [0.45, 0.15, 0.40], color: [0.75, 0.06, 0.08]}
+  - {id: red_book, kind: book, center: [1.75, 2.35, 0.465], size: [0.22, 0.16, 0.05], color: [0.65, 0.05, 0.06]}
+mannequins:
+  - {id: victim, role: victim, position: [3.6, 2.0], yaw_deg: 180, posture: standing, height: 1.75}
+  - {id: attacker, role: attacker, position: [2.75, 2.0], yaw_deg: 0, posture: standing, height: 1.80}
+events:
+  - mechanism: impact
+    description: "Blow to the head of the standing victim"
+    origin: [3.6, 2.0, 1.55]
+    weapon_category: blunt
+    weapon: pipe
+    params: {n: 160, axis: [1.0, 0.0, 0.2], cone_deg: 60, speed: [2.0, 7.0]}
+  - mechanism: castoff
+    description: "Back-swing of the bloodied pipe between blows"
+    origin: [2.75, 2.0, 1.45]          # attacker's shoulder (swing pivot)
+    weapon_category: blunt
+    weapon: pipe
+    params: {n: 45, heading_deg: 0, radius: 0.95, omega: 10.0, release_deg: [40, 150]}
+summary:
+  primary_event: 0
+  sequence:
+    - "Attacker faces the victim near the middle of the room"
+    - "First blow to the victim's head: impact spatter onto the wall behind the victim"
+    - "Back-swing for a further blow: cast-off onto the ceiling and the wall behind the attacker"
+binding: {environment: null, note: "stand-alone room; bind to scenesmith_house_185 living room later"}

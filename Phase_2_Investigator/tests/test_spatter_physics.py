@@ -10,7 +10,7 @@ from sim_env.spatter.geometry import Rect, SurfaceSet, box_surfaces, room_surfac
 from sim_env.spatter.physics import Launch, fly
 from sim_env.spatter.raster import decal_patch, mask_points, stain_bounds, stain_mask
 from sim_env.spatter.stains import impact_geometry, make_stain
-from sim_env.scenarios import scenario_paths
+from sim_env.scenarios import analytic_paths as scenario_paths
 from sim_env.scenarios.random_scenario import random_scenario
 
 

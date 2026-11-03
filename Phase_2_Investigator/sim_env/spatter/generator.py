@@ -1,9 +1,9 @@
 """Scenario -> droplets -> stains, with full ground truth.
 
-    gt = generate(load_scenario("sim_env/scenarios/configs/s1_living_room_blunt.yaml"))
+    gt = generate(load_scenario("sim_env/scenarios/analytic/s1_living_room_blunt.yaml"))
     save_ground_truth(gt, "out/s1_gt.json")
 
-The scenario is a plain dict (see sim_env/scenarios/configs/*.yaml and
+The scenario is a plain dict (see sim_env/scenarios/analytic/*.yaml and
 docs/plan.md for the schema). The output is a JSON-ready dict; nothing here
 needs MuJoCo, so it runs anywhere and is fully reproducible from the seed.
 """
@@ -40,7 +40,10 @@ def build_surfaces(scn):
 def _transfer(ev_idx, ev, surfaces, rng):
     """A smear from ev['start'] to ev['end'] (world points) on surface ev['surface']."""
     p = M.merged("transfer", ev.get("params"))
-    rect = surfaces.by_id[ev["surface"]]
+    if ev.get("surface") in surfaces.by_id:
+        rect = surfaces.by_id[ev["surface"]]
+    else:                                   # MuJoCo scene: find the surface by ray casting
+        rect, _ = surfaces.surface_at(ev["start"], ev.get("normal", (0, 0, 1)))
     a = rect.to_local(ev["start"])
     b = rect.to_local(ev["end"])
     s = np.linspace(0, 1, 25)
@@ -57,15 +60,19 @@ def _transfer(ev_idx, ev, surfaces, rng):
     return sm, meta
 
 
-def generate(scn, seed=None, satellites=True):
+def generate(scn, seed=None, satellites=True, surfaces=None):
+    """Spatter + ground truth. `surfaces` defaults to the analytic room in the
+    scenario; pass an `mj_surfaces.MjSurfaces` to land droplets in a MuJoCo scene."""
     seed = scn.get("seed", 0) if seed is None else seed
     rng = np.random.default_rng(seed)
-    surfaces = build_surfaces(scn)
+    if surfaces is None:
+        surfaces = build_surfaces(scn)
     droplets, stains, smears, events = [], [], [], []
     for ei, ev in enumerate(scn["events"]):
         mech = ev["mechanism"]
         record = {"index": ei, "mechanism": mech, "weapon_category": ev.get("weapon_category"),
-                  "weapon": ev.get("weapon"), "description": ev.get("description", "")}
+                  "weapon": ev.get("weapon"), "description": ev.get("description", ""),
+                  "actor": ev.get("actor")}
         if mech == "transfer":
             sm, meta = _transfer(ei, ev, surfaces, rng)
             smears.append(sm.to_dict())
@@ -105,7 +112,7 @@ def generate(scn, seed=None, satellites=True):
         "sequence": scn.get("summary", {}).get("sequence", []),
         "events": events, "droplets": droplets, "stains": stains, "smears": smears,
         "surfaces": surfaces.to_dict(),
-        "room": scn["room"], "furniture": scn.get("furniture", []) or [],
+        "room": scn.get("room"), "furniture": scn.get("furniture", []) or [],
         "mannequins": scn.get("mannequins", []) or [], "distractors": scn.get("distractors", []) or [],
         "binding": scn.get("binding"),
     }
