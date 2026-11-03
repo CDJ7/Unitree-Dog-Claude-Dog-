@@ -1,0 +1,38 @@
+{
+ "test_layouts": [
+  "s2",
+  "r1854",
+  "r3101",
+  "r3102",
+  "r3103",
+  "r3104"
+ ],
+ "episodes_per_policy": 60,
+ "base_seed": 900000,
+ "model": null,
+ "policies": {
+  "greedy": {
+   "episodes": 60,
+   "success_rate": 0.3667,
+   "found_fraction": 0.5526,
+   "time_s_successful_mean": 20.05,
+   "time_s_all_mean": 121.35,
+   "contamination_entries_mean": 1.25,
+   "contamination_steps_mean": 107.58,
+   "episodes_with_contamination": 0.4667,
+   "collisions_mean": 6.02,
+   "path_m_mean": 4.62,
+   "return_mean": -91.7
+  }
+ },
+ "per_layout_success": {
+  "greedy": {
+   "r1854": 0.3,
+   "r3101": 0.3,
+   "r3102": 0.9,
+   "r3103": 0.0,
+   "r3104": 0.4,
+   "s2": 0.3
+  }
+ }
+}
