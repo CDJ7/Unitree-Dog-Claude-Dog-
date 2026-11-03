@@ -44,3 +44,10 @@ data/full/
 | bookkeeping | `collisions` (robot contacts other than feet on the floor), `goal_index`, `frame` (image index, or -1 for state-only rows) |
 
 To get the image/label pairs, select the rows with `frame >= 0`. The image is `images/{frame:06d}.jpg` and its label is `zone_id`.
+
+## Collection log (3 Nov 2026)
+
+- 36 runs and 17,123 labelled frames. `results/q2/dataset_stats.json` has every count.
+- The first collection hung in one scene (r1853) because of a bug in the follower: after a replan it could loop without stepping the simulation. The bug was fixed in `go2sim/waypoint_follower.py` (replan at most once per second, always step), and the 6 r1853 runs (run_024 to run_029) were collected again with the fixed code.
+- The other 30 runs were collected before the fix. The fix only changes behaviour in the situation that used to hang, and none of those 30 runs hung.
+- `data/sample/run_027` is a copy of the full-set run_027: scene r1853, `fast_sweep`, all 5 zones, 241 frames.
