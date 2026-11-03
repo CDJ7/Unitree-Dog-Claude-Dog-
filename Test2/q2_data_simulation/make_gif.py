@@ -4,8 +4,8 @@
     python q2_data_simulation/make_gif.py                    # -> results/q2/go2_crime_scene.gif
 
 The dog runs a short tour of all five zones in scenario S1 with the learned locomotion policy and the
-waypoint follower; every 0.25 s of sim time one GIF frame is rendered (sim time is shown, so the
-GIF plays at ~2x real time at 8 fps).
+waypoint follower; every 0.5 s of sim time one GIF frame is rendered (sim time is shown; the GIF
+plays at 2x real time at 4 fps, 64 colours, ~5 MB).
 """
 from __future__ import annotations
 
@@ -33,8 +33,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scenario", default="1")
     ap.add_argument("--out", default=str(TEST2 / "results/q2/go2_crime_scene.gif"))
-    ap.add_argument("--every", type=float, default=0.25, help="sim seconds per GIF frame")
-    ap.add_argument("--fps", type=float, default=8)
+    ap.add_argument("--every", type=float, default=0.5, help="sim seconds per GIF frame")
+    ap.add_argument("--fps", type=float, default=4)
+    ap.add_argument("--scale", type=float, default=0.75)
     a = ap.parse_args()
     zones = Zones()
     dog = CrimeSceneGo2(a.scenario)
@@ -92,8 +93,11 @@ def main():
         dog.close()
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    pal = [f.convert("P", palette=Image.ADAPTIVE, colors=128) for f in frames]
-    pal[0].save(out, save_all=True, append_images=pal[1:], duration=int(1000 / a.fps), loop=0, optimize=True)
+    w, h = frames[0].size
+    frames = [f.resize((int(w * a.scale), int(h * a.scale)), Image.LANCZOS) for f in frames]
+    palette = frames[len(frames) // 2].quantize(colors=64, method=Image.MEDIANCUT)   # one shared palette
+    q = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f in frames]
+    q[0].save(out, save_all=True, append_images=q[1:], duration=int(1000 / a.fps), loop=0, optimize=True)
     print(f"{len(frames)} frames -> {out} ({out.stat().st_size / 1e6:.1f} MB)")
 
 
