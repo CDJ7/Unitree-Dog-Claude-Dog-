@@ -3,12 +3,14 @@
  "feature_dim": 2048,
  "bins_per_channel": 8,
  "classifier": "StandardScaler + LogisticRegression(class_weight=balanced)",
- "C_selected": 0.01,
+ "C_selected": 0.003,
  "val_macro_f1_by_C": {
+  "0.0003": 0.451,
+  "0.001": 0.4616,
+  "0.003": 0.4769,
   "0.01": 0.4651,
   "0.1": 0.4281,
-  "1.0": 0.3944,
-  "10.0": 0.3763
+  "1.0": 0.3944
  },
  "seed": 6010,
  "split": {
@@ -55,5 +57,5 @@
    "run_035"
   ]
  },
- "wall_time_s": 129.9
+ "wall_time_s": 164.1
 }
