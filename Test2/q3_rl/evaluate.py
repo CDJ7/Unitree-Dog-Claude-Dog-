@@ -91,6 +91,12 @@ def planner(obs, front_m=0.10, half_width=0.26):
 class PPOPolicy:
     def __init__(self, path):
         from stable_baselines3 import PPO
+        path = Path(path)
+        if not path.exists() and path.name == "best_model.zip" and (path.parent / "final_model.zip").exists():
+            # the EvalCallback writes best_model.zip only after its first evaluation (eval_every steps)
+            print(f"[ppo] {path} not written yet (training shorter than eval_every); using final_model.zip", flush=True)
+            path = path.parent / "final_model.zip"
+        self.path = path
         self.model = PPO.load(path, device="cpu")
 
     def __call__(self, obs):
