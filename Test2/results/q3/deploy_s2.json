@@ -11,11 +11,11 @@
  "n_items": 3,
  "n_found": 3,
  "success": true,
- "time_s": 14.0,
- "control_steps": 70,
+ "time_s": 16.4,
+ "control_steps": 82,
  "steps_with_foot_in_stain": 0,
  "footprint_stain_entries": 0,
  "steps_with_robot_scene_contact": 9,
- "min_upright": 0.977,
- "wall_time_s": 9.9
+ "min_upright": 0.969,
+ "wall_time_s": 12.1
 }
