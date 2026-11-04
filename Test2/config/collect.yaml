@@ -1,0 +1,56 @@
+# Q2 data collection (q2_data_simulation/collect_dataset.py). All runs are in house 185.
+seed: 2026
+output_dir: data/full              # gitignored; data/sample holds the committed subset
+controller: learned                # learned (MoE Rough Go2 RL policy) | scripted (trot fallback)
+image_size: [320, 240]             # native Go2 sim head-camera resolution (W, H)
+image_hz: 5                        # camera frames per second (sim time)
+state_hz: 50                       # states.csv rows per second (every control tick)
+
+# Scenes: Phase 2 hand-made scenarios S1/S2 (house 185) and seeded random house-185 scenarios
+# (different victim, stains, obstacles, distractors). `random: SEED` = sim_env.scenarios.random_sim.
+scenes:
+  - {name: s1, scenario: "1"}
+  - {name: s2, scenario: "2"}
+  - {name: r1851, random: 1851}
+  - {name: r1852, random: 1852}
+  - {name: r1853, random: 1853}
+  - {name: r1854, random: 1854}
+
+# Route definitions. Each scene gets every hand-made route plus `random_routes_per_scene` random ones.
+# A route: start zone, the order in which zones are visited, walking speed (m/s), spins (look-around
+# turns on the spot at each goal: all | none | random), and a seed for the exact goal points
+# (sampled in each zone with >= min_clearance m to obstacles, so goals are never in tight gaps).
+min_clearance: 0.45
+# Adaptive dwell: at a goal in a zone with < 80% of the mean frames so far (per scene), also do a
+# look-around spin. Keeps small zones (bed_area, bathroom) from being under-represented.
+balance_dwell: true
+hand_routes:
+  - {name: clockwise_tour,      start: desk_entry_area, order: [lounge_area, victim_area, bed_area, desk_entry_area, bathroom], speed: 0.30, spins: all}
+  - {name: counter_tour,        start: bathroom,        order: [desk_entry_area, bed_area, victim_area, lounge_area, desk_entry_area], speed: 0.35, spins: random}
+  - {name: victim_first_slow,   start: lounge_area,     order: [victim_area, bed_area, lounge_area, bathroom], speed: 0.20, spins: all}
+  - {name: fast_sweep,          start: victim_area,     order: [bed_area, desk_entry_area, bathroom, desk_entry_area, lounge_area, victim_area], speed: 0.40, spins: none}
+random_routes_per_scene: 2
+random_route:
+  n_goals: [5, 7]
+  speed: [0.2, 0.4]
+  spin_prob: 0.5
+
+lighting:
+  headlight_ambient: [0.55, 1.25]   # x the house default
+  headlight_diffuse: [0.5, 1.2]
+  lamp: [0.0, 0.6]                  # each ceiling lamp's brightness
+  lamp_shift: 0.6                   # m, horizontal shift of all lamps
+  tints:                            # neutral, warm tungsten, cool daylight, slightly green fluorescent
+    - [1.0, 1.0, 1.0]
+    - [1.0, 0.88, 0.72]
+    - [0.85, 0.92, 1.0]
+    - [0.92, 1.0, 0.9]
+
+camera_noise:
+  brightness: [0.85, 1.15]
+  contrast: [0.85, 1.15]
+  gamma: [0.85, 1.2]
+  gauss_sigma: [0.0, 6.0]           # sensor noise, 0-255 scale
+  blur_prob: 0.3
+  blur_radius: [0.4, 1.0]
+  jpeg_quality: [70, 95]

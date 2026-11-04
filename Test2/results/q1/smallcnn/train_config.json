@@ -1,0 +1,65 @@
+{
+ "model": "smallcnn",
+ "params": 1174501,
+ "weights_source": "random init (trained from scratch)",
+ "epochs": 12,
+ "epochs_completed": 10,
+ "best_epoch": 9,
+ "best_val_macro_f1": 0.8062178132406285,
+ "seed": 6010,
+ "config": {
+  "seed": 6010,
+  "data_dir": "data/full",
+  "results_dir": "results/q1",
+  "image_hw": [
+   168,
+   224
+  ],
+  "split": {
+   "test_scenes": [
+    "r1854"
+   ],
+   "test_route_offset": 0,
+   "val_route_offset": 3
+  },
+  "train": {
+   "epochs": 8,
+   "batch_size": 64,
+   "lr_head": 0.001,
+   "lr_backbone": 0.0002,
+   "weight_decay": 0.0001,
+   "label_smoothing": 0.05,
+   "class_weighted_loss": true,
+   "num_workers": 2,
+   "epoch_fraction": 0.5
+  },
+  "smallcnn": {
+   "epochs": 12,
+   "lr": 0.002
+  },
+  "augment": {
+   "crop_scale": [
+    0.8,
+    1.0
+   ],
+   "rotation_deg": 5,
+   "brightness": 0.3,
+   "contrast": 0.3,
+   "saturation": 0.3,
+   "hue": 0.03
+  },
+  "histogram": {
+   "bins": 8,
+   "C_grid": [
+    0.0003,
+    0.001,
+    0.003,
+    0.01,
+    0.1,
+    1.0
+   ]
+  }
+ },
+ "wall_time_s": 6602.6,
+ "note": "Run stopped by the cloud session's 2 h background-task limit after epoch 10 of 12; best.pt is the epoch-9 checkpoint (best val macro-F1). This file was written afterwards from history.json because train.py writes it only at the end."
+}

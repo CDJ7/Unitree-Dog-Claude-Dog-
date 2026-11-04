@@ -1,0 +1,86 @@
+{
+ "data": "data/full",
+ "n_runs": 36,
+ "n_scenes": 6,
+ "n_frames": 17123,
+ "n_state_rows": 171083,
+ "frames_per_zone": {
+  "victim_area": 2922,
+  "bed_area": 2845,
+  "lounge_area": 5341,
+  "desk_entry_area": 3629,
+  "bathroom": 2386
+ },
+ "zone_share": {
+  "victim_area": 0.1706,
+  "bed_area": 0.1662,
+  "lounge_area": 0.3119,
+  "desk_entry_area": 0.2119,
+  "bathroom": 0.1393
+ },
+ "balance_min_over_max": 0.447,
+ "frames_per_scene_zone": {
+  "s1": {
+   "victim_area": 441,
+   "bed_area": 461,
+   "lounge_area": 777,
+   "desk_entry_area": 648,
+   "bathroom": 475
+  },
+  "s2": {
+   "victim_area": 469,
+   "bed_area": 695,
+   "lounge_area": 995,
+   "desk_entry_area": 562,
+   "bathroom": 425
+  },
+  "r1851": {
+   "victim_area": 369,
+   "bed_area": 389,
+   "lounge_area": 959,
+   "desk_entry_area": 634,
+   "bathroom": 520
+  },
+  "r1852": {
+   "victim_area": 535,
+   "bed_area": 418,
+   "lounge_area": 869,
+   "desk_entry_area": 759,
+   "bathroom": 508
+  },
+  "r1853": {
+   "victim_area": 725,
+   "bed_area": 506,
+   "lounge_area": 874,
+   "desk_entry_area": 647,
+   "bathroom": 458
+  },
+  "r1854": {
+   "victim_area": 383,
+   "bed_area": 376,
+   "lounge_area": 867,
+   "desk_entry_area": 379,
+   "bathroom": 0
+  }
+ },
+ "sim_time_s": 3421.7,
+ "distance_m": 573.0,
+ "goals_reached": 184,
+ "goals_total": 191,
+ "collision_state_rows": 258,
+ "runs_with_collisions": 15,
+ "frames_outside_zones": 0,
+ "velocity_tracking_rmse_lag0.3s": {
+  "rmse_vx": 0.0637,
+  "rmse_vy": 0.0317,
+  "rmse_yaw_rate": 0.1704
+ },
+ "min_upright_cos": 0.964,
+ "controller": "learned",
+ "image_size": [
+  320,
+  240
+ ],
+ "image_hz": 5,
+ "state_hz": 50
+}

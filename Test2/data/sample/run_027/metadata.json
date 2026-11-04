@@ -1,0 +1,183 @@
+{
+ "run": "run_027",
+ "scene": "r1853",
+ "scenario_id": "r1853",
+ "scenario_title": "Random scenario 1853: projected (edged)",
+ "environment": "scenesmith_house_185",
+ "route": {
+  "name": "fast_sweep",
+  "start": "victim_area",
+  "order": [
+   "bed_area",
+   "desk_entry_area",
+   "bathroom",
+   "desk_entry_area",
+   "lounge_area",
+   "victim_area"
+  ],
+  "speed": 0.4,
+  "spins": "none",
+  "kind": "hand"
+ },
+ "seed": 2026027,
+ "start_pose": [
+  0.6372066864044668,
+  3.774646354990938,
+  0.8298977509905239
+ ],
+ "goals": [
+  {
+   "zone": "bed_area",
+   "xy": [
+    2.311,
+    2.613
+   ]
+  },
+  {
+   "zone": "desk_entry_area",
+   "xy": [
+    4.525,
+    1.272
+   ]
+  },
+  {
+   "zone": "bathroom",
+   "xy": [
+    7.62,
+    2.192
+   ]
+  },
+  {
+   "zone": "desk_entry_area",
+   "xy": [
+    5.378,
+    2.067
+   ]
+  },
+  {
+   "zone": "lounge_area",
+   "xy": [
+    3.989,
+    1.474
+   ]
+  },
+  {
+   "zone": "victim_area",
+   "xy": [
+    1.779,
+    2.665
+   ]
+  }
+ ],
+ "goals_reached": 6,
+ "lighting": {
+  "headlight_ambient": 1.034507344699946,
+  "headlight_diffuse": 0.982819953188538,
+  "tint": [
+   0.85,
+   0.92,
+   1.0
+  ],
+  "lamps": [
+   0.427414928458614,
+   0.03954225379623222,
+   0.06495987652985526
+  ],
+  "lamp_shift": [
+   -0.2923943034959576,
+   -0.5229344114169889
+  ]
+ },
+ "camera_noise": {
+  "brightness": 1.1396773130550084,
+  "contrast": 0.9792323038871776,
+  "gamma": 1.0695314415762323,
+  "gauss_sigma": 5.788357077001187,
+  "blur_radius": 0.0,
+  "jpeg_quality": 84
+ },
+ "camera": {
+  "body": "base_link",
+  "pos_in_base_m": [
+   0.32,
+   0.0,
+   0.12
+  ],
+  "fovy_deg": 60.0,
+  "image_size": [
+   320,
+   240
+  ],
+  "image_hz": 5,
+  "model": "pinhole, fx = fy = (H/2)/tan(fovy/2), cx = W/2, cy = H/2"
+ },
+ "controller": "learned",
+ "state_hz": 50,
+ "duration_s": 48.16,
+ "n_frames": 241,
+ "n_states": 2408,
+ "frames_per_zone": {
+  "victim_area": 18,
+  "bed_area": 29,
+  "lounge_area": 69,
+  "desk_entry_area": 50,
+  "bathroom": 75
+ },
+ "distance_m": 14.83,
+ "collision_state_rows": 0,
+ "events": [
+  [
+   327.24,
+   "reached",
+   [
+    2.325,
+    2.625
+   ]
+  ],
+  [
+   334.4,
+   "reached",
+   [
+    4.525,
+    1.2750000000000001
+   ]
+  ],
+  [
+   343.76,
+   "reached",
+   [
+    7.625,
+    2.1750000000000003
+   ]
+  ],
+  [
+   351.38,
+   "spin",
+   -3.4999475078381788
+  ],
+  [
+   356.36,
+   "reached",
+   [
+    5.375,
+    2.075
+   ]
+  ],
+  [
+   360.32,
+   "reached",
+   [
+    3.9750000000000005,
+    1.475
+   ]
+  ],
+  [
+   368.52,
+   "reached",
+   [
+    1.775,
+    2.6750000000000003
+   ]
+  ]
+ ]
+}

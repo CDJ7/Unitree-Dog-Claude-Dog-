@@ -1,0 +1,31 @@
+# Crime-scene zones for house 185 (scenesmith_house_185), used by Q1 labels and Q2/Q3 plots.
+# Polygons are in world metres (x east, y north), counter-clockwise. A frame's label is the zone
+# that contains the dog's base (x, y) when the frame was rendered. Agreed with the author 3 Nov 2026.
+# Map: results/q2/step0_house185_colliders.png
+environment: scenesmith_house_185
+zones:
+  - id: 0
+    name: victim_area
+    description: west wall, mirror, victim mannequin, wall spatter
+    polygon: [[0.0, 0.0], [1.8, 0.0], [1.8, 4.5], [0.0, 4.5]]
+    color: "#c0392b"
+  - id: 1
+    name: bed_area
+    description: bed, nightstand, cast-off on the floor
+    polygon: [[1.8, 2.4], [4.4, 2.4], [4.4, 4.5], [1.8, 4.5]]
+    color: "#8e44ad"
+  - id: 2
+    name: lounge_area
+    description: sofa, rug, coffee table
+    polygon: [[1.8, 0.0], [4.4, 0.0], [4.4, 2.4], [1.8, 2.4]]
+    color: "#2980b9"
+  - id: 3
+    name: desk_entry_area
+    description: writing desk, task chair, laundry basket, entry side of the room
+    polygon: [[4.4, 0.0], [6.0, 0.0], [6.0, 4.5], [4.4, 4.5]]
+    color: "#27ae60"
+  - id: 4
+    name: bathroom
+    description: toilet, bathtub, vanity; doorway at x = 6.0, y 1.6-2.5
+    polygon: [[6.0, 1.05], [8.2, 1.05], [8.2, 3.45], [6.0, 3.45]]
+    color: "#f39c12"

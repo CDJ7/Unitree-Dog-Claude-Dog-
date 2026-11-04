@@ -1,0 +1,127 @@
+{
+ "model": "resnet18",
+ "params": 11179077,
+ "weights_source": "ONNX Model Zoo resnet18-v1-7 (ImageNet-1k), converted to torchvision resnet18",
+ "epochs": 8,
+ "best_epoch": 8,
+ "best_val_macro_f1": 0.921309795843068,
+ "seed": 6010,
+ "config": {
+  "seed": 6010,
+  "data_dir": "data/full",
+  "results_dir": "results/q1",
+  "image_hw": [
+   168,
+   224
+  ],
+  "split": {
+   "test_scenes": [
+    "r1854"
+   ],
+   "test_route_offset": 0,
+   "val_route_offset": 3
+  },
+  "train": {
+   "epochs": 8,
+   "batch_size": 64,
+   "lr_head": 0.001,
+   "lr_backbone": 0.0002,
+   "weight_decay": 0.0001,
+   "label_smoothing": 0.05,
+   "class_weighted_loss": true,
+   "num_workers": 2,
+   "epoch_fraction": 0.5
+  },
+  "smallcnn": {
+   "epochs": 12,
+   "lr": 0.002
+  },
+  "augment": {
+   "crop_scale": [
+    0.8,
+    1.0
+   ],
+   "rotation_deg": 5,
+   "brightness": 0.3,
+   "contrast": 0.3,
+   "saturation": 0.3,
+   "hue": 0.03
+  },
+  "histogram": {
+   "bins": 8,
+   "C_grid": [
+    0.01,
+    0.1,
+    1.0,
+    10.0
+   ]
+  }
+ },
+ "split": {
+  "train": [
+   "run_001",
+   "run_002",
+   "run_004",
+   "run_005",
+   "run_006",
+   "run_008",
+   "run_009",
+   "run_011",
+   "run_012",
+   "run_013",
+   "run_015",
+   "run_016",
+   "run_019",
+   "run_020",
+   "run_022",
+   "run_023",
+   "run_024",
+   "run_026",
+   "run_027",
+   "run_029"
+  ],
+  "val": [
+   "run_003",
+   "run_010",
+   "run_017",
+   "run_018",
+   "run_025"
+  ],
+  "test": [
+   "run_000",
+   "run_007",
+   "run_014",
+   "run_021",
+   "run_028",
+   "run_030",
+   "run_031",
+   "run_032",
+   "run_033",
+   "run_034",
+   "run_035"
+  ]
+ },
+ "n_frames": {
+  "train": 10321,
+  "val": 2526,
+  "test": 4276
+ },
+ "n_train_used": 10321,
+ "train_class_counts": {
+  "victim_area": 1857,
+  "bed_area": 1723,
+  "lounge_area": 3036,
+  "desk_entry_area": 2143,
+  "bathroom": 1562
+ },
+ "class_weights": {
+  "victim_area": 1.1115778136779753,
+  "bed_area": 1.1980266976204295,
+  "lounge_area": 0.6799077733860343,
+  "desk_entry_area": 0.9632291180587961,
+  "bathroom": 1.3215108834827145
+ },
+ "torch": "2.15.0+cu132",
+ "threads": 4,
+ "wall_time_s": 2524.0
+}

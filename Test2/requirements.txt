@@ -1,0 +1,22 @@
+# Test 2 (Python 3.10+). The simulator itself is the Phase 2 submodule:
+#   git submodule update --init --depth 1 Phase_2_Investigator/third_party/robot-unitree-go2-mujoco
+# Simulation + Q2 data
+mujoco==3.3.7            # pinned by the simulator
+onnxruntime>=1.17        # learned Go2 locomotion policy (MoE Rough, ONNX)
+numpy>=1.24
+scipy>=1.10
+scikit-image>=0.21       # Phase 2 planner (MCP Dijkstra)
+pyyaml>=6.0
+pandas>=2.0
+matplotlib>=3.7
+pillow>=10.0
+imageio>=2.31
+# Q1 supervised learning
+torch>=2.2
+torchvision>=0.17
+scikit-learn>=1.3
+# Q3 reinforcement learning
+gymnasium>=0.29
+stable-baselines3>=2.3
+tensorboard>=2.14
+pytest>=7.4
