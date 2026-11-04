@@ -10,7 +10,8 @@ here is deployed unchanged on the MuJoCo Go2 through CrimeSceneGo2.set_velocity_
 Evidence is FOUND when it is inside the head camera's view: within `find.range` of the camera, inside
 its horizontal field of view and with a clear line of sight on the raster. Walking over a FLOOR stain
 (footprint disc overlaps the stain cluster) CONTAMINATES the scene. Bumping into an obstacle is a
-COLLISION (the move is cancelled).
+COLLISION: the dog's body is the Go2's 0.70 x 0.32 m rectangle (robot.footprint; a 0.24 m disc if absent),
+and a translation or turn that would make it overlap an obstacle cell is cancelled.
 
 Observation (54 floats in [-1, 1]):
   0-3   pose: x, y (normalised to the house), sin(yaw), cos(yaw)
@@ -105,7 +106,10 @@ class Layout:
         ys = self.origin[1] + (np.arange(self.H) + 0.5) * self.res
         xs = self.origin[0] + (np.arange(self.W) + 0.5) * self.res
         inside = ((ys[:, None] > HOUSE[2]) & (ys[:, None] < HOUSE[3]) & (xs[None] > HOUSE[0]) & (xs[None] < HOUSE[1]))
-        free = (self.clear >= rc["radius"]) & inside
+        # cells the body's centre may occupy: a disc of `radius`, or with a rectangular `footprint` any cell
+        # with clearance >= half its width (it may then only pass lengthwise; the exact test is in step())
+        r_reach = min(rc["radius"], rc["footprint"][1] / 2) if rc.get("footprint") else rc["radius"]
+        free = (self.clear >= r_reach) & inside
         lab, n = ndimage.label(free, structure=np.ones((3, 3)))
         sizes = ndimage.sum(free, lab, range(1, n + 1))
         self.reach = lab == (1 + int(np.argmax(sizes)))
@@ -197,6 +201,13 @@ class CrimeSceneSearchEnv(gym.Env):
         self.n_rays = self.cfg["lidar"]["rays"]
         self.ray_angles = np.arange(self.n_rays) * 2 * np.pi / self.n_rays
         self.ray_steps = np.arange(0.1, self.cfg["lidar"]["max_range"] + 1e-6, 0.05)
+        fp = rc.get("footprint")
+        if fp:                                  # body-frame sample points covering the Go2's rectangle
+            xs = np.linspace(-fp[0] / 2, fp[0] / 2, int(np.ceil(fp[0] / 0.04)) + 1)
+            ys = np.linspace(-fp[1] / 2, fp[1] / 2, int(np.ceil(fp[1] / 0.04)) + 1)
+            self.body_pts = np.stack(np.meshgrid(xs, ys), -1).reshape(-1, 2)
+        else:
+            self.body_pts = None
         self.observation_space = spaces.Box(-1.0, 1.0, (N_OBS,), np.float32)
         self.action_space = spaces.Box(-1.0, 1.0, (3,), np.float32)
         self.layout = None
@@ -230,7 +241,7 @@ class CrimeSceneSearchEnv(gym.Env):
             if "spawn" in options:
                 xy, yaw = np.asarray(options["spawn"][:2], float), float(options["spawn"][2])
             self.xy, self.yaw = xy, yaw
-            if self._on_stain() < 0 and not self._visible().any():
+            if self._on_stain() < 0 and not self._visible().any() and self._fits(self.xy, self.yaw):
                 break
         self.v = np.zeros(3)
         self.last_action = np.zeros(3)
@@ -251,6 +262,21 @@ class CrimeSceneSearchEnv(gym.Env):
         return self._obs(), self._info()
 
     # ------------------------------------------------------------------ geometry helpers
+    def _fits(self, xy, yaw):
+        """True if the robot at (xy, yaw) overlaps no obstacle cell: the rotated footprint rectangle
+        (robot.footprint) or, without one, the disc of robot.radius (its centre on a reachable cell)."""
+        L = self.layout
+        if self.body_pts is None:
+            r, c = L.cell(xy)
+            return bool(L.reach[r, c])
+        c, s = np.cos(yaw), np.sin(yaw)
+        p = xy[None] + self.body_pts @ np.array([[c, s], [-s, c]])
+        ij = np.floor((p - L.origin) / L.res).astype(int)
+        if (ij[:, 1] < 0).any() or (ij[:, 1] >= L.H).any() or (ij[:, 0] < 0).any() or (ij[:, 0] >= L.W).any():
+            return False
+        r0, c0 = L.cell(xy)
+        return bool(L.reach[r0, c0]) and not L.blocked[ij[:, 1], ij[:, 0]].any()
+
     def _on_stain(self):
         """Index of a floor stain under the footprint, or -1."""
         F = self.layout.floor
@@ -380,14 +406,20 @@ class CrimeSceneSearchEnv(gym.Env):
             self.v += (cmd - self.v) * alpha
             c, s = np.cos(self.yaw), np.sin(self.yaw)
             nxt = self.xy + h * np.array([c * self.v[0] - s * self.v[1], s * self.v[0] + c * self.v[1]])
-            self.yaw = (self.yaw + h * self.v[2] + np.pi) % (2 * np.pi) - np.pi
-            r, cc = self.layout.cell(nxt)
-            if self.layout.reach[r, cc]:
-                self.stats["path_m"] += float(np.linalg.norm(nxt - self.xy))
-                self.xy = nxt
-            else:
-                collided = True
+            nyaw = (self.yaw + h * self.v[2] + np.pi) % (2 * np.pi) - np.pi
+            if self._fits(nxt, nyaw):
+                pass
+            elif self._fits(self.xy, nyaw):          # the translation is blocked, the turn is not
+                nxt, collided = self.xy, True
                 self.v[:2] = 0.0
+            elif self._fits(nxt, self.yaw):          # the turn is blocked (body would swing into something)
+                nyaw, collided = self.yaw, True
+                self.v[2] = 0.0
+            else:
+                nxt, nyaw, collided = self.xy, self.yaw, True
+                self.v[:] = 0.0
+            self.stats["path_m"] += float(np.linalg.norm(nxt - self.xy))
+            self.xy, self.yaw = nxt, nyaw
         self.t += 1
         # progress is measured against the items that were unfound before this step
         d_after = min((self._path_len(i) for i in np.nonzero(unfound_before)[0]), default=np.inf)
@@ -440,6 +472,12 @@ class CrimeSceneSearchEnv(gym.Env):
             disc((x, y), rad, (150, 20, 20))
         for t, f in zip(self.tgt, self.found):
             disc(t[:2], 0.12, (40, 170, 60) if f else (230, 140, 0))
-        disc(self.xy, self.cfg["robot"]["radius"], (30, 90, 220))
+        if self.body_pts is None:
+            disc(self.xy, self.cfg["robot"]["radius"], (30, 90, 220))
+        else:
+            c, s_ = np.cos(self.yaw), np.sin(self.yaw)
+            for p in self.xy[None] + self.body_pts @ np.array([[c, s_], [-s_, c]]):
+                r_, c_ = L.cell(p)
+                img[r_, c_] = (30, 90, 220)
         disc(self.xy + 0.3 * np.array([np.cos(self.yaw), np.sin(self.yaw)]), 0.06, (255, 255, 255))
         return np.repeat(np.repeat(img[::-1], s, 0), s, 1)

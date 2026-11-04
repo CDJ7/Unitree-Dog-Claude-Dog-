@@ -79,3 +79,26 @@ def test_severe_collision_terminates():
         _, _, term, trunc, info = env.step(np.array([1.0, 0.0, 0.0]))
         n += 1
     assert term and info["severe_collision"] and not info["success"]
+
+
+def test_rectangle_footprint():
+    """The 0.70 x 0.32 m body fits at its spawn, not when its nose is pushed into a wall, and a long
+    body that fits lengthwise in a gap does not fit across it."""
+    env = CrimeSceneSearchEnv(split="train")
+    assert env.body_pts is not None
+    env.reset(seed=1)
+    L = env.layout
+    assert env._fits(env.xy, env.yaw)
+    # walk straight ahead until the rectangle no longer fits; the disc centre is still reachable there
+    d = np.array([np.cos(env.yaw), np.sin(env.yaw)])
+    for k in range(1, 200):
+        p = env.xy + 0.02 * k * d
+        if not env._fits(p, env.yaw):
+            break
+    assert not env._fits(p, env.yaw)
+    # a cell with clearance between half the width and half the length: the body fits along some heading only
+    ok = np.argwhere(L.reach & (L.clear > 0.17) & (L.clear < 0.30))
+    r, c = ok[len(ok) // 2]
+    xy = L.cell_xy(r, c)
+    fits = [env._fits(xy, a) for a in np.linspace(0, np.pi, 12, endpoint=False)]
+    assert not all(fits)

@@ -60,13 +60,23 @@ def extract(name):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=str(TEST2 / "config/q3_env.yaml"))
+    ap.add_argument("--all", action="store_true", help="re-extract every scene (default: only new ones)")
     a = ap.parse_args()
     cfg = yaml.safe_load(Path(a.config).read_text())
     names = cfg["layouts"]["train"] + cfg["layouts"]["val"] + cfg["layouts"]["test"]
     OUT.mkdir(parents=True, exist_ok=True)
+    old = {}
+    if not a.all and (OUT / "house185_layouts.json").exists():      # keep scenes already exported
+        om = json.loads((OUT / "house185_layouts.json").read_text())
+        ob = np.load(OUT / "house185_layouts.npz")["blocked"]
+        old = {n: (ob[i], om["layouts"][i]) for i, n in enumerate(om["names"])}
     grids, meta = [], []
     for n in names:
         t0 = time.time()
+        if n in old:
+            grids.append(old[n][0])
+            meta.append(old[n][1])
+            continue
         b, m = extract(n)
         grids.append(b)
         meta.append(m)
