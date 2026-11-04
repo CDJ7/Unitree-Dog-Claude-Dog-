@@ -13,6 +13,14 @@ in this folder wrote; the command that produces it is given next to it.
 *The Go2 (learned locomotion policy, real contact physics) walking a route through house 185, scenario S1:
 chase view, the head camera that Q1 classifies, and the top-down map with the zones.*
 
+**Results at a glance**
+
+| | Result | Details |
+|---|---|---|
+| **Q2** data | 36 runs, **17,123** zone-labelled frames with IMU, joints, foot contacts, pose and commands at 50 Hz, 573 m walked | [section 4](#4-q2-dog-data-and-simulation) |
+| **Q1** zone classifier | ResNet18 transfer learning: **0.882** test accuracy (0.880 on a scene never seen in training), vs small CNN 0.788 and colour histograms 0.31-0.41; **0.911** live in MuJoCo | [section 5](#5-q1-supervised-learning-crime-scene-zone-classifier) |
+| **Q3** RL search | PPO finds all evidence in **0.633** of test episodes vs random 0.017 and greedy 0.367 (a map-following planner: 0.850); on the full MuJoCo Go2, **0.633** over 60 starts | [section 6](#6-q3-reinforcement-learning-evidence-search) |
+
 ---
 
 ## Contents
@@ -90,13 +98,12 @@ from `Test2/`.
 
 ```bash
 git clone https://github.com/CDJ7/Unitree-Dog-Claude-Dog-.git && cd Unitree-Dog-Claude-Dog-
-git checkout claude/eng6010-test2-crime-scene-0rst3r
 git submodule update --init --depth 1 Phase_2_Investigator/third_party/robot-unitree-go2-mujoco   # simulator (~520 MB)
 cd Test2
 pip install -r requirements.txt
 # headless rendering (Linux): EGL, with OSMesa as the automatic fallback
 sudo apt install -y libegl1 libegl-mesa0 libosmesa6 libgl1-mesa-dri
-python -m pytest -q tests          # 9 tests: zones, planner, Q3 environment
+python -m pytest -q tests          # 10 tests: zones, planner, Q3 environment
 ```
 
 | Step | Command | Output |
@@ -109,6 +116,7 @@ python -m pytest -q tests          # 9 tests: zones, planner, Q3 environment
 | Q1 small CNN (~650 s/epoch here) | `python q1_supervised/train.py --model smallcnn` | `results/q1/smallcnn/` |
 | Q1 evaluation | `python q1_supervised/evaluate.py` | `results/q1/metrics.json`, figures |
 | Q1 Grad-CAM, demo | `python q1_supervised/gradcam.py`; `python q1_supervised/demo.py` | `gradcam.png`, `demo_run_000.*` |
+| Q1 live demo in MuJoCo | `python q1_supervised/demo.py --live` | `demo_live_r1854.*` |
 | Q3 layouts (~15 s per scene) | `python q3_rl/extract_layouts.py` | `q3_rl/layouts/` |
 | Q3 PPO | `python q3_rl/train_ppo.py` (continue: `--resume`) | `results/q3/ppo/` |
 | Q3 evaluation | `python q3_rl/evaluate.py` | `results/q3/eval_metrics.json`, figures |
@@ -226,7 +234,8 @@ at (6.6, 2.15), just inside the bathroom doorway, so the dog cannot enter and th
 
 ![Gait zoom: the trot pattern in joint angles and foot contacts](results/q2/sensors_run_000_gait_zoom.png)
 
-**In git:** one complete run [`data/sample/run_027`](data/sample/) (5.3 MB), the run list and config.
+**In git:** three complete runs in [`data/sample/`](data/sample/) (24 MB; the data of the Colab quick
+check), the run list and config.
 **Not in git:** the full 342 MB dataset; regenerate it with the command in section 3
 (deterministic: same seeds, same runs).
 
@@ -348,8 +357,10 @@ vote ([`demo_live_r1854.png`](results/q1/demo_live_r1854.png), [`.gif`](results/
   `check_env`, see [`tests/test_q3_env.py`](tests/test_q3_env.py)). It is built from the **real MuJoCo
   scenes**: [`extract_layouts.py`](q3_rl/extract_layouts.py) opens each scenario exactly as Q2 does and
   exports the collision footprint of walls, furniture, mannequins and props (5 cm raster, same rasteriser
-  as the Q2 planner) and the ground-truth stain clusters. 24 house-185 scenes: **16 train, 2 validation
-  (model selection), 6 test** (S2, r1854 = Q1's unseen scene, and 4 new random scenes), never seen in training.
+  as the Q2 planner) and the ground-truth stain clusters. The reported run uses 24 house-185 scenes: **16
+  train, 2 validation (model selection), 6 test** (S2, r1854 = Q1's unseen scene, and 4 new random scenes),
+  never seen in training. `q3_rl/layouts/` holds 28 scenes: the v3 attempt (section 6.6) added 4 more
+  validation scenes.
   The dog is a 0.24 m disc with simple kinematics: body-frame velocity command → first-order lag →
   integration at 20 Hz (4 sub-steps per 0.2 s decision).
 * **Evidence:** stain clusters with at least 5 stains and below 2 m (the head camera cannot see the
@@ -400,8 +411,8 @@ checkpoint and training resumed from it (the remaining 3.8 M steps took 1,853 s 
 ### 6.4 Results
 **Learning curves** ([`learning_curves.png`](results/q3/learning_curves.png), from the Monitor logs and
 `evaluations.npz`): training success rises to about 0.9 and the evidence-found fraction to about 0.95;
-validation success reaches 0.95 at 0.75 M steps and stays at 0.9-1.0 from 1 M steps on. The model kept is the best validation return
-(2.8 M steps).
+validation success reaches 0.95 at 0.75 M steps and stays at 0.9-1.0 from 1 M steps on. The model kept is
+the best validation return (2.8 M steps).
 
 ![PPO learning curves](results/q3/learning_curves.png)
 
@@ -520,6 +531,7 @@ Success per test scene, 2-D → MuJoCo (10 starts each):
   planner (0.52), whose clearance-weighted paths keep it away from furniture where the stains also are.
   Many evidence items sit *inside* a large floor pool (e.g. the victim area of r1854), so seeing them
   without stepping near them is genuinely hard; the entry penalty (3) is small next to the find reward (10).
+  Raising it to 8 was part of the v3 attempt (section 6.6), which did not help overall.
 * **What would come next:** the obvious next step, training on the Go2's real body shape with harder
   validation and a larger stain penalty, was tried and did **not** help (section 6.6). Next would be a
   curriculum on narrow passages (start in open space, then tighter scenes), a recurrent policy or frame
@@ -576,9 +588,10 @@ PPO settings, 4 M steps, same test scenes and seeds):
   a sequence model over several frames, would remove most boundary errors.
 * **One house.** All Q1/Q3 scenes are house 185 (different events, props and lighting). Generalisation
   to another floor plan (house 186) is untested; the scripts accept it but zones would need defining.
-* **Q3 runs in a 2-D twin of the scene:** the dog is a disc, obstacles are the footprints of their MuJoCo box
-  colliders (anything a box collider covers counts as blocked, even if the dog could fit under part of it), evidence positions and the "found" test come from the
-  ground truth rather than a detector, and the lidar is ray-cast on the raster. The MuJoCo deployment
+* **Q3 runs in a 2-D twin of the scene:** in the reported run the dog is a disc (v3 tried the real body
+  rectangle, section 6.6); obstacles are the footprints of their MuJoCo box colliders (anything a box
+  collider covers counts as blocked, even if the dog could fit under part of it); evidence positions and
+  the "found" test come from the ground truth rather than a detector; and the lidar is ray-cast on the raster. The MuJoCo deployment
   shows the commands transfer to the legged robot (60 paired episodes per policy: the same outcome in 80-93%
   of them); the disc model is narrower than the Go2's body, so the real dog touches furniture in gaps the
   2-D twin treats as free.
@@ -611,14 +624,17 @@ PPO settings, 4 M steps, same test scenes and seeds):
 ```
 Test2/
 ├── README.md, PLAN.md, requirements.txt
-├── config/        zones.yaml, collect.yaml (Q2), q1_train.yaml, q3_env.yaml (env + reward weights), q3_ppo.yaml
+├── config/        zones.yaml, collect.yaml (Q2), q1_train.yaml, q1_sample.yaml (Colab quick check),
+│                  q3_env.yaml (env + reward weights), q3_ppo.yaml, q3_env_v3_rect.yaml + q3_ppo_v3_rect.yaml (v3 attempt)
 ├── go2sim/        CrimeSceneGo2 (scene + learned controller + sensors), static map, waypoint follower, randomisation
 ├── q2_data_simulation/  collect_dataset.py, analyze.py, make_gif.py
 ├── q1_supervised/ data.py, models.py, pretrained.py, train.py, baselines.py, evaluate.py, gradcam.py, demo.py, Q1_colab.ipynb
-├── q3_rl/         extract_layouts.py, layouts/, crime_scene_env.py, train_ppo.py, evaluate.py, deploy_mujoco.py, Q3_colab.ipynb
+├── q3_rl/         extract_layouts.py, layouts/, crime_scene_env.py, train_ppo.py, evaluate.py, deploy_mujoco.py,
+│                  deploy_eval.py, Q3_colab.ipynb
 ├── tests/         pytest: zones/planner, Q3 environment
-├── data/          sample/run_027 + README (regeneration, column reference)
-└── results/       q2/, q1/, q3/: figures, GIFs, metrics JSON, small checkpoints
+├── data/          sample/ (3 runs) + README (regeneration, column reference)
+└── results/       q2/, q1/, q3/: figures, GIFs, metrics JSON, small checkpoints;
+                   q3/v1_obs48/ and q3/v3_rect/ hold the first and the v3 PPO attempts
 ```
 Left out of git (`.gitignore`), and how to get them back:
 
@@ -628,6 +644,9 @@ Left out of git (`.gitignore`), and how to get them back:
 | `data/full/_q1_cache/` (decoded frames) | ~1.9 GB | built automatically by Q1 scripts |
 | `results/q1/*/best_fp32.pt` | 45 + 4.7 MB | `python q1_supervised/train.py --model ...`; the committed `best.pt` files are the same weights in fp16 (identical ResNet18 test predictions) |
 | `results/q3/ppo/checkpoints/`, `results/q3/tb/` | 76 MB + 1 MB | `python q3_rl/train_ppo.py`; `best_model.zip` and `final_model.zip` are committed |
+| the same for v3: `results/q3/v3_rect/ppo/checkpoints/`, `results/q3/v3_rect/tb/` | 76 MB + 1 MB | `python q3_rl/train_ppo.py --config config/q3_ppo_v3_rect.yaml` |
+| `results/q3/deploy_eval_parts/` (and v3's) | small | per-episode files of `deploy_eval.py`, merged into `deploy_eval_episodes.csv` |
+| `results/q1_sample/` | small | written by the Colab quick check (`Q1_colab.ipynb` option C) |
 
 ## 10. References
 Professor's links:

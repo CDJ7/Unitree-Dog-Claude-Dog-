@@ -1,6 +1,7 @@
 # Q2 dataset
 
-- `data/sample/` is committed. It holds one complete run in the same format as the full set.
+- `data/sample/` is committed. It holds 3 complete runs (24 MB) in the same format as the full set; they are
+  the data of the Colab quick check (`Q1_colab.ipynb` option C, `config/q1_sample.yaml`).
 - `data/full/` holds the full dataset. It is about 36 runs and too large for GitHub, so it is gitignored. Regenerate it from `Test2/`:
 
 ```bash
@@ -50,4 +51,6 @@ To get the image/label pairs, select the rows with `frame >= 0`. The image is `i
 - 36 runs and 17,123 labelled frames. `results/q2/dataset_stats.json` has every count.
 - The first collection hung in one scene (r1853) because of a bug in the follower: after a replan it could loop without stepping the simulation. The bug was fixed in `go2sim/waypoint_follower.py` (replan at most once per second, always step), and the 6 r1853 runs (run_024 to run_029) were collected again with the fixed code.
 - The other 30 runs were collected before the fix. The fix only changes behaviour in the situation that used to hang, and none of those 30 runs hung.
-- `data/sample/run_027` is a copy of the full-set run_027: scene r1853, `fast_sweep`, all 5 zones, 241 frames.
+- `data/sample/run_024`, `run_025` and `run_027` are copies of those full-set runs, all from scene r1853:
+  `clockwise_tour` (578 frames), `counter_tour` (447) and `fast_sweep` (241), all 5 zones each.
+  `config/q1_sample.yaml` uses them as test, validation and training run respectively.
