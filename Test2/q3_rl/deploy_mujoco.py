@@ -147,7 +147,7 @@ def main():
         df, stats = run_on_dog(dog, env, policy, max_s, on_step=gif_frame)
     finally:
         dog.close()
-    res = {"layout": a.layout, "policy": a.policy, "model": _rel(a.model) if a.policy == "ppo" else None,
+    res = {"layout": a.layout, "policy": a.policy, "model": _rel(policy.path) if a.policy == "ppo" else None,
            "seed": a.seed, "spawn": [round(float(x0), 3), round(float(y0), 3), round(float(yaw0), 3)],
            **stats, "wall_time_s": round(time.time() - wall0, 1)}
     name = f"deploy_{a.layout}" + ("" if a.policy == "ppo" else f"_{a.policy}")
