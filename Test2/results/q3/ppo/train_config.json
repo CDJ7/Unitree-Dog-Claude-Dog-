@@ -4,7 +4,7 @@
   "env_config": "config/q3_env.yaml",
   "n_envs": 8,
   "vec_env": "subproc",
-  "total_timesteps": 3000000,
+  "total_timesteps": 4000000,
   "out_dir": "results/q3/ppo",
   "tensorboard_dir": "results/q3/tb",
   "checkpoint_every": 100000,
@@ -123,7 +123,7 @@
   "log_std_init": -0.5
  },
  "vec_env": "SubprocVecEnv",
- "resumed_from": null,
+ "resumed_from": "/home/user/Unitree-Dog-Claude-Dog-/Test2/results/q3/ppo/checkpoints/ppo_200000_steps.zip",
  "torch": "2.15.0+cu132",
  "sb3": "2.9.2",
  "gymnasium": "1.4.0",

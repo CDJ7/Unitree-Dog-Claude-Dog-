@@ -13,26 +13,49 @@
  "policies": {
   "greedy": {
    "episodes": 60,
-   "success_rate": 0.3667,
-   "found_fraction": 0.5526,
-   "time_s_successful_mean": 20.05,
-   "time_s_all_mean": 121.35,
-   "contamination_entries_mean": 1.25,
-   "contamination_steps_mean": 107.58,
-   "episodes_with_contamination": 0.4667,
-   "collisions_mean": 6.02,
-   "path_m_mean": 4.62,
-   "return_mean": -91.7
+   "success_rate": 0.3333,
+   "found_fraction": 0.529,
+   "time_s_successful_mean": 14.59,
+   "time_s_all_mean": 122.47,
+   "contamination_entries_mean": 1.15,
+   "contamination_steps_mean": 122.97,
+   "episodes_with_contamination": 0.45,
+   "collisions_mean": 14.38,
+   "severe_collision_rate": 0.0333,
+   "path_m_mean": 4.74,
+   "return_mean": -113.21
+  },
+  "planner": {
+   "episodes": 60,
+   "success_rate": 0.85,
+   "found_fraction": 0.876,
+   "time_s_successful_mean": 18.44,
+   "time_s_all_mean": 42.67,
+   "contamination_entries_mean": 0.517,
+   "contamination_steps_mean": 6.43,
+   "episodes_with_contamination": 0.45,
+   "collisions_mean": 4.7,
+   "severe_collision_rate": 0.0,
+   "path_m_mean": 4.05,
+   "return_mean": 37.68
   }
  },
  "per_layout_success": {
   "greedy": {
-   "r1854": 0.3,
+   "r1854": 0.2,
    "r3101": 0.3,
    "r3102": 0.9,
    "r3103": 0.0,
-   "r3104": 0.4,
+   "r3104": 0.3,
    "s2": 0.3
+  },
+  "planner": {
+   "r1854": 1.0,
+   "r3101": 0.3,
+   "r3102": 1.0,
+   "r3103": 1.0,
+   "r3104": 0.9,
+   "s2": 0.9
   }
  }
 }
