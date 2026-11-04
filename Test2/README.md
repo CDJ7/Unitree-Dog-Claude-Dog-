@@ -126,8 +126,9 @@ Colab notebooks (clone `main`, `cd Test2`, install, run):
 Both notebooks were executed cell by cell, outside Colab, by a Jupyter kernel in a fresh `/content` with
 a fresh clone, with only `google.colab.drive` replaced by a local folder. Q1 with option C ran in 139 s
 with no failing cell. Q3 ran in 158 s with no failing cell, with training shortened to 24,576 steps and
-evaluation to 6 episodes for the test; the MuJoCo deployment cell was included. They have not been run
-on Colab itself, so the Drive mount and Colab's own package versions are untested.
+evaluation to 6 episodes for the test; the MuJoCo deployment cell was included. The Q1 notebook was
+then also run on Google Colab itself (opened from GitHub, *Run all*, option C): every cell completed.
+The Q3 notebook has not yet been run on Colab, so its Drive mount and long training run there are untested.
 
 Seeds are fixed in every config ([`config/collect.yaml`](config/collect.yaml) `seed: 2026`,
 [`config/q1_train.yaml`](config/q1_train.yaml) `seed: 6010`, [`config/q3_ppo.yaml`](config/q3_ppo.yaml) `seed: 6010`),
