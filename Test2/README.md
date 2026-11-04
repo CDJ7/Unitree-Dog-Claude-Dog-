@@ -113,6 +113,7 @@ python -m pytest -q tests          # 9 tests: zones, planner, Q3 environment
 | Q3 PPO | `python q3_rl/train_ppo.py` (continue: `--resume`) | `results/q3/ppo/` |
 | Q3 evaluation | `python q3_rl/evaluate.py` | `results/q3/eval_metrics.json`, figures |
 | Q3 MuJoCo deployment | `python q3_rl/deploy_mujoco.py --layout s2` | `results/q3/deploy_s2.gif` |
+| Q3 greedy deployment | `python q3_rl/deploy_mujoco.py --layout s2 --policy greedy --gif-every 6` | `results/q3/deploy_s2_greedy.gif` |
 
 Colab notebooks (clone the repo, `cd Test2`, install, run): [`q1_supervised/Q1_colab.ipynb`](q1_supervised/Q1_colab.ipynb)
 and [`q3_rl/Q3_colab.ipynb`](q3_rl/Q3_colab.ipynb) (saves checkpoints to Google Drive and resumes).
@@ -432,6 +433,27 @@ the dog stayed upright (min upright 0.977 / 0.975).
 |---|---|
 | ![](results/q3/deploy_s2.gif) | ![](results/q3/deploy_r1854.gif) |
 
+**Greedy baseline on the MuJoCo Go2** (`python q3_rl/deploy_mujoco.py --layout s2 --policy greedy --gif-every 6`,
+same scenes and start poses as PPO, [`deploy_s2_greedy.json`](results/q3/deploy_s2_greedy.json),
+[`deploy_r1854_greedy.json`](results/q3/deploy_r1854_greedy.json)):
+
+| Scene | Policy | Found | Time | Steps with a foot in a stain | Stain entries (footprint) | Contact steps |
+|---|---|---|---|---|---|---|
+| S2 | PPO | **3/3** | **14.0 s** | 0 | 0 | 9 |
+| S2 | greedy | 0/3 | 180 s (time limit) | 0 | 0 | 4 |
+| r1854 | PPO | **5/5** | **25.4 s** | 3 | 2 | 5 |
+| r1854 | greedy | 1/5 | 180 s (time limit) | 0 | 1 | 0 |
+
+Greedy does not crash into things; it **deadlocks**. In S2 it stops after about 30 s in the gap between
+the bed and the bin and does not move for the remaining 150 s. In r1854 it stops after one find. Its
+corridor check forbids driving forward, but the open direction it picks is close enough to straight ahead
+that it does not turn either. The 2-D evaluation shows the same weakness (0.367 success). All deployment GIFs
+play at 2x speed; the greedy ones show every 6th control step instead of every 2nd, to keep them small.
+
+| Greedy, S2 | Greedy, r1854 |
+|---|---|
+| ![](results/q3/deploy_s2_greedy.gif) | ![](results/q3/deploy_r1854_greedy.gif) |
+
 ### 6.5 Discussion
 * **All the RL components are in the code and work:** environment, observation, action, six reward
   terms, termination/truncation, domain randomisation, PPO with vectorised envs, TensorBoard,
@@ -466,7 +488,7 @@ the dog stayed upright (min upright 0.977 / 0.975).
 * **Q3 runs in a 2-D twin of the scene:** the dog is a disc, obstacles are the footprints of their MuJoCo box
   colliders (anything a box collider covers counts as blocked, even if the dog could fit under part of it), evidence positions and the "found" test come from the
   ground truth rather than a detector, and the lidar is ray-cast on the raster. The MuJoCo deployment
-  shows the commands transfer to the legged robot, but only 2 deployment episodes were run.
+  shows the commands transfer to the legged robot, but only 2 deployment episodes per policy were run.
 * **Q3 PPO** is below the map-following planner (0.633 vs 0.850 success) and enters about one floor stain per episode.
 * **Compute:** everything ran on a 4-core CPU. The small CNN was stopped at epoch 10/12 by a time limit.
 

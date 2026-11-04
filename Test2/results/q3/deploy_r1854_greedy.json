@@ -1,0 +1,21 @@
+{
+ "layout": "r1854",
+ "policy": "greedy",
+ "model": null,
+ "seed": 1,
+ "spawn": [
+  5.943,
+  1.961,
+  2.819
+ ],
+ "n_items": 5,
+ "n_found": 1,
+ "success": false,
+ "time_s": 180.0,
+ "control_steps": 900,
+ "steps_with_foot_in_stain": 0,
+ "footprint_stain_entries": 1,
+ "steps_with_robot_scene_contact": 0,
+ "min_upright": 0.999,
+ "wall_time_s": 42.4
+}
