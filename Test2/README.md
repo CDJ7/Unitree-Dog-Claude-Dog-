@@ -115,8 +115,18 @@ python -m pytest -q tests          # 9 tests: zones, planner, Q3 environment
 | Q3 MuJoCo deployment | `python q3_rl/deploy_mujoco.py --layout s2` | `results/q3/deploy_s2.gif` |
 | Q3 greedy deployment | `python q3_rl/deploy_mujoco.py --layout s2 --policy greedy --gif-every 6` | `results/q3/deploy_s2_greedy.gif` |
 
-Colab notebooks (clone the repo, `cd Test2`, install, run): [`q1_supervised/Q1_colab.ipynb`](q1_supervised/Q1_colab.ipynb)
-and [`q3_rl/Q3_colab.ipynb`](q3_rl/Q3_colab.ipynb) (saves checkpoints to Google Drive and resumes).
+Colab notebooks (clone `main`, `cd Test2`, install, run):
+* [`q1_supervised/Q1_colab.ipynb`](q1_supervised/Q1_colab.ipynb): data option A (your `data_full.zip` on Drive),
+  B (regenerate with the simulator) or C (default, quick check on the 3 committed sample runs with
+  [`config/q1_sample.yaml`](config/q1_sample.yaml); results go to `results/q1_sample/`, numbers not meaningful).
+* [`q3_rl/Q3_colab.ipynb`](q3_rl/Q3_colab.ipynb): trains PPO with checkpoints on Google Drive and resumes after
+  a disconnect, evaluates against the baselines, and optionally deploys on the MuJoCo Go2.
+
+Both notebooks were executed cell by cell, outside Colab, by a Jupyter kernel in a fresh `/content` with
+a fresh clone, with only `google.colab.drive` replaced by a local folder. Q1 with option C ran in 139 s
+with no failing cell. Q3 ran in 158 s with no failing cell, with training shortened to 24,576 steps and
+evaluation to 6 episodes for the test; the MuJoCo deployment cell was included. They have not been run
+on Colab itself, so the Drive mount and Colab's own package versions are untested.
 
 Seeds are fixed in every config ([`config/collect.yaml`](config/collect.yaml) `seed: 2026`,
 [`config/q1_train.yaml`](config/q1_train.yaml) `seed: 6010`, [`config/q3_ppo.yaml`](config/q3_ppo.yaml) `seed: 6010`),
