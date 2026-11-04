@@ -1,6 +1,6 @@
 # ENG 6010 Test 2 plan: Go2 crime-scene search dog
 
-Status: **decisions recorded 3 Nov 2026 (section 6); waiting for your OK on the zone boundaries before Q2 code starts.**
+Status (4 Nov 2026): **Q2, Q1 and Q3 done; results and the write-up are in [README.md](README.md).** This file is the original plan (Step 0 findings + design) and is kept as written; the simulation package was later named `go2sim/` instead of `sim/` because the simulator already has a top-level `sim` package. Differences from the plan are explained in the README.
 
 ## 1. What already exists (Step 0 findings)
 

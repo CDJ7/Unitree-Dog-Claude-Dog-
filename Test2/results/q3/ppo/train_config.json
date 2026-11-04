@@ -127,5 +127,7 @@
  "torch": "2.15.0+cu132",
  "sb3": "2.9.2",
  "gymnasium": "1.4.0",
- "n_train_layouts": 16
+ "n_train_layouts": 16,
+ "wall_time_s": 1852.7,
+ "final_timesteps": 4001088
 }

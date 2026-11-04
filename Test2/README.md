@@ -318,7 +318,129 @@ mode (`--live`) classifies the camera while the dog walks in MuJoCo.
 
 ## 6. Q3: Reinforcement learning, evidence search
 
-Q3_SECTION
+### 6.1 Design: train in a fast 2-D twin of the scene, deploy on the full MuJoCo Go2
+* **Training environment** [`q3_rl/crime_scene_env.py`](q3_rl/crime_scene_env.py), `CrimeSceneSearchEnv`
+  (Gymnasium API, registered as `CrimeSceneSearch-v0`; passes `gymnasium.utils.env_checker` and SB3's
+  `check_env`, see [`tests/test_q3_env.py`](tests/test_q3_env.py)). It is built from the **real MuJoCo
+  scenes**: [`extract_layouts.py`](q3_rl/extract_layouts.py) opens each scenario exactly as Q2 does and
+  exports the collision footprint of walls, furniture, mannequins and props (5 cm raster, same rasteriser
+  as the Q2 planner) and the ground-truth stain clusters. 24 house-185 scenes: **16 train, 2 validation
+  (model selection), 6 test** (S2, r1854 = Q1's unseen scene, and 4 new random scenes), never seen in training.
+  The dog is a 0.24 m disc with simple kinematics: body-frame velocity command → first-order lag →
+  integration at 20 Hz (4 sub-steps per 0.2 s decision).
+* **Evidence:** stain clusters with at least 5 stains and below 2 m (the head camera cannot see the
+  ceiling): 89 items in the training scenes, 3 in validation, 29 in test. An item is **found** when it is in
+  the head camera's view: within 1.5 m of the camera, inside its ±35 deg horizontal field of view and with
+  a clear line of sight on the raster. **Contamination:** the 0.30 m footprint overlaps a *floor* stain
+  cluster. **Collision:** the next position would overlap an obstacle (the move is cancelled).
+* **Deployment** [`q3_rl/deploy_mujoco.py`](q3_rl/deploy_mujoco.py): the policy runs unchanged on the
+  MuJoCo Go2; every 0.2 s the dog's true pose and measured body velocity are written into the env (its
+  sensor model), the observation is built and the action goes to Q2's `set_velocity_command`.
+
+### 6.2 RL formulation
+* **Observation** (54 values in [-1, 1]): position (x, y) and heading (sin, cos); body velocity (vx, vy,
+  yaw rate); **24 lidar rays** over 360 deg (3 m); the nearest unfound evidence: body-frame direction,
+  straight-line distance, path length on the map, height, floor flag; the nearest floor stain: direction
+  and clearance; **found/unfound flags** for 8 evidence slots; a **route hint** (unit vector along the
+  shortest path on the known floor plan to that item, from a clearance-weighted cost map, as a real Go2's
+  map and planner would give; it knows nothing about stains); the previous action; a "bumped last step" flag.
+* **Action:** continuous (vx, vy, yaw rate) in [-1, 1]³, scaled to the Go2 limits 0.4 m/s, 0.15 m/s,
+  0.5 rad/s (the same limits `set_velocity_command` clips to).
+* **Reward**, one function per term, weights in [`config/q3_env.yaml`](config/q3_env.yaml):
+
+  r_t = 10·n_found(t) + 2·clip(d_{t-1} − d_t, ±0.5) − 1·1[on stain] − 3·n_new_stains(t)
+        − 0.5·1[collision] − 20·1[severe collision] − 0.01 + 20·1[all found]
+
+  with d_t the path length (m) on the map from the dog to the nearest place the nearest unfound item can
+  be seen from (`reward_find`, `reward_progress`, `reward_contamination`, `reward_collision`,
+  `reward_time`, `reward_all_found`).
+* **Termination:** all evidence found (success) or a **severe collision**: 25 consecutive colliding steps
+  (5 s pushing into an obstacle, failure). **Truncation:** 900 steps (180 s).
+* **Domain randomisation** on every reset: scene (16), start pose (free space, not on a stain, not already
+  seeing an item), a random subset of the scene's evidence (at least 2) with ±5 cm jitter, velocity lag
+  0.15-0.35 s, speed gain 0.85-1.10, action noise 3%, lidar noise 2 cm and 2% dropout.
+
+### 6.3 Algorithm and hyper-parameters
+PPO from Stable-Baselines3 2.9.2 ([`train_ppo.py`](q3_rl/train_ppo.py), [`config/q3_ppo.yaml`](config/q3_ppo.yaml)):
+8 environments in `SubprocVecEnv`, MLP 256-256 (policy and value), lr 3e-4, 512 steps per env per
+update (4,096), batch 1,024, 10 epochs, γ 0.995, GAE λ 0.95, clip 0.2, entropy 0.005, initial log-std
+−0.5, seed 6010, **4.0 M environment steps**. TensorBoard logs (`results/q3/tb`, plus custom
+`search/*` success, contamination and collision curves), a checkpoint every 100k steps, an
+`EvalCallback` every 50k steps on the validation scenes (20 deterministic episodes) that keeps
+`best_model.zip`. `--resume` continues from the newest checkpoint with the step counter, Monitor logs
+and evaluation history intact; it was used for real here: the container restarted after the 200k-step
+checkpoint and training resumed from it (the remaining 3.8 M steps took 1,853 s on 4 CPU cores,
+[`results/q3/ppo/train_config.json`](results/q3/ppo/train_config.json)). The Colab notebook
+[`Q3_colab.ipynb`](q3_rl/Q3_colab.ipynb) does the same with checkpoints on Google Drive.
+
+### 6.4 Results
+**Learning curves** ([`learning_curves.png`](results/q3/learning_curves.png), from the Monitor logs and
+`evaluations.npz`): training success rises to about 0.9 and the evidence-found fraction to about 0.95;
+validation success reaches 0.95 at 0.75 M steps and stays at 0.9-1.0 from 1 M steps on. The model kept is the best validation return
+(2.8 M steps).
+
+![PPO learning curves](results/q3/learning_curves.png)
+
+**Evaluation on the 6 test scenes** ([`results/q3/eval_metrics.json`](results/q3/eval_metrics.json),
+[`comparison.md`](results/q3/comparison.md), `python q3_rl/evaluate.py`): 60 episodes per policy, the
+**same** 60 episodes (scene, start, evidence subset, randomisation) for every policy:
+
+| Policy | Success | Evidence found | Time to find all (s, successful eps) | Stain entries / ep | Steps on a stain / ep | Collision steps / ep | Severe-collision ends |
+|---|---|---|---|---|---|---|---|
+| random | 0.017 | 0.136 | 90.0 | 1.30 | 41.8 | 31.2 | 0.00 |
+| greedy (straight at the nearest item, lidar avoidance) | 0.367 | 0.553 | 20.1 | 1.25 | 107.6 | 2.9 | 0.03 |
+| planner (follows the route hint) | **0.850** | **0.876** | 18.4 | **0.52** | **6.4** | 4.7 | 0.00 |
+| **PPO** | 0.633 | 0.737 | 21.0 | 1.32 | 20.1 | 8.2 | 0.10 |
+
+Success per test scene (10 episodes each):
+
+| | s2 | r1854 | r3101 | r3102 | r3103 | r3104 |
+|---|---|---|---|---|---|---|
+| greedy | 0.3 | 0.3 | 0.3 | 0.9 | 0.0 | 0.4 |
+| planner | 0.9 | 1.0 | 0.3 | 1.0 | 1.0 | 0.9 |
+| PPO | 0.6 | 1.0 | 0.1 | 1.0 | 0.2 | 0.9 |
+
+![Test trajectories](results/q3/trajectories.png)
+
+*Same three test episodes for each policy (start dot; stars = evidence, green when found; red discs = floor stains).*
+
+**First attempt (kept for transparency,** [`results/q3/v1_obs48/`](results/q3/v1_obs48/)**):** with a 48-value
+observation (no route hint, no previous action / bump flag), 3 M steps, PPO reached only 0.117 success
+on the same test episodes, and 45% of its episodes ended in a severe collision: with only the
+straight-line direction to the evidence it drove into furniture between it and the target and could not
+tell it was stuck. Adding the route hint and the bump/previous-action inputs gave the result above.
+
+**Deployment in full MuJoCo** (`python q3_rl/deploy_mujoco.py --layout s2` / `--layout r1854`): the
+PPO policy drives the MuJoCo Go2 (learned locomotion controller, real contacts) through its velocity
+commands. On test scene **S2** it found **3/3** items in **14.0 s** with **0** steps with a foot in a
+stain and 9 control steps with a robot-scene contact
+([`deploy_s2.json`](results/q3/deploy_s2.json)); on **r1854** it found **5/5** in **25.4 s**, with 3 steps
+with a foot inside the victim's large blood pool and 5 contact steps ([`deploy_r1854.json`](results/q3/deploy_r1854.json));
+the dog stayed upright (min upright 0.977 / 0.975).
+
+| S2 | r1854 |
+|---|---|
+| ![](results/q3/deploy_s2.gif) | ![](results/q3/deploy_r1854.gif) |
+
+### 6.5 Discussion
+* **All the RL components are in the code and work:** environment, observation, action, six reward
+  terms, termination/truncation, domain randomisation, PPO with vectorised envs, TensorBoard,
+  checkpoints, evaluation callback, resume, baselines, deployment on the physical simulation.
+* **PPO beats the random and greedy baselines** (0.633 vs 0.017 / 0.367 success), and when it succeeds it
+  is about as fast as the planner (21.0 vs 18.4 s). Its main remaining failures are two scenes (r3101,
+  r3103) with narrow passages between furniture where it gets stuck (10% of episodes end in a severe
+  collision); r3101 is hard for every policy.
+* **PPO does not beat the map-following planner.** The planner uses the same route hint perfectly; PPO
+  has to learn to use it, and its validation set (2 small scenes, 3 items) saturated at 100% success
+  early, so model selection could not tell good from better policies.
+* **Contamination:** the reward made PPO spend far fewer steps on stains than greedy (20.1 vs 107.6 per
+  episode) but it still enters about as many stains as greedy (1.32 vs 1.25 per episode), and more than the
+  planner (0.52), whose clearance-weighted paths keep it away from furniture where the stains also are.
+  Many evidence items sit *inside* a large floor pool (e.g. the victim area of r1854), so seeing them
+  without stepping near them is genuinely hard; the entry penalty (3) is small next to the find reward (10).
+* **What would come next:** more and harder validation scenes; a larger contamination-entry weight or
+  stain cells added to the route hint's cost; curriculum on narrow passages; recurrent policy or frame
+  stacking against getting stuck; training directly with MuJoCo in the loop for the last stage.
 
 ---
 
@@ -331,7 +453,11 @@ Q3_SECTION
   a sequence model over several frames, would remove most boundary errors.
 * **One house.** All Q1/Q3 scenes are house 185 (different events, props and lighting). Generalisation
   to another floor plan (house 186) is untested; the scripts accept it but zones would need defining.
-* Q3_LIMITS
+* **Q3 runs in a 2-D twin of the scene:** the dog is a disc, obstacles are the footprints of their MuJoCo box
+  colliders (anything a box collider covers counts as blocked, even if the dog could fit under part of it), evidence positions and the "found" test come from the
+  ground truth rather than a detector, and the lidar is ray-cast on the raster. The MuJoCo deployment
+  shows the commands transfer to the legged robot, but only 2 deployment episodes were run.
+* **Q3 PPO** is below the map-following planner (0.633 vs 0.850 success) and enters about one floor stain per episode.
 * **Compute:** everything ran on a 4-core CPU. The small CNN was stopped at epoch 10/12 by a time limit.
 
 ## 8. How Test 2 builds on Test 1
@@ -374,7 +500,7 @@ Left out of git (`.gitignore`), and how to get them back:
 | `data/full/` (36 runs, 17,123 frames) | 342 MB | `python q2_data_simulation/collect_dataset.py --workers 4` |
 | `data/full/_q1_cache/` (decoded frames) | ~1.9 GB | built automatically by Q1 scripts |
 | `results/q1/*/best_fp32.pt` | 45 + 4.7 MB | `python q1_supervised/train.py --model ...`; the committed `best.pt` files are the same weights in fp16 (identical ResNet18 test predictions) |
-| `results/q3/ppo/checkpoints/`, `results/q3/tb/` | Q3_CKPT_SIZE | `python q3_rl/train_ppo.py`; `best_model.zip` and `final_model.zip` are committed |
+| `results/q3/ppo/checkpoints/`, `results/q3/tb/` | 76 MB + 1 MB | `python q3_rl/train_ppo.py`; `best_model.zip` and `final_model.zip` are committed |
 
 ## 10. References
 Professor's links:

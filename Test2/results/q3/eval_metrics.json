@@ -9,21 +9,35 @@
  ],
  "episodes_per_policy": 60,
  "base_seed": 900000,
- "model": null,
+ "model": "results/q3/ppo/best_model.zip",
  "policies": {
+  "random": {
+   "episodes": 60,
+   "success_rate": 0.0167,
+   "found_fraction": 0.1361,
+   "time_s_successful_mean": 90.0,
+   "time_s_all_mean": 178.5,
+   "contamination_entries_mean": 1.3,
+   "contamination_steps_mean": 41.75,
+   "episodes_with_contamination": 0.2167,
+   "collisions_mean": 31.22,
+   "severe_collision_rate": 0.0,
+   "path_m_mean": 21.03,
+   "return_mean": -65.53
+  },
   "greedy": {
    "episodes": 60,
-   "success_rate": 0.3333,
-   "found_fraction": 0.529,
-   "time_s_successful_mean": 14.59,
-   "time_s_all_mean": 122.47,
-   "contamination_entries_mean": 1.15,
-   "contamination_steps_mean": 122.97,
-   "episodes_with_contamination": 0.45,
-   "collisions_mean": 14.38,
+   "success_rate": 0.3667,
+   "found_fraction": 0.5526,
+   "time_s_successful_mean": 20.05,
+   "time_s_all_mean": 120.13,
+   "contamination_entries_mean": 1.25,
+   "contamination_steps_mean": 107.58,
+   "episodes_with_contamination": 0.4667,
+   "collisions_mean": 2.93,
    "severe_collision_rate": 0.0333,
-   "path_m_mean": 4.74,
-   "return_mean": -113.21
+   "path_m_mean": 4.61,
+   "return_mean": -90.77
   },
   "planner": {
    "episodes": 60,
@@ -38,15 +52,37 @@
    "severe_collision_rate": 0.0,
    "path_m_mean": 4.05,
    "return_mean": 37.68
+  },
+  "ppo": {
+   "episodes": 60,
+   "success_rate": 0.6333,
+   "found_fraction": 0.7365,
+   "time_s_successful_mean": 20.97,
+   "time_s_all_mean": 64.28,
+   "contamination_entries_mean": 1.317,
+   "contamination_steps_mean": 20.1,
+   "episodes_with_contamination": 0.4,
+   "collisions_mean": 8.25,
+   "severe_collision_rate": 0.1,
+   "path_m_mean": 10.91,
+   "return_mean": 6.82
   }
  },
  "per_layout_success": {
+  "random": {
+   "r1854": 0.0,
+   "r3101": 0.0,
+   "r3102": 0.0,
+   "r3103": 0.0,
+   "r3104": 0.1,
+   "s2": 0.0
+  },
   "greedy": {
-   "r1854": 0.2,
+   "r1854": 0.3,
    "r3101": 0.3,
    "r3102": 0.9,
    "r3103": 0.0,
-   "r3104": 0.3,
+   "r3104": 0.4,
    "s2": 0.3
   },
   "planner": {
@@ -56,6 +92,14 @@
    "r3103": 1.0,
    "r3104": 0.9,
    "s2": 0.9
+  },
+  "ppo": {
+   "r1854": 1.0,
+   "r3101": 0.1,
+   "r3102": 1.0,
+   "r3103": 0.2,
+   "r3104": 0.9,
+   "s2": 0.6
   }
  }
 }
