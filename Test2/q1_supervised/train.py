@@ -78,7 +78,7 @@ def predict(model, loader):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="resnet18", choices=["resnet18", "smallcnn", "resnet18_scratch"])
-    ap.add_argument("--config", default=str(TEST2 / "config/q1_train.yaml"))
+    ap.add_argument("--config", help="default: $Q1_CONFIG or config/q1_train.yaml")
     ap.add_argument("--data")
     ap.add_argument("--epochs", type=int)
     ap.add_argument("--limit", type=int, help="use at most N training frames (smoke tests)")

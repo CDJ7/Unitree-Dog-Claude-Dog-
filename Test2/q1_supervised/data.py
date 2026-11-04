@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -31,8 +32,11 @@ MEAN = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
 STD = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
 
 
-def load_cfg(path=TEST2 / "config/q1_train.yaml"):
-    return yaml.safe_load(Path(path).read_text())
+def load_cfg(path=None):
+    """The Q1 config: `path`, else $Q1_CONFIG (e.g. config/q1_sample.yaml in the Colab quick check), else
+    config/q1_train.yaml. Relative paths are resolved against Test2/."""
+    path = Path(path or os.environ.get("Q1_CONFIG") or "config/q1_train.yaml")
+    return yaml.safe_load((path if path.is_absolute() else TEST2 / path).read_text())
 
 
 def index_frames(data_dir):

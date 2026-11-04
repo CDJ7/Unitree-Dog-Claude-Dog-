@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Q1 demo: the zone classifier running while the Go2 walks through the crime scene.
 
-    python q1_supervised/demo.py                       # recorded held-out test run (default run_000)
+    python q1_supervised/demo.py                       # recorded held-out test run (first test run: run_000)
     python q1_supervised/demo.py --run run_031
     python q1_supervised/demo.py --live                # live in MuJoCo on r1854 (Q1's unseen test scene)
     python q1_supervised/demo.py --live --scenario 1   # live on scenario S1 (a training scene)
@@ -114,8 +114,9 @@ def make_gif(images, df, zones, path, every=2, scale=0.8):
 
 
 def recorded(a, cfg, zones, clf):
-    run_dir = TEST2 / cfg["data_dir"] / a.run
     split = json.loads((TEST2 / cfg["results_dir"] / "metrics.json").read_text())["split"]
+    a.run = a.run or split["test"][0]
+    run_dir = TEST2 / cfg["data_dir"] / a.run
     assert a.run in split["test"], f"{a.run} is not a test run (choose one of {split['test']})"
     st = pd.read_csv(run_dir / "states.csv", usecols=["t", "frame", "zone_id", "base_x", "base_y"])
     st = st[(st.frame >= 0) & (st.zone_id >= 0)].reset_index(drop=True)
@@ -174,7 +175,7 @@ def live(a, cfg, zones, clf):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="resnet18")
-    ap.add_argument("--run", default="run_000")
+    ap.add_argument("--run", help="a test run (default: the first test run of the split)")
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--scenario", default="r1854", help="r1854 (unseen by Q1, default), s1/s2 or 1/2 (training scenes)")
     ap.add_argument("--seed", type=int, default=7)
