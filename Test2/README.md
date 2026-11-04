@@ -288,10 +288,20 @@ correct test frames and the most confident mistake.
 
 **Demo, predicted vs true zone over time** on held-out test run `run_000`
 ([`demo_run_000.png`](results/q1/demo_run_000.png), [`.gif`](results/q1/demo_run_000.gif),
-`python q1_supervised/demo.py`): frame accuracy 0.816, 0.801 with a causal 1 s majority vote. A live
-mode (`--live`) classifies the camera while the dog walks in MuJoCo.
+`python q1_supervised/demo.py`): frame accuracy 0.816, 0.801 with a causal 1 s majority vote.
 
-![Predicted vs true zone over a test run](results/q1/demo_run_000.png)
+**Live demo** (`python q1_supervised/demo.py --live`): the classifier runs inside the MuJoCo simulation
+while the Go2 walks a tour of the zones in scene **r1854**, which Q1 never trained on. Each head-camera
+frame is classified as it is rendered, every 0.2 s. The bathroom is skipped because r1854's storage box
+blocks its door. Over 347 frames in 69.4 s, frame accuracy is **0.911**, and 0.919 with the 1 s majority
+vote ([`demo_live_r1854.png`](results/q1/demo_live_r1854.png), [`.gif`](results/q1/demo_live_r1854.gif),
+[`.csv`](results/q1/demo_live_r1854.csv)).
+
+| Recorded test run `run_000` | Live in MuJoCo, scene r1854 |
+|---|---|
+| ![Predicted vs true zone over a test run](results/q1/demo_run_000.png) | ![Live demo](results/q1/demo_live_r1854.png) |
+
+![Live demo GIF: head camera, prediction, map](results/q1/demo_live_r1854.gif)
 
 ### 5.4 Discussion
 * **Transfer learning is worth it:** ImageNet features beat the same-data small CNN by 9.4 points

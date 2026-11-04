@@ -3,7 +3,8 @@
 
     python q1_supervised/demo.py                       # recorded held-out test run (default run_000)
     python q1_supervised/demo.py --run run_031
-    python q1_supervised/demo.py --live --scenario 1   # live: walk the dog in MuJoCo, classify each frame
+    python q1_supervised/demo.py --live                # live in MuJoCo on r1854 (Q1's unseen test scene)
+    python q1_supervised/demo.py --live --scenario 1   # live on scenario S1 (a training scene)
 
 Recorded mode replays the test run's frames through the classifier (the run was never used in
 training). Live mode opens the MuJoCo scene, walks a tour of all zones with the waypoint follower
@@ -132,7 +133,9 @@ def live(a, cfg, zones, clf):
     from go2sim.go2_env import CrimeSceneGo2
     from go2sim.static_map import StaticMap
     from go2sim.waypoint_follower import WaypointFollower
-    dog = CrimeSceneGo2(a.scenario)
+    from q3_rl.extract_layouts import scenario_spec
+    spec = scenario_spec(a.scenario) if a.scenario[0] in "rs" else a.scenario
+    dog = CrimeSceneGo2(spec)
     smap = StaticMap(dog.model, dog.data, dog.sim.robot_geoms)
     rng = np.random.default_rng(a.seed)
     dog.set_lighting(headlight_ambient=0.8, headlight_diffuse=0.9, lamps=(0.3, 0.2, 0.3))
@@ -158,11 +161,14 @@ def live(a, cfg, zones, clf):
         fol = WaypointFollower(dog, smap, on_tick=on_tick)
         for zname in ["desk_entry_area", "lounge_area", "victim_area", "bed_area", "desk_entry_area", "bathroom"]:
             g = smap.sample_free(rng, zones.polygons[zones.names.index(zname)], 0.45, reach)
+            if g is None:                      # e.g. r1854: a storage box blocks the bathroom door
+                print(f"  {zname}: no reachable free spot in this scene, skipped", flush=True)
+                continue
             fol.go_to(g, speed=0.35)
             fol.spin(np.pi)
     finally:
         dog.close()
-    return pd.DataFrame(rows), images, f"LIVE in MuJoCo, scenario {a.scenario}"
+    return pd.DataFrame(rows), images, f"LIVE in MuJoCo, scene {a.scenario}"
 
 
 def main():
@@ -170,7 +176,7 @@ def main():
     ap.add_argument("--model", default="resnet18")
     ap.add_argument("--run", default="run_000")
     ap.add_argument("--live", action="store_true")
-    ap.add_argument("--scenario", default="1")
+    ap.add_argument("--scenario", default="r1854", help="r1854 (unseen by Q1, default), s1/s2 or 1/2 (training scenes)")
     ap.add_argument("--seed", type=int, default=7)
     a = ap.parse_args()
     cfg = load_cfg()
@@ -178,7 +184,7 @@ def main():
     clf = Classifier(TEST2 / cfg["results_dir"] / a.model / "best.pt", zones)
     df, images, title = live(a, cfg, zones, clf) if a.live else recorded(a, cfg, zones, clf)
     df["pred_smooth"] = majority(df.pred.to_numpy())
-    name = f"live_s{a.scenario}" if a.live else a.run
+    name = f"live_{a.scenario}" if a.live else a.run
     out = TEST2 / cfg["results_dir"]
     acc, accs = timeline_plot(df, zones, title, out / f"demo_{name}.png")
     df.to_csv(out / f"demo_{name}.csv", index=False)
