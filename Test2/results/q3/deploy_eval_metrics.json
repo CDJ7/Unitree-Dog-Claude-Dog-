@@ -1,0 +1,137 @@
+{
+ "layouts": [
+  "s2",
+  "r1854",
+  "r3101",
+  "r3102",
+  "r3103",
+  "r3104"
+ ],
+ "episodes_per_layout": 10,
+ "base_seed": 700000,
+ "randomize": false,
+ "policies": {
+  "greedy": {
+   "2d": {
+    "episodes": 60,
+    "success_rate": 0.25,
+    "found_fraction": 0.4951,
+    "time_s_successful_mean": 9.67,
+    "stain_entries_mean": 0.7,
+    "collision_steps_mean": 0.0
+   },
+   "mujoco": {
+    "episodes": 60,
+    "success_rate": 0.1833,
+    "found_fraction": 0.414,
+    "time_s_successful_mean": 8.71,
+    "stain_entries_mean": 0.85,
+    "collision_steps_mean": 53.08,
+    "foot_in_stain_steps_mean": 148.13,
+    "min_upright": 0.765
+   }
+  },
+  "planner": {
+   "2d": {
+    "episodes": 60,
+    "success_rate": 0.7333,
+    "found_fraction": 0.77,
+    "time_s_successful_mean": 20.48,
+    "stain_entries_mean": 0.6,
+    "collision_steps_mean": 0.83
+   },
+   "mujoco": {
+    "episodes": 60,
+    "success_rate": 0.7,
+    "found_fraction": 0.7443,
+    "time_s_successful_mean": 18.89,
+    "stain_entries_mean": 0.783,
+    "collision_steps_mean": 95.73,
+    "foot_in_stain_steps_mean": 3.95,
+    "min_upright": 0.955
+   }
+  },
+  "ppo": {
+   "2d": {
+    "episodes": 60,
+    "success_rate": 0.5333,
+    "found_fraction": 0.624,
+    "time_s_successful_mean": 36.89,
+    "stain_entries_mean": 2.0,
+    "collision_steps_mean": 22.43
+   },
+   "mujoco": {
+    "episodes": 60,
+    "success_rate": 0.6333,
+    "found_fraction": 0.7345,
+    "time_s_successful_mean": 24.04,
+    "stain_entries_mean": 1.683,
+    "collision_steps_mean": 65.45,
+    "foot_in_stain_steps_mean": 2.98,
+    "min_upright": 0.619
+   }
+  }
+ },
+ "agreement_2d_vs_mujoco": {
+  "greedy": 0.9333,
+  "planner": 0.9333,
+  "ppo": 0.8
+ },
+ "per_layout_success": {
+  "greedy": {
+   "2d": {
+    "r1854": 0.0,
+    "r3101": 0.2,
+    "r3102": 1.0,
+    "r3103": 0.0,
+    "r3104": 0.0,
+    "s2": 0.3
+   },
+   "mujoco": {
+    "r1854": 0.0,
+    "r3101": 0.1,
+    "r3102": 0.7,
+    "r3103": 0.0,
+    "r3104": 0.0,
+    "s2": 0.3
+   }
+  },
+  "planner": {
+   "2d": {
+    "r1854": 0.8,
+    "r3101": 0.3,
+    "r3102": 1.0,
+    "r3103": 1.0,
+    "r3104": 1.0,
+    "s2": 0.3
+   },
+   "mujoco": {
+    "r1854": 0.7,
+    "r3101": 0.3,
+    "r3102": 1.0,
+    "r3103": 0.9,
+    "r3104": 0.9,
+    "s2": 0.4
+   }
+  },
+  "ppo": {
+   "2d": {
+    "r1854": 0.9,
+    "r3101": 0.1,
+    "r3102": 0.9,
+    "r3103": 0.0,
+    "r3104": 1.0,
+    "s2": 0.3
+   },
+   "mujoco": {
+    "r1854": 1.0,
+    "r3101": 0.0,
+    "r3102": 1.0,
+    "r3103": 0.0,
+    "r3104": 0.8,
+    "s2": 1.0
+   }
+  }
+ },
+ "wall_time_s": 1148.8
+}

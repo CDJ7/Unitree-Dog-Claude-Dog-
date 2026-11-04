@@ -1,0 +1,187 @@
+{
+ "run": "run_024",
+ "scene": "r1853",
+ "scenario_id": "r1853",
+ "scenario_title": "Random scenario 1853: projected (edged)",
+ "environment": "scenesmith_house_185",
+ "route": {
+  "name": "clockwise_tour",
+  "start": "desk_entry_area",
+  "order": [
+   "lounge_area",
+   "victim_area",
+   "bed_area",
+   "desk_entry_area",
+   "bathroom"
+  ],
+  "speed": 0.3,
+  "spins": "all",
+  "kind": "hand"
+ },
+ "seed": 2026024,
+ "start_pose": [
+  5.3934022986672785,
+  1.4256772950482568,
+  -0.7124756203358662
+ ],
+ "goals": [
+  {
+   "zone": "lounge_area",
+   "xy": [
+    1.929,
+    2.376
+   ]
+  },
+  {
+   "zone": "victim_area",
+   "xy": [
+    0.745,
+    3.93
+   ]
+  },
+  {
+   "zone": "bed_area",
+   "xy": [
+    2.033,
+    2.508
+   ]
+  },
+  {
+   "zone": "desk_entry_area",
+   "xy": [
+    4.662,
+    1.032
+   ]
+  },
+  {
+   "zone": "bathroom",
+   "xy": [
+    7.655,
+    2.309
+   ]
+  }
+ ],
+ "goals_reached": 5,
+ "lighting": {
+  "headlight_ambient": 0.9129542949598514,
+  "headlight_diffuse": 0.8185715345287146,
+  "tint": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "lamps": [
+   0.20612595104127798,
+   0.4594744710740713,
+   0.47957032615806067
+  ],
+  "lamp_shift": [
+   -0.33150179574540767,
+   -0.4073440812243597
+  ]
+ },
+ "camera_noise": {
+  "brightness": 1.1151280328326256,
+  "contrast": 0.8945579615110579,
+  "gamma": 0.9531106688527412,
+  "gauss_sigma": 5.828265374842174,
+  "blur_radius": 0.0,
+  "jpeg_quality": 73
+ },
+ "camera": {
+  "body": "base_link",
+  "pos_in_base_m": [
+   0.32,
+   0.0,
+   0.12
+  ],
+  "fovy_deg": 60.0,
+  "image_size": [
+   320,
+   240
+  ],
+  "image_hz": 5,
+  "model": "pinhole, fx = fy = (H/2)/tan(fovy/2), cx = W/2, cy = H/2"
+ },
+ "controller": "learned",
+ "state_hz": 50,
+ "duration_s": 115.58,
+ "n_frames": 578,
+ "n_states": 5779,
+ "frames_per_zone": {
+  "victim_area": 81,
+  "bed_area": 120,
+  "lounge_area": 138,
+  "desk_entry_area": 143,
+  "bathroom": 96
+ },
+ "distance_m": 16.8,
+ "collision_state_rows": 0,
+ "events": [
+  [
+   19.74,
+   "reached",
+   [
+    1.9250000000000003,
+    2.375
+   ]
+  ],
+  [
+   30.18,
+   "spin",
+   -4.7442844465648095
+  ],
+  [
+   43.08,
+   "reached",
+   [
+    0.7250000000000001,
+    3.925
+   ]
+  ],
+  [
+   52.04,
+   "spin",
+   4.0099834760297135
+  ],
+  [
+   59.68,
+   "reached",
+   [
+    2.0250000000000004,
+    2.5250000000000004
+   ]
+  ],
+  [
+   66.76,
+   "spin",
+   -3.2035235643936515
+  ],
+  [
+   79.94,
+   "reached",
+   [
+    4.675000000000001,
+    1.0250000000000001
+   ]
+  ],
+  [
+   89.8,
+   "spin",
+   4.477387626982749
+  ],
+  [
+   105.34,
+   "reached",
+   [
+    7.675000000000001,
+    2.325
+   ]
+  ],
+  [
+   118.58,
+   "spin",
+   -6.037062010212482
+  ]
+ ]
+}

@@ -1,0 +1,177 @@
+{
+ "run": "run_025",
+ "scene": "r1853",
+ "scenario_id": "r1853",
+ "scenario_title": "Random scenario 1853: projected (edged)",
+ "environment": "scenesmith_house_185",
+ "route": {
+  "name": "counter_tour",
+  "start": "bathroom",
+  "order": [
+   "desk_entry_area",
+   "bed_area",
+   "victim_area",
+   "lounge_area",
+   "desk_entry_area"
+  ],
+  "speed": 0.35,
+  "spins": "random",
+  "kind": "hand"
+ },
+ "seed": 2026025,
+ "start_pose": [
+  6.364817878561283,
+  1.9768589253193154,
+  -1.9947791219577453
+ ],
+ "goals": [
+  {
+   "zone": "desk_entry_area",
+   "xy": [
+    4.871,
+    0.511
+   ]
+  },
+  {
+   "zone": "bed_area",
+   "xy": [
+    2.037,
+    3.689
+   ]
+  },
+  {
+   "zone": "victim_area",
+   "xy": [
+    0.834,
+    1.133
+   ]
+  },
+  {
+   "zone": "lounge_area",
+   "xy": [
+    3.883,
+    1.474
+   ]
+  },
+  {
+   "zone": "desk_entry_area",
+   "xy": [
+    5.276,
+    2.124
+   ]
+  }
+ ],
+ "goals_reached": 4,
+ "lighting": {
+  "headlight_ambient": 0.8198169300338152,
+  "headlight_diffuse": 1.1384840124974653,
+  "tint": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "lamps": [
+   0.5278385979712834,
+   0.01612007932160171,
+   0.07802765969174467
+  ],
+  "lamp_shift": [
+   -0.08300045539564127,
+   0.24207312947355586
+  ]
+ },
+ "camera_noise": {
+  "brightness": 0.9035064216906562,
+  "contrast": 0.8653380078061486,
+  "gamma": 0.8554727932085913,
+  "gauss_sigma": 4.7954009880629735,
+  "blur_radius": 0.8079128927121177,
+  "jpeg_quality": 89
+ },
+ "camera": {
+  "body": "base_link",
+  "pos_in_base_m": [
+   0.32,
+   0.0,
+   0.12
+  ],
+  "fovy_deg": 60.0,
+  "image_size": [
+   320,
+   240
+  ],
+  "image_hz": 5,
+  "model": "pinhole, fx = fy = (H/2)/tan(fovy/2), cx = W/2, cy = H/2"
+ },
+ "controller": "learned",
+ "state_hz": 50,
+ "duration_s": 89.3,
+ "n_frames": 447,
+ "n_states": 4465,
+ "frames_per_zone": {
+  "victim_area": 139,
+  "bed_area": 69,
+  "lounge_area": 63,
+  "desk_entry_area": 163,
+  "bathroom": 13
+ },
+ "distance_m": 16.65,
+ "collision_state_rows": 0,
+ "events": [
+  [
+   128.34,
+   "reached",
+   [
+    4.875,
+    0.5250000000000001
+   ]
+  ],
+  [
+   139.66,
+   "spin",
+   5.076004248819037
+  ],
+  [
+   153.38,
+   "reached",
+   [
+    2.0250000000000004,
+    3.675
+   ]
+  ],
+  [
+   166.46,
+   "reached",
+   [
+    0.8250000000000002,
+    1.125
+   ]
+  ],
+  [
+   179.76,
+   "spin",
+   5.944156985679482
+  ],
+  [
+   185.76,
+   "stuck",
+   [
+    3.875,
+    1.475
+   ]
+  ],
+  [
+   199.32,
+   "reached",
+   [
+    5.275,
+    2.125
+   ]
+  ],
+  [
+   208.88,
+   "spin",
+   4.290705511841523
+  ]
+ ]
+}

@@ -91,6 +91,12 @@ def planner(obs, front_m=0.10, half_width=0.26):
 class PPOPolicy:
     def __init__(self, path):
         from stable_baselines3 import PPO
+        path = Path(path)
+        if not path.exists() and path.name == "best_model.zip" and (path.parent / "final_model.zip").exists():
+            # the EvalCallback writes best_model.zip only after its first evaluation (eval_every steps)
+            print(f"[ppo] {path} not written yet (training shorter than eval_every); using final_model.zip", flush=True)
+            path = path.parent / "final_model.zip"
+        self.path = path
         self.model = PPO.load(path, device="cpu")
 
     def __call__(self, obs):
@@ -224,8 +230,9 @@ def main():
             "ppo": lambda: PPOPolicy(a.model)}
     names = [p for p in a.policies.split(",")]
     rows, eps = [], {}
+    pol_used = {}
     for p in names:
-        pol = pols[p]()
+        pol = pol_used[p] = pols[p]()
         eps[p] = []
         for k in range(a.episodes):
             li = k % len(env.layouts)
@@ -241,7 +248,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUT / "eval_episodes.csv", index=False)
     met = {"test_layouts": [L.name for L in env.layouts], "episodes_per_policy": a.episodes, "base_seed": BASE_SEED,
-           "model": _rel(a.model) if "ppo" in names else None,
+           "model": _rel(pol_used["ppo"].path) if "ppo" in names else None,
            "policies": {p: summary(df[df.policy == p]) for p in names},
            "per_layout_success": {p: df[df.policy == p].groupby("layout").success.mean().round(3).to_dict() for p in names}}
     (OUT / "eval_metrics.json").write_text(json.dumps(met, indent=1))

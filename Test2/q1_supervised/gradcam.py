@@ -55,9 +55,10 @@ class GradCAM:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="resnet18")
-    ap.add_argument("--out", default=str(TEST2 / "results/q1/gradcam.png"))
+    ap.add_argument("--out", help="default: <results_dir>/gradcam.png")
     a = ap.parse_args()
     cfg = load_cfg()
+    a.out = a.out or str(TEST2 / cfg["results_dir"] / "gradcam.png")
     zones = Zones()
     frames, split, cache, idx = build(cfg)
     model, _ = load_model(TEST2 / cfg["results_dir"] / a.model / "best.pt", len(zones))

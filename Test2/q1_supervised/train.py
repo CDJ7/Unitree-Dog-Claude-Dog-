@@ -78,7 +78,7 @@ def predict(model, loader):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="resnet18", choices=["resnet18", "smallcnn", "resnet18_scratch"])
-    ap.add_argument("--config", default=str(TEST2 / "config/q1_train.yaml"))
+    ap.add_argument("--config", help="default: $Q1_CONFIG or config/q1_train.yaml")
     ap.add_argument("--data")
     ap.add_argument("--epochs", type=int)
     ap.add_argument("--limit", type=int, help="use at most N training frames (smoke tests)")
@@ -141,7 +141,7 @@ def main():
             tc_ += int((logits.argmax(1) == y).sum())
             tn += len(y)
             if b % 40 == 0:
-                print(f"  ep {ep} batch {b}/{len(train_dl)} loss {float(loss):.3f} ({time.time() - t0:.0f} s)", flush=True)
+                print(f"  ep {ep} batch {b}/{len(train_dl)} loss {float(loss.detach()):.3f} ({time.time() - t0:.0f} s)", flush=True)
         yv, lv = predict(model, val_dl)
         vloss = float(crit(lv, torch.from_numpy(yv)))
         pv = lv.argmax(1).numpy()

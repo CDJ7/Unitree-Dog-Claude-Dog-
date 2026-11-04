@@ -65,6 +65,15 @@ def cnn_predictions(model, cache, idx, frames, zones, bs=128):
     return df
 
 
+def _acc(y, p):
+    """Accuracy, or None when the subset is empty (e.g. no held-out scene in the sample config)."""
+    return round(float((y == p).mean()), 4) if len(y) else None
+
+
+def _fmt(v):
+    return "n/a" if v is None else f"{v:.3f}"
+
+
 def boundary_distance(zones, x, y):
     """Distance (m) from (x, y) to the nearest edge of its own zone polygon."""
     out = np.full(len(x), np.nan)
@@ -171,11 +180,11 @@ def main():
         by_bd = {}
         for lo, hi in zip(bins[:-1], bins[1:]):
             m = (bd >= lo) & (bd < hi)
-            by_bd[f"{lo}-{hi} m"] = {"acc": round(float((y[m] == p[m]).mean()), 4), "n": int(m.sum())}
+            by_bd[f"{lo}-{hi} m"] = {"acc": _acc(y[m], p[m]), "n": int(m.sum())}
         rec = {"label": LABEL[name], "accuracy": round(float((y == p).mean()), 4),
                "macro_f1": round(float(f1_score(y, p, average="macro")), 4),
-               "accuracy_unseen_scene": round(float((y[unseen] == p[unseen]).mean()), 4),
-               "accuracy_unseen_routes_seen_scenes": round(float((y[~unseen] == p[~unseen]).mean()), 4),
+               "accuracy_unseen_scene": _acc(y[unseen], p[unseen]),
+               "accuracy_unseen_routes_seen_scenes": _acc(y[~unseen], p[~unseen]),
                "accuracy_smoothed_1s": round(float((y == ps).mean()), 4),
                "macro_f1_smoothed_1s": round(float(f1_score(y, ps, average="macro")), 4),
                "accuracy_by_distance_to_zone_boundary": by_bd,
@@ -191,14 +200,14 @@ def main():
             curves_plot(json.loads((d / "history.json").read_text()), LABEL[name], res_dir / f"curves_{name}.png")
         metrics["models"][name] = rec
         print(f"{name:16s} acc {rec['accuracy']:.3f}  macro-F1 {rec['macro_f1']:.3f}  unseen scene "
-              f"{rec['accuracy_unseen_scene']:.3f}  smoothed {rec['accuracy_smoothed_1s']:.3f}", flush=True)
+              f"{_fmt(rec['accuracy_unseen_scene'])}  smoothed {rec['accuracy_smoothed_1s']:.3f}", flush=True)
     (res_dir / "metrics.json").write_text(json.dumps(metrics, indent=1))
     # comparison table
     lines = ["| Model | Test acc | Macro-F1 | Unseen scene acc | Unseen routes acc | Acc, 1 s smoothing |",
              "|---|---|---|---|---|---|"]
     for name, r in metrics["models"].items():
-        lines.append(f"| {r['label']} | {r['accuracy']:.3f} | {r['macro_f1']:.3f} | {r['accuracy_unseen_scene']:.3f} | "
-                     f"{r['accuracy_unseen_routes_seen_scenes']:.3f} | {r['accuracy_smoothed_1s']:.3f} |")
+        lines.append(f"| {r['label']} | {r['accuracy']:.3f} | {r['macro_f1']:.3f} | {_fmt(r['accuracy_unseen_scene'])} | "
+                     f"{_fmt(r['accuracy_unseen_routes_seen_scenes'])} | {r['accuracy_smoothed_1s']:.3f} |")
     best = next(iter(metrics["models"]))
     lines += ["", f"Per-class ({metrics['models'][best]['label']}):", "",
               "| Zone | Precision | Recall | F1 | Support |", "|---|---|---|---|---|"]

@@ -1,0 +1,38 @@
+# Q1 QUICK PIPELINE CHECK on the committed 3-run sample (data/sample). Used by Q1_colab.ipynb option C
+# (Q1_CONFIG=config/q1_sample.yaml). Same model/augmentation settings as q1_train.yaml, but 1 epoch and a
+# 1/1/1-run split, so the numbers it produces are NOT meaningful; it only shows every script runs.
+# Results go to results/q1_sample/ (git-ignored), never over the real results/q1/.
+# Q1: crime-scene zone classifier (q1_supervised/). Paths are relative to Test2/.
+seed: 6010
+data_dir: data/sample
+results_dir: results/q1_sample
+image_hw: [168, 224]          # 320x240 frames resized, 4:3 kept
+# Split BY RUN (never by frame). Test = every run of one held-out scene (unseen props, stains,
+# victim position and lighting) + one route from each other scene; val = one more route per scene.
+split:
+  test_scenes: []
+  test_route_offset: 0         # scene i (in collect.yaml order) gives route (i + offset) % 6 to test
+  val_route_offset: 1          # 3 sample runs of r1853: run_024 test, run_025 val, run_027 train
+train:
+  epochs: 1
+  batch_size: 64
+  lr_head: 1.0e-3
+  lr_backbone: 2.0e-4
+  weight_decay: 1.0e-4
+  label_smoothing: 0.05
+  class_weighted_loss: true    # inverse-frequency weights (lounge_area is the main corridor)
+  num_workers: 2
+  epoch_fraction: 0.5           # random half of the (highly correlated 5 Hz) training frames per epoch
+smallcnn:                      # baseline trained from scratch, same data/augmentation/loop
+  epochs: 1
+  lr: 2.0e-3
+augment:                       # no horizontal flip: mirroring swaps the room's layout
+  crop_scale: [0.8, 1.0]
+  rotation_deg: 5
+  brightness: 0.3
+  contrast: 0.3
+  saturation: 0.3
+  hue: 0.03
+histogram:                     # colour-histogram + logistic-regression baselines
+  bins: 8                      # per channel -> 8^3 = 512-d histogram
+  C_grid: [0.0003, 0.001, 0.003, 0.01, 0.1, 1.0]

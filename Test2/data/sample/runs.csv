@@ -1,2 +1,4 @@
 run,scene,route,speed,n_frames,duration_s,distance_m,goals_reached,n_goals,collision_state_rows,victim_area,bed_area,lounge_area,desk_entry_area,bathroom
+run_024,r1853,clockwise_tour,0.3,578,115.58,16.8,5,5,0,81,120,138,143,96
+run_025,r1853,counter_tour,0.35,447,89.3,16.65,4,5,0,139,69,63,163,13
 run_027,r1853,fast_sweep,0.4,241,48.16,14.83,6,6,0,18,29,69,50,75

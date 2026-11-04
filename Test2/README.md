@@ -113,10 +113,21 @@ python -m pytest -q tests          # 9 tests: zones, planner, Q3 environment
 | Q3 PPO | `python q3_rl/train_ppo.py` (continue: `--resume`) | `results/q3/ppo/` |
 | Q3 evaluation | `python q3_rl/evaluate.py` | `results/q3/eval_metrics.json`, figures |
 | Q3 MuJoCo deployment | `python q3_rl/deploy_mujoco.py --layout s2` | `results/q3/deploy_s2.gif` |
+| Q3 MuJoCo evaluation (60 starts / policy, ~20 min) | `python q3_rl/deploy_eval.py` | `results/q3/deploy_eval*.{md,json,csv}` |
 | Q3 greedy deployment | `python q3_rl/deploy_mujoco.py --layout s2 --policy greedy --gif-every 6` | `results/q3/deploy_s2_greedy.gif` |
 
-Colab notebooks (clone the repo, `cd Test2`, install, run): [`q1_supervised/Q1_colab.ipynb`](q1_supervised/Q1_colab.ipynb)
-and [`q3_rl/Q3_colab.ipynb`](q3_rl/Q3_colab.ipynb) (saves checkpoints to Google Drive and resumes).
+Colab notebooks (clone `main`, `cd Test2`, install, run):
+* [`q1_supervised/Q1_colab.ipynb`](q1_supervised/Q1_colab.ipynb): data option A (your `data_full.zip` on Drive),
+  B (regenerate with the simulator) or C (default, quick check on the 3 committed sample runs with
+  [`config/q1_sample.yaml`](config/q1_sample.yaml); results go to `results/q1_sample/`, numbers not meaningful).
+* [`q3_rl/Q3_colab.ipynb`](q3_rl/Q3_colab.ipynb): trains PPO with checkpoints on Google Drive and resumes after
+  a disconnect, evaluates against the baselines, and optionally deploys on the MuJoCo Go2.
+
+Both notebooks were executed cell by cell, outside Colab, by a Jupyter kernel in a fresh `/content` with
+a fresh clone, with only `google.colab.drive` replaced by a local folder. Q1 with option C ran in 139 s
+with no failing cell. Q3 ran in 158 s with no failing cell, with training shortened to 24,576 steps and
+evaluation to 6 episodes for the test; the MuJoCo deployment cell was included. They have not been run
+on Colab itself, so the Drive mount and Colab's own package versions are untested.
 
 Seeds are fixed in every config ([`config/collect.yaml`](config/collect.yaml) `seed: 2026`,
 [`config/q1_train.yaml`](config/q1_train.yaml) `seed: 6010`, [`config/q3_ppo.yaml`](config/q3_ppo.yaml) `seed: 6010`),
@@ -423,11 +434,13 @@ tell it was stuck. Adding the route hint and the bump/previous-action inputs gav
 
 **Deployment in full MuJoCo** (`python q3_rl/deploy_mujoco.py --layout s2` / `--layout r1854`): the
 PPO policy drives the MuJoCo Go2 (learned locomotion controller, real contacts) through its velocity
-commands. On test scene **S2** it found **3/3** items in **14.0 s** with **0** steps with a foot in a
+commands. On test scene **S2** it found **3/3** items in **16.4 s** with **0** steps with a foot in a
 stain and 9 control steps with a robot-scene contact
-([`deploy_s2.json`](results/q3/deploy_s2.json)); on **r1854** it found **5/5** in **25.4 s**, with 3 steps
-with a foot inside the victim's large blood pool and 5 contact steps ([`deploy_r1854.json`](results/q3/deploy_r1854.json));
-the dog stayed upright (min upright 0.977 / 0.975).
+([`deploy_s2.json`](results/q3/deploy_s2.json)); on **r1854** it found **5/5** in **39.0 s**, with 7 steps
+with a foot inside the victim's large blood pool and 1 contact step ([`deploy_r1854.json`](results/q3/deploy_r1854.json));
+the dog stayed upright (min upright 0.969 / 0.994). (An earlier version of these two runs left the policy's
+"previous action" and "bumped" inputs at zero during deployment, unlike in training; they are now filled in
+as in training, and the runs above were redone with that fix.)
 
 | S2 | r1854 |
 |---|---|
@@ -439,9 +452,9 @@ same scenes and start poses as PPO, [`deploy_s2_greedy.json`](results/q3/deploy_
 
 | Scene | Policy | Found | Time | Steps with a foot in a stain | Stain entries (footprint) | Contact steps |
 |---|---|---|---|---|---|---|
-| S2 | PPO | **3/3** | **14.0 s** | 0 | 0 | 9 |
+| S2 | PPO | **3/3** | **16.4 s** | 0 | 0 | 9 |
 | S2 | greedy | 0/3 | 180 s (time limit) | 0 | 0 | 4 |
-| r1854 | PPO | **5/5** | **25.4 s** | 3 | 2 | 5 |
+| r1854 | PPO | **5/5** | **39.0 s** | 7 | 5 | 1 |
 | r1854 | greedy | 1/5 | 180 s (time limit) | 0 | 1 | 0 |
 
 Greedy does not crash into things; it **deadlocks**. In S2 it stops after about 30 s in the gap between
@@ -453,6 +466,41 @@ play at 2x speed; the greedy ones show every 6th control step instead of every 2
 | Greedy, S2 | Greedy, r1854 |
 |---|---|
 | ![](results/q3/deploy_s2_greedy.gif) | ![](results/q3/deploy_r1854_greedy.gif) |
+
+**MuJoCo evaluation over many starts, and the 2-D → MuJoCo gap** (`python q3_rl/deploy_eval.py`,
+[`deploy_eval_metrics.json`](results/q3/deploy_eval_metrics.json), [`deploy_eval_episodes.csv`](results/q3/deploy_eval_episodes.csv)).
+Each policy ran from 10 start poses in each of the 6 test scenes, i.e. 60 episodes per policy, on the
+MuJoCo Go2 **and** in the 2-D environment from the identical start. Here every evidence item of the scene
+must be found, with no random subset or noise, so the numbers are not the same protocol as the 2-D table above.
+
+| Policy | Success 2-D | Success MuJoCo | Same outcome in both | Time, successful eps (2-D / MuJoCo) | Stain entries / ep (2-D / MuJoCo) | Steps with a foot in a stain / ep (MuJoCo) |
+|---|---|---|---|---|---|---|
+| PPO | 0.533 | **0.633** | 0.80 | 36.9 / 24.0 s | 2.00 / 1.68 | 3.0 |
+| greedy | 0.250 | 0.183 | 0.93 | 9.7 / 8.7 s | 0.70 / 0.85 | 148.1 |
+| planner | **0.733** | **0.700** | 0.93 | 20.5 / 18.9 s | 0.60 / 0.78 | 4.0 |
+
+Success per test scene, 2-D → MuJoCo (10 starts each):
+
+| | s2 | r1854 | r3101 | r3102 | r3103 | r3104 |
+|---|---|---|---|---|---|---|
+| PPO | 0.3 → 1.0 | 0.9 → 1.0 | 0.1 → 0.0 | 0.9 → 1.0 | 0.0 → 0.0 | 1.0 → 0.8 |
+| greedy | 0.3 → 0.3 | 0.0 → 0.0 | 0.2 → 0.1 | 1.0 → 0.7 | 0.0 → 0.0 | 0.0 → 0.0 |
+| planner | 0.3 → 0.4 | 0.8 → 0.7 | 0.3 → 0.3 | 1.0 → 1.0 | 1.0 → 0.9 | 1.0 → 0.9 |
+
+* **The policies transfer to the legged robot.** The ranking is the same in both simulators (planner >
+  PPO > greedy). Greedy and the planner end the same way in 93% of the paired episodes, and PPO in 80%.
+* **PPO does better on the real dynamics than in its training simulator** (0.633 vs 0.533), almost entirely
+  in S2 (0.3 → 1.0). In the 2-D twin a blocked move is cancelled outright. The legged Go2 can instead brush
+  past an obstacle's edge and keep going: PPO has 6.5 contact steps per MuJoCo episode at the median.
+* **The disc model is optimistic about clearance.** MuJoCo shows robot-scene contacts in 33 (planner),
+  32 (greedy) and 44 (PPO) of 60 episodes, against almost none in 2-D. The 0.24 m disc is narrower than the
+  Go2's 0.7 m-long body, so gaps that are free in 2-D make the real body touch furniture. The mean contact
+  counts (65.5 PPO, 95.7 planner, 53.1 greedy steps per episode) come from a few episodes where the dog keeps
+  pushing into furniture; the medians are 6.5, 1 and 1.
+* **No falls.** Only 1 PPO and 2 greedy episodes tilted below 0.8 uprightness (lowest 0.619, an episode PPO
+  still completed), and the planner stayed above 0.955.
+* Greedy's 148 foot-in-stain steps per episode come from deadlocks on top of a stain, where it then
+  stands for the rest of the episode.
 
 ### 6.5 Discussion
 * **All the RL components are in the code and work:** environment, observation, action, six reward
@@ -488,7 +536,9 @@ play at 2x speed; the greedy ones show every 6th control step instead of every 2
 * **Q3 runs in a 2-D twin of the scene:** the dog is a disc, obstacles are the footprints of their MuJoCo box
   colliders (anything a box collider covers counts as blocked, even if the dog could fit under part of it), evidence positions and the "found" test come from the
   ground truth rather than a detector, and the lidar is ray-cast on the raster. The MuJoCo deployment
-  shows the commands transfer to the legged robot, but only 2 deployment episodes per policy were run.
+  shows the commands transfer to the legged robot (60 paired episodes per policy: the same outcome in 80-93%
+  of them); the disc model is narrower than the Go2's body, so the real dog touches furniture in gaps the
+  2-D twin treats as free.
 * **Q3 PPO** is below the map-following planner (0.633 vs 0.850 success) and enters about one floor stain per episode.
 * **Compute:** everything ran on a 4-core CPU. The small CNN was stopped at epoch 10/12 by a time limit.
 
