@@ -151,6 +151,13 @@ def learning_curves(ppo_dir, path):
     mons = sorted((ppo_dir / "monitor").glob("*.monitor.csv"))
     if mons:
         d = pd.concat([read_monitor(m) for m in mons]).sort_values("t").reset_index(drop=True)
+        q = d.tail(500)                       # how well the policy does on its own training scenes at the end
+        (Path(path).parent / "train_summary.json").write_text(json.dumps({
+            "ppo_dir": _rel(ppo_dir), "training_episodes": int(len(d)), "training_steps": int(d.l.sum()),
+            "last_500_episodes": {"success_rate": round(float(q.success.mean()), 4),
+                                  "found_fraction": round(float((q.n_found / q.n_items).mean()), 4),
+                                  "severe_collision_rate": round(float(q.severe_collision.mean()), 4),
+                                  "stain_entries_mean": round(float(q.contamination_entries.mean()), 3)}}, indent=1))
         n_envs = len(mons)
         d["steps"] = d.l.cumsum()
         roll = lambda s: s.rolling(200, min_periods=20).mean()  # noqa: E731
@@ -222,10 +229,13 @@ def main():
     ap.add_argument("--model", help="default: <ppo-dir>/best_model.zip")
     ap.add_argument("--episodes", type=int, default=60)
     ap.add_argument("--policies", default="random,greedy,planner,ppo")
+    ap.add_argument("--env-config", help="environment config (default config/q3_env.yaml)")
+    ap.add_argument("--out", default=str(OUT), help="output folder for the tables and figures")
     a = ap.parse_args()
     a.model = a.model or str(Path(a.ppo_dir) / "best_model.zip")
-    cfg = load_env_config()
+    cfg = load_env_config(a.env_config)
     env = CrimeSceneSearchEnv(split="test", config=cfg)
+    out = Path(a.out)
     pols = {"random": lambda: RandomPolicy(1), "greedy": lambda: greedy, "planner": lambda: planner,
             "ppo": lambda: PPOPolicy(a.model)}
     names = [p for p in a.policies.split(",")]
@@ -245,13 +255,13 @@ def main():
         print(f"{p:7s} success {d.success.mean():.3f}  found {(d.n_found / d.n_items).mean():.3f}  time {d.time_s.mean():6.1f} s"
               f"  contam entries {d.contamination_entries.mean():.2f}  collisions {d.collisions.mean():.1f}", flush=True)
     df = pd.DataFrame(rows)
-    OUT.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUT / "eval_episodes.csv", index=False)
+    out.mkdir(parents=True, exist_ok=True)
+    df.to_csv(out / "eval_episodes.csv", index=False)
     met = {"test_layouts": [L.name for L in env.layouts], "episodes_per_policy": a.episodes, "base_seed": BASE_SEED,
            "model": _rel(pol_used["ppo"].path) if "ppo" in names else None,
            "policies": {p: summary(df[df.policy == p]) for p in names},
            "per_layout_success": {p: df[df.policy == p].groupby("layout").success.mean().round(3).to_dict() for p in names}}
-    (OUT / "eval_metrics.json").write_text(json.dumps(met, indent=1))
+    (out / "eval_metrics.json").write_text(json.dumps(met, indent=1))
     lines = ["| Policy | Success | Evidence found | Time, successful eps (s) | Contamination entries / ep | "
              "Eps with contamination | Collision steps / ep | Severe-collision ends | Path (m) |",
              "|---|---|---|---|---|---|---|---|---|"]
@@ -260,13 +270,13 @@ def main():
         lines.append(f"| {p} | {s['success_rate']:.3f} | {s['found_fraction']:.3f} | {ts} | "
                      f"{s['contamination_entries_mean']:.2f} | {s['episodes_with_contamination']:.2f} | "
                      f"{s['collisions_mean']:.1f} | {s['severe_collision_rate']:.2f} | {s['path_m_mean']:.1f} |")
-    (OUT / "comparison.md").write_text("\n".join(lines) + f"\n\n{a.episodes} episodes per policy on the test layouts "
+    (out / "comparison.md").write_text("\n".join(lines) + f"\n\n{a.episodes} episodes per policy on the test layouts "
                                        f"{met['test_layouts']}; max episode length {cfg['episode']['max_steps'] * cfg['robot']['dt']:.0f} s.\n")
     print("\n".join(lines))
     picks = [(li, li) for li in range(min(3, len(env.layouts)))]
-    trajectory_plot(env, eps, OUT / "trajectories.png", picks)
-    learning_curves(Path(a.ppo_dir), OUT / "learning_curves.png")
-    print(f"-> {OUT}")
+    trajectory_plot(env, eps, out / "trajectories.png", picks)
+    learning_curves(Path(a.ppo_dir), out / "learning_curves.png")
+    print(f"-> {out}")
 
 
 if __name__ == "__main__":

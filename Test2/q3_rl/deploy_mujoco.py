@@ -101,12 +101,16 @@ def main():
     ap.add_argument("--layout", default="s2")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--policy", default="ppo", choices=["ppo", "greedy", "planner"])
-    ap.add_argument("--model", default=str(OUT / "ppo/best_model.zip"))
+    ap.add_argument("--out", default=str(OUT), help="output folder (v3: results/q3/v3_rect)")
+    ap.add_argument("--model", help="default: <out>/ppo/best_model.zip")
+    ap.add_argument("--env-config", help="environment config (default config/q3_env.yaml)")
     ap.add_argument("--max-s", type=float, default=None)
     ap.add_argument("--gif-every", type=int, default=2, help="render every k-th control step")
     a = ap.parse_args()
     from go2sim.go2_env import CrimeSceneGo2
-    cfg = load_env_config()
+    out = Path(a.out)
+    a.model = a.model or str(out / "ppo/best_model.zip")
+    cfg = load_env_config(a.env_config)
     env = CrimeSceneSearchEnv(layouts=[a.layout], config=cfg, randomize=False, render_mode="rgb_array")
     env.reset(seed=a.seed, options={"layout": 0})
     x0, y0, yaw0 = env.xy[0], env.xy[1], env.yaw
@@ -151,11 +155,11 @@ def main():
            "seed": a.seed, "spawn": [round(float(x0), 3), round(float(y0), 3), round(float(yaw0), 3)],
            **stats, "wall_time_s": round(time.time() - wall0, 1)}
     name = f"deploy_{a.layout}" + ("" if a.policy == "ppo" else f"_{a.policy}")
-    df.to_csv(OUT / f"{name}.csv", index=False)
-    (OUT / f"{name}.json").write_text(json.dumps(res, indent=1))
+    df.to_csv(out / f"{name}.csv", index=False)
+    (out / f"{name}.json").write_text(json.dumps(res, indent=1))
     pal = frames[len(frames) // 2].quantize(colors=96, method=Image.MEDIANCUT)
     q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
-    q[0].save(OUT / f"{name}.gif", save_all=True, append_images=q[1:] + [q[-1]] * 8,
+    q[0].save(out / f"{name}.gif", save_all=True, append_images=q[1:] + [q[-1]] * 8,
               duration=int(1000 * dt * a.gif_every / 2), loop=0, optimize=True)
     print(json.dumps(res, indent=1))
 

@@ -1,0 +1,21 @@
+{
+ "layout": "r1854",
+ "policy": "ppo",
+ "model": "results/q3/v3_rect/ppo/best_model.zip",
+ "seed": 1,
+ "spawn": [
+  4.093,
+  2.011,
+  2.819
+ ],
+ "n_items": 5,
+ "n_found": 2,
+ "success": false,
+ "time_s": 180.0,
+ "control_steps": 900,
+ "steps_with_foot_in_stain": 1,
+ "footprint_stain_entries": 10,
+ "steps_with_robot_scene_contact": 0,
+ "min_upright": 0.995,
+ "wall_time_s": 109.0
+}

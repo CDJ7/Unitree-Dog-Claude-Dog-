@@ -33,22 +33,21 @@ sys.path.insert(0, str(TEST2))
 BASE_SEED = 700_000
 OUT = TEST2 / "results/q3"
 TEST_LAYOUTS = ["s2", "r1854", "r3101", "r3102", "r3103", "r3104"]
-PARTS = OUT / "deploy_eval_parts"
 
 
 def worker(args):
-    layout, policies, episodes, model = args
+    layout, policies, episodes, model, env_config, parts = args
     import go2sim.paths  # noqa: F401
     from go2sim.go2_env import CrimeSceneGo2
     from q3_rl.crime_scene_env import CrimeSceneSearchEnv, load_env_config
     from q3_rl.deploy_mujoco import make_policy, run_on_dog
     from q3_rl.evaluate import run_episode
     from q3_rl.extract_layouts import scenario_spec
-    cfg = load_env_config()
+    cfg = load_env_config(env_config)
     max_s = cfg["episode"]["max_steps"] * cfg["robot"]["dt"]
     env_mj = CrimeSceneSearchEnv(layouts=[layout], config=cfg, randomize=False)
     env_2d = CrimeSceneSearchEnv(layouts=[layout], config=cfg, randomize=False)
-    part = PARTS / f"{layout}.jsonl"
+    part = Path(parts) / f"{layout}.jsonl"
     rows = [json.loads(ln) for ln in part.read_text().splitlines()] if part.exists() else []
     done = {(r["policy"], r["episode"]) for r in rows if r["sim"] == "mujoco"}
     rows = [r for r in rows if (r["policy"], r["episode"]) in done]          # drop a half-written pair
@@ -109,21 +108,26 @@ def main():
     ap.add_argument("--layouts", default=",".join(TEST_LAYOUTS))
     ap.add_argument("--policies", default="ppo,greedy,planner")
     ap.add_argument("--episodes", type=int, default=10, help="start poses per scene")
-    ap.add_argument("--model", default=str(OUT / "ppo/best_model.zip"))
+    ap.add_argument("--out", default=str(OUT), help="output folder (v3: results/q3/v3_rect)")
+    ap.add_argument("--model", help="default: <out>/ppo/best_model.zip")
+    ap.add_argument("--env-config", help="environment config (default config/q3_env.yaml)")
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--fresh", action="store_true", help="discard finished episodes in deploy_eval_parts/")
     a = ap.parse_args()
-    PARTS.mkdir(parents=True, exist_ok=True)
+    out = Path(a.out)
+    a.model = a.model or str(out / "ppo/best_model.zip")
+    parts = out / "deploy_eval_parts"
+    parts.mkdir(parents=True, exist_ok=True)
     if a.fresh:
-        for f in PARTS.glob("*.jsonl"):
+        for f in parts.glob("*.jsonl"):
             f.unlink()
     layouts, pols = a.layouts.split(","), a.policies.split(",")
     t0 = time.time()
-    jobs = [(L, pols, a.episodes, a.model) for L in layouts]
+    jobs = [(L, pols, a.episodes, a.model, a.env_config, str(parts)) for L in layouts]
     with mp.get_context("spawn").Pool(a.workers) as pool:
         rows = [r for part in pool.imap_unordered(worker, jobs) for r in part]
     df = pd.DataFrame(rows).sort_values(["policy", "layout", "episode", "sim"]).reset_index(drop=True)
-    df.to_csv(OUT / "deploy_eval_episodes.csv", index=False)
+    df.to_csv(out / "deploy_eval_episodes.csv", index=False)
     met = {"layouts": layouts, "episodes_per_layout": a.episodes, "base_seed": BASE_SEED, "randomize": False,
            "policies": summarise(df),
            "agreement_2d_vs_mujoco": {p: round(float((g[g.sim == "2d"].success.to_numpy()
@@ -132,7 +136,7 @@ def main():
            "per_layout_success": {p: {sim: g[g.sim == sim].groupby("layout").success.mean().round(2).to_dict()
                                       for sim in ("2d", "mujoco")} for p, g in df.groupby("policy")},
            "wall_time_s": round(time.time() - t0, 1)}
-    (OUT / "deploy_eval_metrics.json").write_text(json.dumps(met, indent=1))
+    (out / "deploy_eval_metrics.json").write_text(json.dumps(met, indent=1))
     lines = ["| Policy | Success 2-D | Success MuJoCo | Same outcome | Time, successful (2-D / MuJoCo, s) | "
              "Stain entries / ep (2-D / MuJoCo) | Steps with a foot in a stain / ep | Contact steps / ep (2-D / MuJoCo) |",
              "|---|---|---|---|---|---|---|---|"]
@@ -145,9 +149,9 @@ def main():
                      f"{d['collision_steps_mean']:.1f} / {m['collision_steps_mean']:.1f} |")
     txt = "\n".join(lines) + (f"\n\n{a.episodes} start poses x {len(layouts)} test scenes = {a.episodes * len(layouts)} "
                               f"episodes per policy and simulator; all evidence of the scene must be found; 180 s limit.\n")
-    (OUT / "deploy_eval.md").write_text(txt)
+    (out / "deploy_eval.md").write_text(txt)
     print(txt)
-    print(f"done in {met['wall_time_s']} s -> {OUT}")
+    print(f"done in {met['wall_time_s']} s -> {out}")
 
 
 if __name__ == "__main__":

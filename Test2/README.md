@@ -114,6 +114,7 @@ python -m pytest -q tests          # 9 tests: zones, planner, Q3 environment
 | Q3 evaluation | `python q3_rl/evaluate.py` | `results/q3/eval_metrics.json`, figures |
 | Q3 MuJoCo deployment | `python q3_rl/deploy_mujoco.py --layout s2` | `results/q3/deploy_s2.gif` |
 | Q3 MuJoCo evaluation (60 starts / policy, ~20 min) | `python q3_rl/deploy_eval.py` | `results/q3/deploy_eval*.{md,json,csv}` |
+| Q3 v3 attempt: train / 2-D eval / MuJoCo eval | `python q3_rl/train_ppo.py --config config/q3_ppo_v3_rect.yaml`; `python q3_rl/evaluate.py --env-config config/q3_env_v3_rect.yaml --ppo-dir results/q3/v3_rect/ppo --out results/q3/v3_rect`; `python q3_rl/deploy_eval.py --env-config config/q3_env_v3_rect.yaml --out results/q3/v3_rect` | `results/q3/v3_rect/` |
 | Q3 greedy deployment | `python q3_rl/deploy_mujoco.py --layout s2 --policy greedy --gif-every 6` | `results/q3/deploy_s2_greedy.gif` |
 
 Colab notebooks (clone `main`, `cd Test2`, install, run):
@@ -126,8 +127,9 @@ Colab notebooks (clone `main`, `cd Test2`, install, run):
 Both notebooks were executed cell by cell, outside Colab, by a Jupyter kernel in a fresh `/content` with
 a fresh clone, with only `google.colab.drive` replaced by a local folder. Q1 with option C ran in 139 s
 with no failing cell. Q3 ran in 158 s with no failing cell, with training shortened to 24,576 steps and
-evaluation to 6 episodes for the test; the MuJoCo deployment cell was included. They have not been run
-on Colab itself, so the Drive mount and Colab's own package versions are untested.
+evaluation to 6 episodes for the test; the MuJoCo deployment cell was included. The Q1 notebook was
+then also run on Google Colab itself (opened from GitHub, *Run all*, option C): every cell completed.
+The Q3 notebook has not yet been run on Colab, so its Drive mount and long training run there are untested.
 
 Seeds are fixed in every config ([`config/collect.yaml`](config/collect.yaml) `seed: 2026`,
 [`config/q1_train.yaml`](config/q1_train.yaml) `seed: 6010`, [`config/q3_ppo.yaml`](config/q3_ppo.yaml) `seed: 6010`),
@@ -518,9 +520,50 @@ Success per test scene, 2-D → MuJoCo (10 starts each):
   planner (0.52), whose clearance-weighted paths keep it away from furniture where the stains also are.
   Many evidence items sit *inside* a large floor pool (e.g. the victim area of r1854), so seeing them
   without stepping near them is genuinely hard; the entry penalty (3) is small next to the find reward (10).
-* **What would come next:** more and harder validation scenes; a larger contamination-entry weight or
-  stain cells added to the route hint's cost; curriculum on narrow passages; recurrent policy or frame
-  stacking against getting stuck; training directly with MuJoCo in the loop for the last stage.
+* **What would come next:** the obvious next step, training on the Go2's real body shape with harder
+  validation and a larger stain penalty, was tried and did **not** help (section 6.6). Next would be a
+  curriculum on narrow passages (start in open space, then tighter scenes), a recurrent policy or frame
+  stacking against getting stuck, stain cells added to the route hint's cost, and training directly with
+  MuJoCo in the loop for the last stage.
+
+### 6.6 Improvement attempt (v3): the Go2's real body shape, harder validation, stronger stain penalty
+The MuJoCo evaluation above showed that the 2-D twin's 0.24 m disc is narrower than the real Go2. A third
+run (**v3**, [`config/q3_env_v3_rect.yaml`](config/q3_env_v3_rect.yaml), [`config/q3_ppo_v3_rect.yaml`](config/q3_ppo_v3_rect.yaml),
+results in [`results/q3/v3_rect/`](results/q3/v3_rect/)) changed three things and kept everything else (same
+PPO settings, 4 M steps, same test scenes and seeds):
+1. **Body:** collisions use the Go2's 0.70 x 0.32 m body as a rotated rectangle. A move or a turn that would
+   make it overlap an obstacle is cancelled, so the dog has to line up with narrow gaps. With the disc
+   config the new code reproduces the v2 evaluation exactly.
+2. **Validation:** 6 scenes instead of 2 (4 new random scenes, r3203-r3206), so model selection is not saturated.
+3. **Stain penalty:** 8 instead of 3 for each new floor stain entered.
+
+**Result: v3 is worse than v2, so v2 remains the reported policy.**
+
+| | v2 (disc, the reported policy) | v3 (rectangle body) |
+|---|---|---|
+| Training scenes, last 500 training episodes: success / severe-collision ends ([`train_summary.json`](results/q3/train_summary.json), [v3](results/q3/v3_rect/train_summary.json)) | 0.928 / 0.010 | 0.428 / 0.126 |
+| 2-D test, 60 episodes: PPO success (planner in the same 2-D model) ([v3 `comparison.md`](results/q3/v3_rect/comparison.md)) | 0.633 (0.850) | 0.250 (0.700) |
+| **MuJoCo, the same 60 starts: PPO success** ([v3 `deploy_eval.md`](results/q3/v3_rect/deploy_eval.md)) | **0.633** | 0.467 |
+| MuJoCo: planner success | 0.700 | 0.667 |
+| MuJoCo, PPO: stain entries / steps with a foot in a stain per episode | 1.68 / 3.0 | 1.40 / 26.5 |
+| Showcase deployments, PPO: S2 / r1854 ([v3 `deploy_s2.json`](results/q3/v3_rect/deploy_s2.json), [`deploy_r1854.json`](results/q3/v3_rect/deploy_r1854.json)) | 3/3 in 16.4 s / 5/5 in 39.0 s | 0/3 / 2/5 (180 s limit) |
+
+![v3 learning curves](results/q3/v3_rect/learning_curves.png)
+
+* **v3 did not learn its own training scenes.** Training success plateaus at about 0.4 from 0.8 M steps on
+  (left and middle plots), and 12.6% of its last 500 training episodes end in a severe collision. This is
+  not overfitting: the task with the real body is much harder (the planner also drops from 0.850 to 0.700
+  in 2-D), and the curve is flat, so more steps alone would probably not help.
+* **Validation was still a poor guide.** The selected checkpoint (3.6 M steps) scored 0.9 on the validation
+  episodes but 0.25 on the test scenes. 20 evaluation episodes per check are noisy, and 2 of the 6
+  validation scenes have only 1-2 evidence items, while every test scene has 3-7.
+* **The stronger stain penalty** cut 2-D stain entries (v3 PPO 0.90 per episode vs 1.32 for v2, though in
+  different 2-D body models). On the MuJoCo dog v3 kept a foot in a stain for 26.5 steps per episode: 58% of
+  those steps come from failed episodes, almost all from one r1854 episode that stalls on a stain for 898
+  of its 900 steps, and the rest from successful r3102 episodes that cross a stain on the way.
+* **Choosing v2 used the test scenes.** Both runs are reported in full, but the choice of v2 as "the"
+  policy was made after seeing both on the same MuJoCo test starts, so v2's 0.633 there is a slightly
+  optimistic estimate.
 
 ---
 
@@ -539,7 +582,9 @@ Success per test scene, 2-D → MuJoCo (10 starts each):
   shows the commands transfer to the legged robot (60 paired episodes per policy: the same outcome in 80-93%
   of them); the disc model is narrower than the Go2's body, so the real dog touches furniture in gaps the
   2-D twin treats as free.
-* **Q3 PPO** is below the map-following planner (0.633 vs 0.850 success) and enters about one floor stain per episode.
+* **Q3 PPO** is below the map-following planner (0.633 vs 0.850 success) and enters about one floor stain per
+  episode. Training on the Go2's real body shape (v3, section 6.6) made the 2-D twin more faithful but the
+  policy worse (0.467 vs 0.633 success on the MuJoCo dog); that is still an open problem.
 * **Compute:** everything ran on a 4-core CPU. The small CNN was stopped at epoch 10/12 by a time limit.
 
 ## 8. How Test 2 builds on Test 1
