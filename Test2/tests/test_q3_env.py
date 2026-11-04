@@ -83,8 +83,8 @@ def test_severe_collision_terminates():
 
 def test_rectangle_footprint():
     """The 0.70 x 0.32 m body fits at its spawn, not when its nose is pushed into a wall, and a long
-    body that fits lengthwise in a gap does not fit across it."""
-    env = CrimeSceneSearchEnv(split="train")
+    body that fits lengthwise in a gap does not fit across it (v3 environment config)."""
+    env = CrimeSceneSearchEnv(split="train", config=str(Path(__file__).resolve().parents[1] / "config/q3_env_v3_rect.yaml"))
     assert env.body_pts is not None
     env.reset(seed=1)
     L = env.layout

@@ -50,11 +50,7 @@
    ],
    "val": [
     "r3201",
-    "r3202",
-    "r3203",
-    "r3204",
-    "r3205",
-    "r3206"
+    "r3202"
    ],
    "test": [
     "s2",
@@ -79,10 +75,6 @@
   },
   "robot": {
    "radius": 0.24,
-   "footprint": [
-    0.7,
-    0.32
-   ],
    "foot_radius": 0.3,
    "limits": [
     0.4,
@@ -109,14 +101,14 @@
   },
   "episode": {
    "max_steps": 900,
-   "spawn_clearance": 0.4,
+   "spawn_clearance": 0.35,
    "severe_collision_steps": 25
   },
   "reward": {
    "find": 10.0,
    "progress": 2.0,
    "contamination": 1.0,
-   "contamination_entry": 8.0,
+   "contamination_entry": 3.0,
    "collision": 0.5,
    "severe_collision": 20.0,
    "time": 0.01,
@@ -131,9 +123,11 @@
   "log_std_init": -0.5
  },
  "vec_env": "SubprocVecEnv",
- "resumed_from": null,
+ "resumed_from": "/home/user/Unitree-Dog-Claude-Dog-/Test2/results/q3/ppo/checkpoints/ppo_200000_steps.zip",
  "torch": "2.15.0+cu132",
  "sb3": "2.9.2",
  "gymnasium": "1.4.0",
- "n_train_layouts": 16
+ "n_train_layouts": 16,
+ "wall_time_s": 1852.7,
+ "final_timesteps": 4001088
 }

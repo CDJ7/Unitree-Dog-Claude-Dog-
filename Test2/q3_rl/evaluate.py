@@ -151,6 +151,13 @@ def learning_curves(ppo_dir, path):
     mons = sorted((ppo_dir / "monitor").glob("*.monitor.csv"))
     if mons:
         d = pd.concat([read_monitor(m) for m in mons]).sort_values("t").reset_index(drop=True)
+        q = d.tail(500)                       # how well the policy does on its own training scenes at the end
+        (Path(path).parent / "train_summary.json").write_text(json.dumps({
+            "ppo_dir": _rel(ppo_dir), "training_episodes": int(len(d)), "training_steps": int(d.l.sum()),
+            "last_500_episodes": {"success_rate": round(float(q.success.mean()), 4),
+                                  "found_fraction": round(float((q.n_found / q.n_items).mean()), 4),
+                                  "severe_collision_rate": round(float(q.severe_collision.mean()), 4),
+                                  "stain_entries_mean": round(float(q.contamination_entries.mean()), 3)}}, indent=1))
         n_envs = len(mons)
         d["steps"] = d.l.cumsum()
         roll = lambda s: s.rolling(200, min_periods=20).mean()  # noqa: E731

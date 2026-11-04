@@ -13,3 +13,5 @@ results/q1/*/best_fp32.pt
 results/q1_sample/
 data/sample/_q1_cache/
 results/q3/deploy_eval_parts/
+results/q3/*/ppo/checkpoints/
+results/q3/*/deploy_eval_parts/
