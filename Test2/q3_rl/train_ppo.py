@@ -73,6 +73,22 @@ def make_env(split, env_cfg, seed, rank, monitor_dir=None):
     return _f
 
 
+def trim_monitors(mon_dir, steps_per_env):
+    """Keep only the episodes each env finished before the checkpoint (cumulative length <= steps_per_env),
+    so a run interrupted after its last checkpoint does not count those steps twice."""
+    for f in Path(mon_dir).glob("*.monitor.csv"):
+        keep, total = [], 0
+        for ln in f.read_text().splitlines():
+            if ln.startswith("#") or ln.startswith("r,") or not ln:
+                keep.append(ln)
+                continue
+            total += int(ln.split(",")[1])
+            if total > steps_per_env:
+                break
+            keep.append(ln)
+        f.write_text("\n".join(keep) + "\n")
+
+
 def latest_checkpoint(out):
     cks = sorted((out / "checkpoints").glob("ppo_*_steps.zip"), key=lambda p: int(re.findall(r"(\d+)_steps", p.name)[0]))
     return cks[-1] if cks else None
@@ -107,9 +123,12 @@ def main():
     n = cfg["n_envs"]
     Vec = SubprocVecEnv if cfg.get("vec_env", "subproc") == "subproc" and n > 1 else DummyVecEnv
     (out / "monitor").mkdir(exist_ok=True)
-    if not a.resume:                       # fresh run: start new Monitor logs (resume appends)
+    ck0 = latest_checkpoint(out) if a.resume else None
+    if ck0 is None:                        # fresh run: start new Monitor logs
         for f in (out / "monitor").glob("*.monitor.csv"):
             f.unlink()
+    else:                                  # resume: drop episodes logged after the checkpoint, then append
+        trim_monitors(out / "monitor", int(re.findall(r"(\d+)_steps", ck0.name)[0]) // n)
     venv = Vec([make_env("train", env_cfg, seed, i, out / "monitor") for i in range(n)])
     eval_env = DummyVecEnv([make_env("val", env_cfg, seed + 10_000, 0)])
     p = dict(cfg["ppo"])
