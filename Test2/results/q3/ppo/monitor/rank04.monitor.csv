@@ -1,0 +1,8 @@
+#{"t_start": 1793760367.2136393, "env_id": "None"}
+r,l,t,success,n_found,n_items,contamination_entries,collisions,severe_collision
+-11.558579,900,7.823879,False,0,8,0,15,False
+-145.9,900,12.939629,False,0,2,1,0,False
+-31.098781,900,17.9259,False,0,4,0,51,False
+-87.951472,900,23.431743,False,2,3,8,16,False
+-42.0,900,30.187711,False,0,4,0,66,False
+-30.568629,900,35.539878,False,0,4,0,33,False
