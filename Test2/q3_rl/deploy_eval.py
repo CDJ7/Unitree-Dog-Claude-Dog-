@@ -12,6 +12,8 @@ from the identical start:
   * MuJoCo: on the legged Go2 with the learned locomotion controller (deploy_mujoco.run_on_dog).
 Writes results/q3/deploy_eval_episodes.csv (one row per episode and simulator), deploy_eval_metrics.json
 and deploy_eval.md (the README table).
+Resumable: every finished episode is appended at once to results/q3/deploy_eval_parts/<scene>.jsonl
+(git-ignored); a re-run skips the episodes already there (use --fresh to start over).
 """
 from __future__ import annotations
 
@@ -31,6 +33,7 @@ sys.path.insert(0, str(TEST2))
 BASE_SEED = 700_000
 OUT = TEST2 / "results/q3"
 TEST_LAYOUTS = ["s2", "r1854", "r3101", "r3102", "r3103", "r3104"]
+PARTS = OUT / "deploy_eval_parts"
 
 
 def worker(args):
@@ -45,32 +48,42 @@ def worker(args):
     max_s = cfg["episode"]["max_steps"] * cfg["robot"]["dt"]
     env_mj = CrimeSceneSearchEnv(layouts=[layout], config=cfg, randomize=False)
     env_2d = CrimeSceneSearchEnv(layouts=[layout], config=cfg, randomize=False)
+    part = PARTS / f"{layout}.jsonl"
+    rows = [json.loads(ln) for ln in part.read_text().splitlines()] if part.exists() else []
+    done = {(r["policy"], r["episode"]) for r in rows if r["sim"] == "mujoco"}
+    rows = [r for r in rows if (r["policy"], r["episode"]) in done]          # drop a half-written pair
+    part.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    todo = [(p, k) for p in policies for k in range(episodes) if (p, k) not in done]
+    if not todo:
+        return rows
     dog = CrimeSceneGo2(scenario_spec(layout))
-    rows = []
+    pols = {}
     try:
-        for p in policies:
-            pol = make_policy(p, model)
-            for k in range(episodes):
-                seed = BASE_SEED + k
-                e = run_episode(env_2d, pol, seed, 0)
-                rows.append({"layout": layout, "policy": p, "episode": k, "seed": seed, "sim": "2d",
-                             "n_items": e["n_items"], "n_found": e["n_found"], "success": e["success"],
-                             "time_s": round(e["time_s"], 2), "stain_entries": e["contamination_entries"],
-                             "collision_steps": e["collisions"], "severe_collision": e["severe_collision"]})
-                env_mj.reset(seed=seed, options={"layout": 0})
-                assert np.allclose(env_mj.xy, e["traj"][0][:2]), "2-D and MuJoCo starts differ"
-                dog.teleport(env_mj.xy[0], env_mj.xy[1], env_mj.yaw)
-                t0 = time.time()
-                _, st = run_on_dog(dog, env_mj, pol, max_s)
-                rows.append({"layout": layout, "policy": p, "episode": k, "seed": seed, "sim": "mujoco",
-                             "n_items": st["n_items"], "n_found": st["n_found"], "success": st["success"],
-                             "time_s": st["time_s"], "stain_entries": st["footprint_stain_entries"],
-                             "collision_steps": st["steps_with_robot_scene_contact"],
-                             "foot_in_stain_steps": st["steps_with_foot_in_stain"], "min_upright": st["min_upright"],
-                             "wall_s": round(time.time() - t0, 1)})
-                print(f"{layout} {p} ep{k}: 2-D {'OK ' if e['success'] else 'FAIL'} {e['time_s']:5.1f}s | MuJoCo "
-                      f"{'OK ' if st['success'] else 'FAIL'} {st['time_s']:5.1f}s found {st['n_found']}/{st['n_items']}",
-                      flush=True)
+        for p, k in todo:
+            pol = pols[p] = pols.get(p) or make_policy(p, model)
+            seed = BASE_SEED + k
+            e = run_episode(env_2d, pol, seed, 0)
+            r2 = {"layout": layout, "policy": p, "episode": k, "seed": seed, "sim": "2d",
+                  "n_items": int(e["n_items"]), "n_found": int(e["n_found"]), "success": bool(e["success"]),
+                  "time_s": round(float(e["time_s"]), 2), "stain_entries": int(e["contamination_entries"]),
+                  "collision_steps": int(e["collisions"]), "severe_collision": bool(e["severe_collision"])}
+            env_mj.reset(seed=seed, options={"layout": 0})
+            assert np.allclose(env_mj.xy, e["traj"][0][:2]), "2-D and MuJoCo starts differ"
+            dog.teleport(env_mj.xy[0], env_mj.xy[1], env_mj.yaw)
+            t0 = time.time()
+            _, st = run_on_dog(dog, env_mj, pol, max_s)
+            rm = {"layout": layout, "policy": p, "episode": k, "seed": seed, "sim": "mujoco",
+                  "n_items": st["n_items"], "n_found": st["n_found"], "success": st["success"],
+                  "time_s": st["time_s"], "stain_entries": st["footprint_stain_entries"],
+                  "collision_steps": st["steps_with_robot_scene_contact"],
+                  "foot_in_stain_steps": st["steps_with_foot_in_stain"], "min_upright": st["min_upright"],
+                  "wall_s": round(time.time() - t0, 1)}
+            rows += [r2, rm]
+            with part.open("a") as fh:                     # both rows at once: a pair is never split
+                fh.write(json.dumps(r2) + "\n" + json.dumps(rm) + "\n")
+            print(f"{layout} {p} ep{k}: 2-D {'OK ' if r2['success'] else 'FAIL'} {r2['time_s']:5.1f}s | MuJoCo "
+                  f"{'OK ' if rm['success'] else 'FAIL'} {rm['time_s']:5.1f}s found {rm['n_found']}/{rm['n_items']}",
+                  flush=True)
     finally:
         dog.close()
     return rows
@@ -98,7 +111,12 @@ def main():
     ap.add_argument("--episodes", type=int, default=10, help="start poses per scene")
     ap.add_argument("--model", default=str(OUT / "ppo/best_model.zip"))
     ap.add_argument("--workers", type=int, default=3)
+    ap.add_argument("--fresh", action="store_true", help="discard finished episodes in deploy_eval_parts/")
     a = ap.parse_args()
+    PARTS.mkdir(parents=True, exist_ok=True)
+    if a.fresh:
+        for f in PARTS.glob("*.jsonl"):
+            f.unlink()
     layouts, pols = a.layouts.split(","), a.policies.split(",")
     t0 = time.time()
     jobs = [(L, pols, a.episodes, a.model) for L in layouts]
