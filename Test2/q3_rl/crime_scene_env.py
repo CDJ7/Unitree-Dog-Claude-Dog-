@@ -12,7 +12,7 @@ its horizontal field of view and with a clear line of sight on the raster. Walki
 (footprint disc overlaps the stain cluster) CONTAMINATES the scene. Bumping into an obstacle is a
 COLLISION (the move is cancelled).
 
-Observation (48 floats in [-1, 1]):
+Observation (54 floats in [-1, 1]):
   0-3   pose: x, y (normalised to the house), sin(yaw), cos(yaw)
   4-6   body velocity vx, vy, yaw_rate (normalised by the limits)
   7-30  lidar: 24 rays over 360 deg (ray 0 straight ahead, counter-clockwise), range / max_range
@@ -20,6 +20,11 @@ Observation (48 floats in [-1, 1]):
         distance (/5 m), path length on the map (/10 m), height (/2 m), is-floor flag
   37-39 nearest floor stain: body-frame dx, dy (/3 m), clearance between footprint and stain (/3 m)
   40-47 found flags for up to 8 evidence slots (1 = found or empty slot, 0 = still to find)
+  48-49 route hint: body-frame unit vector along the shortest path on the known floor plan towards
+        the nearest unfound evidence (what the map + planner of a real robot would give; it says
+        nothing about stains, so contamination avoidance and the visiting order are left to RL)
+  50-52 previous action
+  53    bumped flag: 1 if the last step was a collision (so the policy can tell it is stuck)
 Action: Box(-1, 1, (3,)) scaled to the Go2 limits (0.4 m/s, 0.15 m/s, 0.5 rad/s).
 Reward: sum of the terms below (each its own function; weights in config/q3_env.yaml):
   find, progress, contamination, collision, time, all_found.
@@ -43,7 +48,8 @@ from scipy import ndimage
 TEST2 = Path(__file__).resolve().parents[1]
 LAYOUT_DIR = Path(__file__).resolve().parent / "layouts"
 HOUSE = (0.0, 8.2, 0.0, 4.5)          # x0, x1, y0, y1 of house 185
-N_OBS = 48
+N_OBS = 54
+HINT_ANGLES = np.arange(16) * 2 * np.pi / 16
 
 
 def load_env_config(path=None):
@@ -111,7 +117,7 @@ class Layout:
         self._fields = {}
         keep = [i for i in range(len(self.items)) if np.isfinite(self.field(i)).any()]
         self.dropped = [self.items[i]["id"] for i in range(len(self.items)) if i not in keep]
-        self._fields = {j: self._fields[i] for j, i in enumerate(keep)}
+        self._fields = {(j, False): self._fields[(i, False)] for j, i in enumerate(keep)}
         self.items = [self.items[i] for i in keep]
 
     def cell(self, xy):
@@ -133,10 +139,13 @@ class Layout:
             return False
         return not self.blocked[ij[:, 1], ij[:, 0]].any()
 
-    def field(self, k, find_range=1.5):
-        """Path length (m) from every reachable cell to the nearest cell the item can be seen from."""
-        if k in self._fields:
-            return self._fields[k]
+    def field(self, k, find_range=1.5, soft=False):
+        """Path length (m) from every reachable cell to the nearest cell the item can be seen from.
+        soft=True: clearance-weighted path cost (1 + 4 * ((0.6 - clearance) / 0.36)^2 near obstacles, as
+        in the Q2 planner), whose descent direction runs down the middle of passages (route hint)."""
+        key = (k, soft)
+        if key in self._fields:
+            return self._fields[key]
         from skimage.graph import MCP_Geometric
         tgt = np.asarray(self.items[k]["center"][:2], float)
         rr, cc = np.nonzero(self.reach)
@@ -146,10 +155,12 @@ class Layout:
         f = np.full((self.H, self.W), np.inf)
         if seeds:
             cost = np.where(self.reach, 1.0, np.inf)
+            if soft:
+                cost = cost + 4.0 * np.clip((0.6 - self.clear) / 0.36, 0, 1) ** 2
             mcp = MCP_Geometric(cost, fully_connected=True)
             cum, _ = mcp.find_costs(seeds)
             f = np.where(self.reach, cum * self.res, np.inf)
-        self._fields[k] = f
+        self._fields[key] = f
         return f
 
 
@@ -222,6 +233,8 @@ class CrimeSceneSearchEnv(gym.Env):
             if self._on_stain() < 0 and not self._visible().any():
                 break
         self.v = np.zeros(3)
+        self.last_action = np.zeros(3)
+        self.last_collided = False
         r = self.randomize
         self.tau = float(rng.uniform(*rc["lag_tau"])) if r else float(np.mean(rc["lag_tau"]))
         self.gain = float(rng.uniform(*rc["speed_scale"])) if r else 1.0
@@ -293,6 +306,22 @@ class CrimeSceneSearchEnv(gym.Env):
             rng = np.where(self.np_random.random(rng.shape) < self.lidar_drop, self.cfg["lidar"]["max_range"], rng)
         return np.clip(rng, 0, self.cfg["lidar"]["max_range"])
 
+    def _route_hint(self, i, step=0.35):
+        """Unit vector (body frame) of the steepest descent of item i's path-length field."""
+        L = self.layout
+        f = L.field(int(self.items[i]), soft=True)
+        r, c = L.cell(self.xy)
+        if not np.isfinite(f[r, c]) or f[r, c] <= 0.0:
+            d = self.tgt[i, :2] - self.xy
+            return self._body(d / max(np.linalg.norm(d), 1e-6))
+        p = self.xy[None] + step * np.stack([np.cos(HINT_ANGLES), np.sin(HINT_ANGLES)], 1)
+        ij = np.floor((p - L.origin) / L.res).astype(int)
+        vals = f[np.clip(ij[:, 1], 0, L.H - 1), np.clip(ij[:, 0], 0, L.W - 1)]
+        k = int(np.argmin(vals))
+        if not np.isfinite(vals[k]):
+            return np.zeros(2)
+        return self._body(np.array([np.cos(HINT_ANGLES[k]), np.sin(HINT_ANGLES[k])]))
+
     def _body(self, d):
         c, s = np.cos(self.yaw), np.sin(self.yaw)
         return np.array([c * d[0] + s * d[1], -s * d[0] + c * d[1]])
@@ -326,6 +355,10 @@ class CrimeSceneSearchEnv(gym.Env):
         flags = np.ones(self.max_items, np.float32)
         flags[:len(self.found)] = self.found
         o[40:48] = flags
+        if i >= 0:
+            o[48:50] = self._route_hint(i)
+        o[50:53] = self.last_action
+        o[53] = float(self.last_collided)
         return np.clip(o, -1, 1).astype(np.float32)
 
     def _info(self):
@@ -380,6 +413,8 @@ class CrimeSceneSearchEnv(gym.Env):
                  "all_found": reward_all_found(self.w, done)}
         self.d_near = self._nearest_unfound()[1] if not done else 0.0
         self.traj.append((*self.xy, self.yaw))
+        self.last_action = a.copy()
+        self.last_collided = collided
         truncated = (not done) and (not severe) and self.t >= self.cfg["episode"]["max_steps"]
         info = self._info()
         info["reward_terms"] = terms

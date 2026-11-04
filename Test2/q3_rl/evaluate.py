@@ -13,6 +13,8 @@ Policies:
           closest to the bearing of the nearest unfound evidence; drive when aligned and the
           robot-wide corridor ahead is clear (no map memory, no stain avoidance) - uses only the
           same observation vector as PPO
+  planner map-following: steer along the observation's route hint (shortest path on the known floor
+          plan to the nearest unfound evidence) with the same corridor check; no stain avoidance
   ppo     the trained policy (deterministic)
 Writes results/q3/eval_episodes.csv, eval_metrics.json, comparison.md, trajectories.png,
 learning_curves.png (from the EvalCallback log and the training Monitor files).
@@ -70,6 +72,18 @@ def greedy(obs, open_m=0.8, front_m=0.35, half_width=0.30):
     ahead = np.cos(RAY_ANGLES) > 0
     px, py = lid * np.cos(RAY_ANGLES), lid * np.sin(RAY_ANGLES)
     blocked = (ahead & (px < front_m + 0.24) & (np.abs(py) < half_width)).any()
+    vx = np.cos(e) ** 2 if (abs(e) < 0.6 and not blocked) else 0.0
+    return np.array([vx, 0.0, np.clip(2.0 * e, -1, 1)])
+
+
+def planner(obs, front_m=0.10, half_width=0.26):
+    """Map-following baseline: steer along the route hint (shortest path on the known floor plan to
+    the nearest unfound evidence, observation 48-49), drive when aligned and the robot-wide corridor
+    ahead is clear. Knows the map like PPO, but nothing about stains."""
+    lid = obs[7:31] * 3.0
+    e = float(np.arctan2(obs[49], obs[48])) if np.any(obs[48:50]) else float(np.arctan2(obs[32], obs[31]))
+    px, py = lid * np.cos(RAY_ANGLES), lid * np.sin(RAY_ANGLES)
+    blocked = ((np.cos(RAY_ANGLES) > 0) & (px < front_m + 0.24) & (np.abs(py) < half_width)).any()
     vx = np.cos(e) ** 2 if (abs(e) < 0.6 and not blocked) else 0.0
     return np.array([vx, 0.0, np.clip(2.0 * e, -1, 1)])
 
@@ -201,12 +215,13 @@ def main():
     ap.add_argument("--ppo-dir", default=str(OUT / "ppo"), help="training output folder (e.g. on Google Drive)")
     ap.add_argument("--model", help="default: <ppo-dir>/best_model.zip")
     ap.add_argument("--episodes", type=int, default=60)
-    ap.add_argument("--policies", default="random,greedy,ppo")
+    ap.add_argument("--policies", default="random,greedy,planner,ppo")
     a = ap.parse_args()
     a.model = a.model or str(Path(a.ppo_dir) / "best_model.zip")
     cfg = load_env_config()
     env = CrimeSceneSearchEnv(split="test", config=cfg)
-    pols = {"random": lambda: RandomPolicy(1), "greedy": lambda: greedy, "ppo": lambda: PPOPolicy(a.model)}
+    pols = {"random": lambda: RandomPolicy(1), "greedy": lambda: greedy, "planner": lambda: planner,
+            "ppo": lambda: PPOPolicy(a.model)}
     names = [p for p in a.policies.split(",")]
     rows, eps = [], {}
     for p in names:
@@ -218,7 +233,7 @@ def main():
             eps[p].append(e)
             rows.append({"policy": p, "episode": k, "seed": BASE_SEED + k,
                          **{c: e[c] for c in ("layout", "n_items", "n_found", "success", "time_s", "collisions",
-                                              "contamination_steps", "contamination_entries", "path_m", "return")}})
+                                              "severe_collision", "contamination_steps", "contamination_entries", "path_m", "return")}})
         d = pd.DataFrame([r for r in rows if r["policy"] == p])
         print(f"{p:7s} success {d.success.mean():.3f}  found {(d.n_found / d.n_items).mean():.3f}  time {d.time_s.mean():6.1f} s"
               f"  contam entries {d.contamination_entries.mean():.2f}  collisions {d.collisions.mean():.1f}", flush=True)

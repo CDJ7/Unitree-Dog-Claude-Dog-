@@ -3,7 +3,7 @@ seed: 6010
 env_config: config/q3_env.yaml
 n_envs: 8
 vec_env: subproc               # subproc | dummy
-total_timesteps: 3000000
+total_timesteps: 4000000
 out_dir: results/q3/ppo        # checkpoints/ (git-ignored) + best_model.zip + eval logs
 tensorboard_dir: results/q3/tb # git-ignored
 checkpoint_every: 100000       # env steps (all envs)
