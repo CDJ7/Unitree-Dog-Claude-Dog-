@@ -141,7 +141,7 @@ def main():
             tc_ += int((logits.argmax(1) == y).sum())
             tn += len(y)
             if b % 40 == 0:
-                print(f"  ep {ep} batch {b}/{len(train_dl)} loss {float(loss):.3f} ({time.time() - t0:.0f} s)", flush=True)
+                print(f"  ep {ep} batch {b}/{len(train_dl)} loss {float(loss.detach()):.3f} ({time.time() - t0:.0f} s)", flush=True)
         yv, lv = predict(model, val_dl)
         vloss = float(crit(lv, torch.from_numpy(yv)))
         pv = lv.argmax(1).numpy()
