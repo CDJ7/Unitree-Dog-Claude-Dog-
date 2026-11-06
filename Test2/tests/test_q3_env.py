@@ -102,3 +102,21 @@ def test_rectangle_footprint():
     xy = L.cell_xy(r, c)
     fits = [env._fits(xy, a) for a in np.linspace(0, np.pi, 12, endpoint=False)]
     assert not all(fits)
+
+
+def test_curriculum_levels():
+    """Level 0: one item, start within 1.5 m (map path) of where it is seen; past the last level = full task."""
+    cfg = str(Path(__file__).resolve().parents[1] / "config/q3_env_v4_curriculum.yaml")
+    env = CrimeSceneSearchEnv(split="train", config=cfg, curriculum_level=0)
+    assert env.level == 0
+    for s in range(30):
+        env.reset(seed=s)
+        assert len(env.items) == 1
+        assert env._path_len(0) <= 1.5 + 1e-6
+    assert env.set_curriculum_level(len(env.levels)) is None          # full task after the last level
+    sizes = set()
+    for s in range(30):
+        env.reset(seed=s)
+        sizes.add(len(env.items))
+    assert max(sizes) > 3
+    assert CrimeSceneSearchEnv(split="test", config=cfg).level is None  # evaluation never uses the curriculum
