@@ -188,7 +188,8 @@ def load_layouts(names, cfg):
 class CrimeSceneSearchEnv(gym.Env):
     metadata = {"render_modes": ["rgb_array"], "render_fps": 5}
 
-    def __init__(self, split="train", config=None, layouts=None, randomize=True, render_mode=None):
+    def __init__(self, split="train", config=None, layouts=None, randomize=True, render_mode=None,
+                 curriculum_level=None):
         self.cfg = config if isinstance(config, dict) else load_env_config(config)
         names = layouts or self.cfg["layouts"][split]
         self.layouts = [l for l in load_layouts(names, self.cfg) if l.items]
@@ -211,6 +212,17 @@ class CrimeSceneSearchEnv(gym.Env):
         self.observation_space = spaces.Box(-1.0, 1.0, (N_OBS,), np.float32)
         self.action_space = spaces.Box(-1.0, 1.0, (3,), np.float32)
         self.layout = None
+        # curriculum (config `curriculum.levels`): None = the full task (always used for validation and test)
+        self.levels = (self.cfg.get("curriculum") or {}).get("levels") or []
+        self.level = None
+        if curriculum_level is not None and self.levels:
+            self.set_curriculum_level(curriculum_level)
+
+    def set_curriculum_level(self, level):
+        """Use curriculum level `level` (0 = easiest) from the next reset on. None, or a level past the
+        last one, = the full task (exactly the validation/test task)."""
+        self.level = None if level is None or level >= len(self.levels) else int(max(level, 0))
+        return self.level
 
     # ------------------------------------------------------------------ reset
     def reset(self, *, seed=None, options=None):
@@ -221,7 +233,13 @@ class CrimeSceneSearchEnv(gym.Env):
         self.layout = L
         ec, rc = self.cfg["evidence"], self.cfg["robot"]
         n = len(L.items)
-        if self.randomize and n > ec["subset_min"]:
+        lv = self.levels[self.level] if self.level is not None else None
+        if lv is not None and self.randomize:
+            # curriculum: at most lv["max_items"] items (all if null), spawned near them (below)
+            hi = min(n, lv["max_items"] or n, self.max_items)
+            k = int(rng.integers(min(ec["subset_min"], hi), hi + 1))
+            idx = np.sort(rng.choice(n, size=k, replace=False))
+        elif self.randomize and n > ec["subset_min"]:
             k = int(rng.integers(ec["subset_min"], n + 1))
             idx = np.sort(rng.choice(n, size=min(k, self.max_items), replace=False))
         else:
@@ -234,6 +252,12 @@ class CrimeSceneSearchEnv(gym.Env):
         self.found = np.zeros(len(idx), bool)
         # spawn: a free cell with clearance, not on a stain and not already seeing an item
         rr, cc = np.nonzero(L.spawnable)
+        if lv is not None and lv.get("max_spawn_path"):
+            # curriculum: start within max_spawn_path metres (on the map) of a place an item is seen from
+            near = np.min([L.field(int(i)) for i in idx], axis=0)
+            m = L.spawnable & (near <= lv["max_spawn_path"])
+            if m.any():
+                rr, cc = np.nonzero(m)
         for _ in range(200):
             j = rng.integers(len(rr))
             xy = L.cell_xy(rr[j], cc[j]) + rng.uniform(-0.02, 0.02, 2)

@@ -1,0 +1,21 @@
+{
+ "layout": "s2",
+ "policy": "ppo",
+ "model": "results/q3/v4_curriculum/ppo/best_model.zip",
+ "seed": 1,
+ "spawn": [
+  0.893,
+  2.061,
+  2.819
+ ],
+ "n_items": 3,
+ "n_found": 3,
+ "success": true,
+ "time_s": 43.2,
+ "control_steps": 216,
+ "steps_with_foot_in_stain": 0,
+ "footprint_stain_entries": 0,
+ "steps_with_robot_scene_contact": 43,
+ "min_upright": 0.92,
+ "wall_time_s": 19.2
+}

@@ -1,0 +1,32 @@
+{
+ "a": "results/q3",
+ "b": "results/q3/v3_rect",
+ "paired_episodes": 60,
+ "success_rate_a": 0.6333,
+ "success_rate_b": 0.4667,
+ "both_succeed": 28,
+ "only_a_succeeds": 10,
+ "only_b_succeeds": 0,
+ "neither": 22,
+ "mcnemar_exact_p": 0.002,
+ "foot_in_stain_a": {
+  "total_steps": 179,
+  "episodes_with_any": 21,
+  "median": 0.0,
+  "top3_episodes": [
+   37,
+   16,
+   14
+  ]
+ },
+ "foot_in_stain_b": {
+  "total_steps": 1592,
+  "episodes_with_any": 21,
+  "median": 0.0,
+  "top3_episodes": [
+   898,
+   205,
+   179
+  ]
+ }
+}

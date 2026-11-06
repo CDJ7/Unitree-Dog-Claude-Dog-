@@ -1,0 +1,53 @@
+# Q3 v4 environment (results/q3/v4_curriculum/): the v3 setup (Go2 body rectangle, 6 validation scenes,
+# stain-entry penalty 8) plus a training curriculum. Validation and test always use the full task.
+# Q3: CrimeSceneSearchEnv (q3_rl/crime_scene_env.py). All reward weights live here.
+layouts:                       # scenes exported from MuJoCo by q3_rl/extract_layouts.py (house 185)
+  train: [s1, r1851, r1852, r1853, r3001, r3002, r3003, r3004, r3005, r3006, r3007, r3008, r3009, r3010, r3011, r3012]
+  val:   [r3201, r3202, r3203, r3204, r3205, r3206]   # PPO EvalCallback (model selection)
+  test:  [s2, r1854, r3101, r3102, r3103, r3104]   # never seen in training; final evaluation only
+evidence:
+  min_stains: 5                # clusters with fewer stains are ignored (too small to be a search target)
+  max_height: 2.0              # m; higher clusters (ceiling) are not visible to the dog's head camera
+  max_items: 8                 # observation slots for found-flags
+  subset_min: 2                # domain randomisation: each episode keeps a random subset of the evidence
+  jitter: 0.05                 # m, xy jitter of evidence positions
+find:
+  range: 1.5                   # m, horizontal distance from the camera to the evidence centre
+  half_fov_deg: 35             # horizontal half field of view of the head camera (fovy 60 at 4:3)
+  camera_offset: 0.32          # m ahead of the base (camera mount)
+robot:
+  radius: 0.24                 # planning disc (same as the Q2 planner); collisions use the footprint below
+  footprint: [0.70, 0.32]      # m, length x width of the Go2 body (rotated rectangle; v2 used the disc)
+  foot_radius: 0.30            # footprint disc used for stepping on floor stains
+  limits: [0.4, 0.15, 0.5]     # vx, vy, yaw_rate limits of the Go2 controller (Q2)
+  dt: 0.2                      # s per RL step (5 Hz decisions)
+  substeps: 4
+  lag_tau: [0.15, 0.35]        # s, first-order velocity response, randomised per episode
+  speed_scale: [0.85, 1.10]    # randomised gain on the commanded velocity
+  action_noise: 0.03           # fraction of the limit
+lidar:
+  rays: 24
+  max_range: 3.0
+  noise: 0.02                  # m (std), randomised dropout below
+  dropout: 0.02
+episode:
+  max_steps: 900               # 180 s at 5 Hz -> truncation
+  spawn_clearance: 0.40       # >= half the footprint diagonal (0.385 m): the dog can turn on the spot at its start
+  severe_collision_steps: 25   # 5 s of continuous bumping = severe collision -> terminated (failure)
+reward:                        # each term is its own function in crime_scene_env.py
+  find: 10.0                   # per evidence item found
+  progress: 2.0                # per metre of geodesic progress towards the nearest unfound item
+  contamination: 1.0           # per step with the footprint on a floor stain
+  contamination_entry: 8.0     # once per new stain entered (v2: 3.0)
+  collision: 0.5               # per step that bumps into furniture/walls
+  severe_collision: 20.0       # once, when the episode ends in a severe collision
+  time: 0.01                   # per step
+  all_found: 20.0              # bonus when every item is found (episode terminates)
+curriculum:                    # training only (q3_rl/train_ppo.py); the next level starts when the success rate
+  threshold: 0.7               # of the last `window` training episodes reaches `threshold`;
+  window: 200                  # after the last level comes the full task
+  levels:
+    - {max_items: 1, max_spawn_path: 1.5}    # one item, start within 1.5 m (on the map) of where it is seen
+    - {max_items: 1, max_spawn_path: 3.0}
+    - {max_items: 2, max_spawn_path: 5.0}
+    - {max_items: 3, max_spawn_path: null}   # null: anywhere
