@@ -14,74 +14,74 @@
   "greedy": {
    "2d": {
     "episodes": 60,
-    "success_rate": 0.25,
-    "found_fraction": 0.4951,
-    "time_s_successful_mean": 9.67,
-    "stain_entries_mean": 0.7,
-    "collision_steps_mean": 0.0
+    "success_rate": 0.2167,
+    "found_fraction": 0.4052,
+    "time_s_successful_mean": 6.74,
+    "stain_entries_mean": 0.5,
+    "collision_steps_mean": 14.17
    },
    "mujoco": {
     "episodes": 60,
     "success_rate": 0.1833,
-    "found_fraction": 0.414,
-    "time_s_successful_mean": 8.71,
-    "stain_entries_mean": 0.85,
-    "collision_steps_mean": 53.08,
-    "foot_in_stain_steps_mean": 148.13,
-    "min_upright": 0.765
+    "found_fraction": 0.4363,
+    "time_s_successful_mean": 5.84,
+    "stain_entries_mean": 0.767,
+    "collision_steps_mean": 44.35,
+    "foot_in_stain_steps_mean": 145.52,
+    "min_upright": 0.963
    }
   },
   "planner": {
    "2d": {
     "episodes": 60,
-    "success_rate": 0.7333,
-    "found_fraction": 0.77,
-    "time_s_successful_mean": 20.48,
-    "stain_entries_mean": 0.6,
-    "collision_steps_mean": 0.83
+    "success_rate": 0.5333,
+    "found_fraction": 0.6162,
+    "time_s_successful_mean": 17.51,
+    "stain_entries_mean": 0.333,
+    "collision_steps_mean": 8.13
    },
    "mujoco": {
     "episodes": 60,
-    "success_rate": 0.7,
-    "found_fraction": 0.7443,
-    "time_s_successful_mean": 18.89,
-    "stain_entries_mean": 0.783,
-    "collision_steps_mean": 95.73,
-    "foot_in_stain_steps_mean": 3.95,
-    "min_upright": 0.955
+    "success_rate": 0.65,
+    "found_fraction": 0.7071,
+    "time_s_successful_mean": 19.85,
+    "stain_entries_mean": 0.683,
+    "collision_steps_mean": 74.92,
+    "foot_in_stain_steps_mean": 18.0,
+    "min_upright": 0.942
    }
   },
   "ppo": {
    "2d": {
     "episodes": 60,
-    "success_rate": 0.5333,
-    "found_fraction": 0.624,
-    "time_s_successful_mean": 36.89,
-    "stain_entries_mean": 2.0,
-    "collision_steps_mean": 22.43
+    "success_rate": 0.5167,
+    "found_fraction": 0.6042,
+    "time_s_successful_mean": 16.22,
+    "stain_entries_mean": 0.617,
+    "collision_steps_mean": 52.68
    },
    "mujoco": {
     "episodes": 60,
-    "success_rate": 0.6333,
-    "found_fraction": 0.7345,
-    "time_s_successful_mean": 24.04,
-    "stain_entries_mean": 1.683,
-    "collision_steps_mean": 65.45,
-    "foot_in_stain_steps_mean": 2.98,
-    "min_upright": 0.619
+    "success_rate": 0.6667,
+    "found_fraction": 0.7917,
+    "time_s_successful_mean": 24.92,
+    "stain_entries_mean": 1.533,
+    "collision_steps_mean": 47.57,
+    "foot_in_stain_steps_mean": 30.55,
+    "min_upright": 0.866
    }
   }
  },
  "agreement_2d_vs_mujoco": {
-  "greedy": 0.9333,
-  "planner": 0.9333,
-  "ppo": 0.8
+  "greedy": 0.9667,
+  "planner": 0.75,
+  "ppo": 0.85
  },
  "per_layout_success": {
   "greedy": {
    "2d": {
     "r1854": 0.0,
-    "r3101": 0.2,
+    "r3101": 0.0,
     "r3102": 1.0,
     "r3103": 0.0,
     "r3104": 0.0,
@@ -89,8 +89,8 @@
    },
    "mujoco": {
     "r1854": 0.0,
-    "r3101": 0.1,
-    "r3102": 0.7,
+    "r3101": 0.0,
+    "r3102": 0.8,
     "r3103": 0.0,
     "r3104": 0.0,
     "s2": 0.3
@@ -98,40 +98,40 @@
   },
   "planner": {
    "2d": {
-    "r1854": 0.8,
-    "r3101": 0.3,
-    "r3102": 1.0,
-    "r3103": 1.0,
-    "r3104": 1.0,
-    "s2": 0.3
+    "r1854": 0.5,
+    "r3101": 0.0,
+    "r3102": 0.9,
+    "r3103": 0.7,
+    "r3104": 0.5,
+    "s2": 0.6
    },
    "mujoco": {
     "r1854": 0.7,
-    "r3101": 0.3,
+    "r3101": 0.1,
     "r3102": 1.0,
     "r3103": 0.9,
-    "r3104": 0.9,
+    "r3104": 0.8,
     "s2": 0.4
    }
   },
   "ppo": {
    "2d": {
-    "r1854": 0.9,
-    "r3101": 0.1,
-    "r3102": 0.9,
-    "r3103": 0.0,
-    "r3104": 1.0,
-    "s2": 0.3
-   },
-   "mujoco": {
-    "r1854": 1.0,
+    "r1854": 0.8,
     "r3101": 0.0,
     "r3102": 1.0,
     "r3103": 0.0,
-    "r3104": 0.8,
+    "r3104": 0.9,
+    "s2": 0.4
+   },
+   "mujoco": {
+    "r1854": 0.9,
+    "r3101": 0.1,
+    "r3102": 1.0,
+    "r3103": 0.0,
+    "r3104": 1.0,
     "s2": 1.0
    }
   }
  },
- "wall_time_s": 1148.8
+ "wall_time_s": 995.8
 }

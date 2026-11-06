@@ -1,4 +1,4 @@
-# PPO for the v3 environment (config/q3_env_v3_rect.yaml); same hyper-parameters as config/q3_ppo.yaml.
+# PPO for the v3 environment (config/q3_env_v3_rect.yaml); same hyper-parameters as the reported run, 4M steps.
 # Q3: PPO (stable-baselines3) for CrimeSceneSearchEnv
 seed: 6010
 env_config: config/q3_env_v3_rect.yaml

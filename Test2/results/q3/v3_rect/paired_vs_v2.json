@@ -1,5 +1,5 @@
 {
- "a": "results/q3",
+ "a": "results/q3/v2_disc",
  "b": "results/q3/v3_rect",
  "paired_episodes": 60,
  "success_rate_a": 0.6333,

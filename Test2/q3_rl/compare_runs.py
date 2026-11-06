@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Q3: paired comparison of two PPO runs on the MuJoCo Go2 (same scenes, same start poses).
 
-    python q3_rl/compare_runs.py --a results/q3 --b results/q3/v4_curriculum --out results/q3/v4_curriculum/paired_vs_v2.json
+    python q3_rl/compare_runs.py --a results/q3/v2_disc --b results/q3 --out results/q3/paired_v4_vs_v2.json
 
 Reads the deploy_eval_episodes.csv of both runs (written by deploy_eval.py with the same seeds), pairs
 the MuJoCo PPO episodes by (scene, start), and reports how often each run succeeds where the other
@@ -25,8 +25,8 @@ def mujoco_ppo(run_dir):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--a", required=True, help="run folder A (e.g. results/q3)")
-    ap.add_argument("--b", required=True, help="run folder B (e.g. results/q3/v4_curriculum)")
+    ap.add_argument("--a", required=True, help="run folder A (e.g. results/q3/v2_disc)")
+    ap.add_argument("--b", required=True, help="run folder B (e.g. results/q3)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     A, B = mujoco_ppo(a.a), mujoco_ppo(a.b)

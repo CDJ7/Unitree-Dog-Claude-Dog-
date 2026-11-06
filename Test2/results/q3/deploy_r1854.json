@@ -4,18 +4,18 @@
  "model": "results/q3/ppo/best_model.zip",
  "seed": 1,
  "spawn": [
-  5.943,
-  1.961,
+  4.093,
+  2.011,
   2.819
  ],
  "n_items": 5,
  "n_found": 5,
  "success": true,
- "time_s": 39.0,
- "control_steps": 195,
- "steps_with_foot_in_stain": 7,
- "footprint_stain_entries": 5,
- "steps_with_robot_scene_contact": 1,
- "min_upright": 0.994,
- "wall_time_s": 24.2
+ "time_s": 27.6,
+ "control_steps": 138,
+ "steps_with_foot_in_stain": 2,
+ "footprint_stain_entries": 3,
+ "steps_with_robot_scene_contact": 0,
+ "min_upright": 0.996,
+ "wall_time_s": 12.0
 }
