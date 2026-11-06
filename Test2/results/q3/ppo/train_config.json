@@ -1,12 +1,12 @@
 {
  "config": {
   "seed": 6010,
-  "env_config": "config/q3_env.yaml",
+  "env_config": "config/q3_env_v4_curriculum.yaml",
   "n_envs": 8,
   "vec_env": "subproc",
-  "total_timesteps": 4000000,
-  "out_dir": "results/q3/ppo",
-  "tensorboard_dir": "results/q3/tb",
+  "total_timesteps": 6000000,
+  "out_dir": "results/q3/v4_curriculum/ppo",
+  "tensorboard_dir": "results/q3/v4_curriculum/tb",
   "checkpoint_every": 100000,
   "eval_every": 50000,
   "eval_episodes": 20,
@@ -50,7 +50,11 @@
    ],
    "val": [
     "r3201",
-    "r3202"
+    "r3202",
+    "r3203",
+    "r3204",
+    "r3205",
+    "r3206"
    ],
    "test": [
     "s2",
@@ -75,6 +79,10 @@
   },
   "robot": {
    "radius": 0.24,
+   "footprint": [
+    0.7,
+    0.32
+   ],
    "foot_radius": 0.3,
    "limits": [
     0.4,
@@ -101,18 +109,40 @@
   },
   "episode": {
    "max_steps": 900,
-   "spawn_clearance": 0.35,
+   "spawn_clearance": 0.4,
    "severe_collision_steps": 25
   },
   "reward": {
    "find": 10.0,
    "progress": 2.0,
    "contamination": 1.0,
-   "contamination_entry": 3.0,
+   "contamination_entry": 8.0,
    "collision": 0.5,
    "severe_collision": 20.0,
    "time": 0.01,
    "all_found": 20.0
+  },
+  "curriculum": {
+   "threshold": 0.7,
+   "window": 200,
+   "levels": [
+    {
+     "max_items": 1,
+     "max_spawn_path": 1.5
+    },
+    {
+     "max_items": 1,
+     "max_spawn_path": 3.0
+    },
+    {
+     "max_items": 2,
+     "max_spawn_path": 5.0
+    },
+    {
+     "max_items": 3,
+     "max_spawn_path": null
+    }
+   ]
   }
  },
  "policy_kwargs": {
@@ -123,11 +153,11 @@
   "log_std_init": -0.5
  },
  "vec_env": "SubprocVecEnv",
- "resumed_from": "/home/user/Unitree-Dog-Claude-Dog-/Test2/results/q3/ppo/checkpoints/ppo_200000_steps.zip",
+ "resumed_from": null,
  "torch": "2.15.0+cu132",
  "sb3": "2.9.2",
  "gymnasium": "1.4.0",
  "n_train_layouts": 16,
- "wall_time_s": 1852.7,
- "final_timesteps": 4001088
+ "wall_time_s": 3199.8,
+ "final_timesteps": 6000640
 }

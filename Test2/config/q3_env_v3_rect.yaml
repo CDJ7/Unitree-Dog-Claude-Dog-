@@ -1,5 +1,5 @@
 # Q3 v3 environment ("improvement attempt", results/q3/v3_rect/): the Go2 body as a 0.70 x 0.32 m rectangle,
-# 6 validation scenes, contamination_entry 8. The reported policy (v2) uses config/q3_env.yaml.
+# 6 validation scenes, contamination_entry 8, no curriculum. The reported policy (v4) uses config/q3_env.yaml.
 # Q3: CrimeSceneSearchEnv (q3_rl/crime_scene_env.py). All reward weights live here.
 layouts:                       # scenes exported from MuJoCo by q3_rl/extract_layouts.py (house 185)
   train: [s1, r1851, r1852, r1853, r3001, r3002, r3003, r3004, r3005, r3006, r3007, r3008, r3009, r3010, r3011, r3012]

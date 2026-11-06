@@ -106,7 +106,7 @@ def test_rectangle_footprint():
 
 def test_curriculum_levels():
     """Level 0: one item, start within 1.5 m (map path) of where it is seen; past the last level = full task."""
-    cfg = str(Path(__file__).resolve().parents[1] / "config/q3_env_v4_curriculum.yaml")
+    cfg = str(Path(__file__).resolve().parents[1] / "config/q3_env.yaml")
     env = CrimeSceneSearchEnv(split="train", config=cfg, curriculum_level=0)
     assert env.level == 0
     for s in range(30):

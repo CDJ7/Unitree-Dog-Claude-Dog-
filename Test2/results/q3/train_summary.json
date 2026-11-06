@@ -1,11 +1,11 @@
 {
  "ppo_dir": "results/q3/ppo",
- "training_episodes": 16399,
- "training_steps": 3992586,
+ "training_episodes": 27511,
+ "training_steps": 5997520,
  "last_500_episodes": {
-  "success_rate": 0.928,
-  "found_fraction": 0.9717,
-  "severe_collision_rate": 0.01,
-  "stain_entries_mean": 1.01
+  "success_rate": 0.808,
+  "found_fraction": 0.8892,
+  "severe_collision_rate": 0.06,
+  "stain_entries_mean": 0.63
  }
 }

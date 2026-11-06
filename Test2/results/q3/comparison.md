@@ -1,8 +1,8 @@
 | Policy | Success | Evidence found | Time, successful eps (s) | Contamination entries / ep | Eps with contamination | Collision steps / ep | Severe-collision ends | Path (m) |
 |---|---|---|---|---|---|---|---|---|
-| random | 0.017 | 0.136 | 90.0 | 1.30 | 0.22 | 31.2 | 0.00 | 21.0 |
-| greedy | 0.367 | 0.553 | 20.1 | 1.25 | 0.47 | 2.9 | 0.03 | 4.6 |
-| planner | 0.850 | 0.876 | 18.4 | 0.52 | 0.45 | 4.7 | 0.00 | 4.0 |
-| ppo | 0.633 | 0.737 | 21.0 | 1.32 | 0.40 | 8.2 | 0.10 | 10.9 |
+| random | 0.050 | 0.163 | 145.7 | 1.05 | 0.25 | 40.0 | 0.00 | 20.9 |
+| greedy | 0.300 | 0.475 | 13.9 | 0.58 | 0.45 | 28.6 | 0.62 | 2.7 |
+| planner | 0.700 | 0.786 | 18.5 | 0.40 | 0.33 | 24.7 | 0.15 | 3.0 |
+| ppo | 0.533 | 0.674 | 19.3 | 0.52 | 0.35 | 22.6 | 0.20 | 6.8 |
 
 60 episodes per policy on the test layouts ['s2', 'r1854', 'r3101', 'r3102', 'r3103', 'r3104']; max episode length 180 s.
