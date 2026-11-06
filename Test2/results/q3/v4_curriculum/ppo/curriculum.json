@@ -1,0 +1,13 @@
+{
+ "level": 0,
+ "n_levels": 4,
+ "full_task_level": 4,
+ "threshold": 0.7,
+ "window": 200,
+ "history": [
+  [
+   0,
+   0
+  ]
+ ]
+}
