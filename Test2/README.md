@@ -8,6 +8,9 @@ floor stains or bumping into furniture, then runs that policy on the full physic
 dog (Q3). Every number in this document is read from a file in [`results/`](results/) that a script
 in this folder wrote; the command that produces it is given next to it.
 
+**Full technical report:** [`REPORT.md`](REPORT.md) (on GitHub) or [`Test2_Report.pdf`](Test2_Report.pdf) (34 pages, for printing):
+methods, all results with the real recorded data, and appendices.
+
 ![Go2 in the crime scene: chase camera, head camera, map](results/q2/go2_crime_scene.gif)
 
 *The Go2 (learned locomotion policy, real contact physics) walking a route through house 185, scenario S1:
