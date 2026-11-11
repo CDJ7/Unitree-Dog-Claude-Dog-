@@ -3,6 +3,7 @@
 
     python real_go2/goto_zone.py --source sdk --iface eth1                    # then press 1-4 to pick a zone
     python real_go2/goto_zone.py --source sdk --iface eth1 --target shelves   # start straight away
+    python real_go2/goto_zone.py --source sdk --iface eth1 --lidar-check      # no autonomy: check the LiDAR first
 
 How it finds a zone (camera classifier) and avoids obstacles on the way (LiDAR):
   LOOK      turn once on the spot, classifying every frame and storing the LiDAR free distance per heading
@@ -380,6 +381,43 @@ def nav_panel(nav, classes, prob, fps, recording):
     return p
 
 
+def lidar_panel(free, nav_cfg, fps):
+    """--lidar-check: the live LiDAR free distance per direction around the dog (up = straight ahead) and what
+    the navigator would do with it. No mission and no autonomous motion."""
+    p = np.full((VIEW_H, PANEL_W, 3), 24, np.uint8)
+    put_text(p, "LiDAR check - no autonomy", (12, 26), 0.6, (255, 255, 255))
+    put_text(p, "free distance in Test 1's body corridor", (12, 46), 0.42, (170, 170, 170))
+    if free is None:
+        put_text(p, "waiting for the LiDAR ...", (12, 90), 0.55)
+        return p
+    look = nav_cfg["lookahead_m"]
+    ahead = float(free[0])
+    stop, slow = nav_cfg["stop_obstacle_m"], nav_cfg["slow_obstacle_m"]
+    if not free.any():
+        verdict, col = "NO LiDAR DATA (would not walk)", (60, 60, 235)
+    elif ahead <= stop:
+        verdict, col = f"would STOP (< {stop:.2f} m)", (60, 60, 235)
+    elif ahead <= slow:
+        verdict, col = f"would SLOW + steer (< {slow:.2f} m)", (0, 200, 255)
+    else:
+        verdict, col = "clear ahead", (90, 230, 90)
+    put_text(p, f"ahead: {ahead:.2f} m", (12, 82), 0.7, (255, 255, 255), 2)
+    put_text(p, verdict, (12, 108), 0.5, col)
+    put_text(p, f"left {free[len(free) // 4]:.2f} m   right {free[-len(free) // 4]:.2f} m", (12, 132), 0.48)
+    cx, cy, r = PANEL_W // 2, 270, 110
+    for rad, c in ((stop, (60, 60, 235)), (slow, (0, 200, 255)), (look, (90, 90, 90))):
+        cv2.circle(p, (cx, cy), int(r * min(rad / look, 1.0)), c, 1)
+    nb = len(free)
+    for i in range(nb):
+        a = i / nb * 2 * math.pi
+        rf = int(r * min(free[i] / look, 1.0))
+        cv2.line(p, (cx, cy), (int(cx - rf * math.sin(a)), int(cy - rf * math.cos(a))),
+                 (170, 170, 170) if i else (255, 255, 255), 3 if i else 5)
+    put_text(p, "rings: stop (red), slow (orange), lookahead", (12, VIEW_H - 48), 0.4, (170, 170, 170))
+    put_text(p, f"{fps:4.1f} fps   drive with teleop keys, ESC quit", (12, VIEW_H - 28), 0.42, (170, 170, 170))
+    return p
+
+
 class LidarProfile:
     """Free-space profile from the real LiDAR (Ethernet): Test 1's LidarSource + cloud_to_body conversion,
     then free_profile with Test 1's walking corridor. Returns a new profile per new cloud (None otherwise);
@@ -429,6 +467,9 @@ def main():
     ap.add_argument("--target", help="zone to go to at start (name or 1-based number)")
     ap.add_argument("--allow-no-lidar", action="store_true", help="Wi-Fi / fake: walk without the obstacle check")
     ap.add_argument("--headless", action="store_true")
+    ap.add_argument("--lidar-check", action="store_true",
+                    help="no autonomy: show the live LiDAR free space and whether the navigator would stop/slow "
+                         "(tune Test 1's safety.corridor with this before the first mission)")
     ap.add_argument("--seconds", type=float, help="stop after this many seconds")
     ap.add_argument("--video-fps", type=float, default=10.0)
     a = ap.parse_args()
@@ -447,14 +488,26 @@ def main():
     tele.on_manual_input = lambda key: nav.cancel(f"cancelled by key '{key}'")
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     mp4 = out / f"goto_{stamp}.mp4"
-    events = []
+    events, missions = [], []          # missions: one entry per zone request (target, result, reason, legs, time)
     writer, recording = None, a.headless
     prob, wz, last_seq, last_state = np.ones(len(classes)) / len(classes), 0.0, -1, "idle"
     t0 = time.monotonic()
-    next_video = t0
-    if a.target:
+    next_video, last_free, last_print = t0, None, 0.0
+    if a.lidar_check and profile is None:
+        tele.shutdown()
+        link.close()
+        raise SystemExit("--lidar-check needs the LiDAR: use --source sdk --iface <name> (Ethernet).")
+
+    def begin(k, now, h):
+        if missions and missions[-1]["result"] is None:          # a new request replaces an unfinished one
+            missions[-1].update(result="replaced", reason="new zone requested", legs=nav.legs,
+                                seconds=round(now - t0 - missions[-1]["t"], 1))
+        nav.start(k, now, h)
+        missions.append({"target": classes[k], "t": round(now - t0, 2), "result": None})
+
+    if a.target and not a.lidar_check:
         k = classes.index(a.target) if a.target in classes else int(a.target) - 1
-        nav.start(k, t0, heading(t0, 0.0))
+        begin(k, t0, heading(t0, 0.0))
     try:
         while True:
             now = time.monotonic()
@@ -464,6 +517,25 @@ def main():
             if img is not None and seq != last_seq:
                 last_seq = seq
                 prob = new = clf(img)
+            if a.lidar_check:
+                f = profile() if profile is not None else None
+                if f is not None:
+                    last_free = f
+                    if now - last_print >= 1.0:
+                        log.info("LiDAR free ahead %.2f m, left %.2f m, right %.2f m", f[0], f[len(f) // 4],
+                                 f[-len(f) // 4])
+                        last_print = now
+                view = np.zeros((VIEW_H, VIEW_W, 3), np.uint8) if img is None else cv2.resize(img, (VIEW_W, VIEW_H))
+                comp = np.hstack([view, lidar_panel(last_free, cfg["navigation"], link.fps())])
+                if a.seconds and now - t0 >= a.seconds:
+                    break
+                if a.headless:
+                    time.sleep(0.02)
+                    continue
+                cv2.imshow("Go2 LiDAR check", comp)
+                if (cv2.waitKey(1) & 0xFF) == 27 or tele.quit_event.is_set():
+                    break
+                continue
             free = profile() if (profile is not None and nav.active) else None
             vx, wz = nav.update(now, h, new, free)
             if nav.active:
@@ -474,6 +546,10 @@ def main():
             if nav.state != last_state:
                 events.append({"t": round(now - t0, 2), "state": nav.state, "msg": nav.msg})
                 log.info("%s: %s", nav.state, nav.msg)
+                if nav.state in ("arrived", "failed", "idle") and missions and missions[-1]["result"] is None:
+                    missions[-1].update(result="cancelled" if nav.state == "idle" else nav.state, reason=nav.msg, legs=nav.legs,
+                                        explored=getattr(nav, "explored", 0),
+                                        seconds=round(now - t0 - missions[-1]["t"], 1))
                 if nav.state == "arrived" and cfg["navigation"].get("hello_on_arrival"):
                     tele.request_action("hello")
                 last_state = nav.state
@@ -498,7 +574,7 @@ def main():
             if key == 27 or tele.quit_event.is_set():
                 break
             if ord("1") <= key < ord("1") + len(classes):
-                nav.start(key - ord("1"), now, h)
+                begin(key - ord("1"), now, h)
             elif key in (ord("c"), ord("C")):
                 nav.cancel()
             elif key in (ord("v"), ord("V")):
@@ -513,10 +589,13 @@ def main():
             writer.release()
         if not a.headless:
             cv2.destroyAllWindows()
+        if missions and missions[-1]["result"] is None:
+            missions[-1].update(result="unfinished", reason="program ended", legs=nav.legs)
         (out / f"goto_{stamp}.json").write_text(json.dumps(
             {"classes": classes, "target": classes[nav.target] if nav.target is not None else None,
              "final_state": nav.state, "legs": nav.legs, "source": link.name, "lidar": profile is not None,
-             "video": mp4.name if writer is not None else None, "events": events}, indent=1))
+             "video": mp4.name if writer is not None else None, "missions": missions, "events": events},
+            indent=1))
         print(f"{nav.state}: {nav.msg}")
 
 
