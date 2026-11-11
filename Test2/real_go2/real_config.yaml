@@ -1,0 +1,33 @@
+# Real-world Q1: zone classifier on the real Unitree Go2. Edit `classes` to name the areas of YOUR room
+# (3-5 work best); keys 1..N in the recorder and the live demo select them in this order.
+classes: [door, desk, couch, window]
+
+seed: 6010
+data_dir: data_real                    # record_real.py writes data_real/run_000, run_001, ... (git-ignored)
+results_dir: results/real_q1
+image_hw: [168, 224]                   # network input, same as the simulated Q1
+crop: center43                         # 16:9 Go2 frames -> centred 4:3 window -> 320 x 240 (as the sim camera)
+record_hz: 5                           # saved frames per second, as in Q2
+
+split:
+  mode: by_order                       # recording sessions in order: last -> test, second-to-last -> val, rest -> train
+                                       # (record at least 3 sessions; 4-5 is better)
+
+train:                                 # same recipe as the simulated Q1 (config/q1_train.yaml)
+  epochs: 8
+  batch_size: 64
+  lr_head: 1.0e-3
+  lr_backbone: 2.0e-4
+  weight_decay: 1.0e-4
+  label_smoothing: 0.05
+  class_weighted_loss: true
+  num_workers: 2
+  epoch_fraction: 1.0                  # real sets are small: use every training frame each epoch
+
+augment:                               # no horizontal flip: a mirrored room is a different room
+  crop_scale: [0.8, 1.0]
+  rotation_deg: 5
+  brightness: 0.3
+  contrast: 0.3
+  saturation: 0.3
+  hue: 0.03

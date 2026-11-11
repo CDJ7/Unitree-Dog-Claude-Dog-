@@ -15,3 +15,6 @@ data/sample/_q1_cache/
 results/q3/deploy_eval_parts/
 results/q3/*/ppo/checkpoints/
 results/q3/*/deploy_eval_parts/
+data_real/
+results/real_q1/*/best.pt
+results/real_q1/*.mp4
