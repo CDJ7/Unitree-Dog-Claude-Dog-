@@ -42,11 +42,19 @@ navigation:                            # goto_zone.py: turn-and-look localisatio
   seen_conf: 0.40                      # target must reach this confidence in some direction, else "not seen"
   arrive_share: 0.50                   # arrived when >= this share of a full turn's views say "target zone"
   approach_speed: 0.25                 # m/s forward during a leg (capped at 0.15 without LiDAR)
-  leg_s: 3.0                           # s per leg before looking around again (2 s without LiDAR)
-  max_legs: 8                          # give up after this many legs
+  leg_s: 4.0                           # s per leg before looking around again (2 s without LiDAR)
+  max_legs: 20                         # give up after this many legs
   early_stop_conf: 0.80                # stop a leg early when the target is predicted steadily...
   early_stop_s: 2.0                    # ...for this long (then a full turn confirms arrival)
   lost_conf: 0.25                      # end the leg if the target's confidence stays below this...
   lost_s: 1.5                          # ...for this long
-  stop_obstacle_m: 0.50                # LiDAR: end the leg when something is this close ahead
+  # obstacle avoidance (LiDAR, Ethernet): part of choosing the direction and of walking
+  lookahead_m: 2.5                     # free space is measured up to this far in every direction
+  want_free_m: 1.5                     # a direction counts as fully free with this much room
+  stop_obstacle_m: 0.50                # end the leg (and remember the direction as blocked) this close
+  slow_obstacle_m: 1.00                # closer than this: slow down and steer to the freer side
+  avoid_turn_rate: 0.40                # rad/s while steering round an obstacle
+  blocked_memory_legs: 3               # avoid a direction that blocked a leg for this many legs
+  explore_legs: 10                     # target not in view: walk into the most open direction, at most this often
+  edge_jump_m: 0.8                     # exploring prefers directions just past an obstacle's edge (free-space jump)
   hello_on_arrival: true               # wave when it gets there

@@ -229,18 +229,52 @@ python real_go2/goto_zone.py --source sdk --iface eth1
 2. Click the *Go2 go to zone* window and press **1–4** to choose a zone. For example, **4** sends the dog
    to the shelves.
 3. The dog then:
-   - **looks around:** turns once on the spot, classifying every frame. The zone most views belong to is
-     *where it is*. The direction where the target looked most likely is *where to go*. If the target
-     already holds at least half of the views, it has **arrived** and waves.
-   - **turns** to that direction and **walks one leg** of up to 3 s at 0.25 m/s. The leg ends early if
-     the LiDAR sees something within 0.5 m ahead, if the target is recognised steadily, or if it fades
-     from view.
-   - **looks around again**, and repeats, for at most 8 legs.
+   - **looks around:** turns once on the spot, classifying every frame *and* reading the LiDAR. That gives
+     two maps over 24 directions: how likely the target is in each direction (camera), and how far the
+     dog can walk in each direction before something is in the way (LiDAR, a 0.6 m-wide corridor between
+     knee and chest height, so the floor is ignored). The zone most views belong to is *where it is*. If
+     the target already holds at least half of the views, it has **arrived** and waves.
+   - **chooses a path that avoids obstacles:** each direction scores *target likelihood × free space*.
+     A direction with a desk 0.5 m away scores near zero even if the target is right behind it. If the
+     target's own direction is blocked, it **detours**: it picks the open direction (≥ 1.5 m free)
+     closest to the target and keeps detouring on the same side, so it doesn't swing back and forth
+     around a desk. Directions that just blocked it are remembered and penalised for the next 3 legs.
+   - **explores** if the target isn't visible at all, for example hidden behind shelves. It walks toward
+     open space, preferring to keep going the same way and to pass the edges of obstacles, where a hidden
+     zone tends to come into view. It explores for at most 10 legs.
+   - **turns** to the chosen direction and **walks one leg** of up to 4 s at 0.25 m/s. While walking,
+     the LiDAR is checked every scan. If something is within **1.0 m** ahead, it slows to 40 % and steers
+     toward the freer side. If something is within **0.5 m**, it stops, marks that direction as blocked
+     and looks around again. The leg also ends early when the target is recognised steadily, or when it
+     fades from view.
+   - **looks around again**, and repeats, for at most 20 legs. It gives up with "boxed in" when no
+     direction has at least 1.5 m free.
 
-   The panel shows the target, the state, what the camera sees, and a radar of where the target looked
-   likely during the last look-around.
+   The panel shows the target, the state, what the camera sees, and a radar. On the radar, the colour
+   shows where the target looked likely, grey shows the free space the LiDAR measured in each direction,
+   and the white line is the chosen path. While it is steering around something, the panel says
+   "avoiding left/right".
 4. **Any manual key** (SPACE, W/A/S/D/Q/E) cancels the mission at once. **C** cancels too, **V**
    records the MP4, and **ESC** quits.
+
+Without the LiDAR (Wi-Fi, or `--allow-no-lidar`), there is no obstacle avoidance. The dog then walks at
+most 0.15 m/s for 2 s legs. Use this only with a clear floor and a hand on SPACE.
+
+**Tested in a 2-D simulated room, not yet on the real dog.** `python real_go2/nav_sim.py` runs the
+navigator closed-loop in a 6 × 4 m room. The robot follows the commands exactly, the LiDAR profile is
+ray-cast, and the "camera" sees the target zone when facing it with nothing in the way. Each layout is
+run from 4 starting points × 4 starting headings, and the result is saved in
+`results/real_q1/nav_sweep.json`:
+
+| Layout | Reached the zone | Closest approach to an obstacle (from the dog's centre) |
+|---|---|---|
+| Low desk blocks the walk, not the view | 16/16 | 0.27 m |
+| Tall shelf hides the zone from the start | 8/16 | 0.25 m |
+
+With a body half-width of about 0.16 m, the closest approach leaves about 10 cm to spare, and it hit
+nothing in any run. When the zone is hidden, half the runs ran out of exploration legs before seeing it.
+The other half found it. On the real dog, start where the target zone is in view, or walk it part of the
+way. `tests/test_goto_zone.py` checks the avoidance rules and both layouts.
 
 All thresholds are in `real_config.yaml` under `navigation:`. Each run writes
 `results/real_q1/goto_<time>.json`, the event log with every state change and its reason, plus the MP4.
@@ -248,7 +282,8 @@ All thresholds are in `real_config.yaml` under `navigation:`. Each run writes
 **How well will it work?** It's coarse visual navigation: it finds a zone it can see, room by room, not
 an exact spot. It works best when the zones look clearly different and the target is visible from where
 the dog starts. Expect lab_1 / lab_2 mix-ups if they look alike. The JSON log shows exactly why it
-stopped, so you can report successes and failures honestly. Try each zone from a few starting points.
+stopped (arrived, blocked, boxed in, not seen, out of legs), so you can report successes and failures
+honestly. Try each zone from a few starting points.
 
 ## Filming checklist
 1. A phone films the dog. Run `live_zone.py` and `goto_zone.py` with **V** to record the screen view.

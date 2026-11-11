@@ -4,15 +4,21 @@
     python real_go2/goto_zone.py --source sdk --iface eth1                    # then press 1-4 to pick a zone
     python real_go2/goto_zone.py --source sdk --iface eth1 --target shelves   # start straight away
 
-How it finds a zone, using only the camera classifier (labels = where the dog is, as when recording):
-  LOOK      turn once on the spot, classifying every frame. Two answers come out of one turn:
-            * where am I: the zone most of the views belong to (averaged over all directions);
-            * which way: the heading in which the classifier is most confident in the TARGET zone.
+How it finds a zone (camera classifier) and avoids obstacles on the way (LiDAR):
+  LOOK      turn once on the spot, classifying every frame and storing the LiDAR free distance per heading
+            (Test 1's body corridor, floor ignored). Out of one turn come:
+            * where am I: the zone most of the views belong to;
+            * which way: heading score = P(target) x free-space factor x blocked-memory penalty, so a
+              direction with a desk in the way loses even if the target is behind it;
+            * if the target's way is blocked: DETOUR to the open heading (>= want_free_m) closest to the
+              target, staying on the same side; if the target is not seen at all: EXPLORE open space
+              (momentum + obstacle-edge bonus), at most explore_legs; nothing open: fail "boxed in".
             If the target zone holds >= navigation.arrive_share of the views -> ARRIVED (waves hello).
-  TURN      turn to the best heading.
-  WALK      walk forward for one leg (navigation.leg_s), holding the heading. The leg ends early when
-            the LiDAR sees something within stop_obstacle_m ahead, when the target is predicted steadily
-            (early_stop_*), or when it fades (lost_*). Then LOOK again. Gives up after max_legs.
+  TURN      turn to the chosen heading.
+  WALK      walk forward for one leg (navigation.leg_s). Every LiDAR scan: within slow_obstacle_m ahead ->
+            slow down and steer to the freer side; within stop_obstacle_m -> stop, remember that heading
+            as blocked, LOOK again. The leg also ends when the target is predicted steadily (early_stop_*)
+            or fades (lost_*). Gives up after max_legs. Closed-loop check: real_go2/nav_sim.py.
 Safety: the dog moves only through Test 1's teleop autonomy hook (go2_stream/teleop.py set_autonomy):
 requests lapse unless refreshed, are clamped to the teleop limits, and ANY manual key (SPACE, W/A/S/D/Q/E,
 ESC) cancels the mission at once. Walking needs LiDAR (Ethernet / --source sdk), as Test 1's missions do;
@@ -47,26 +53,83 @@ def wrap(a):
     return (a + math.pi) % (2 * math.pi) - math.pi
 
 
+def free_profile(points, nb, corridor, lookahead):
+    """Free walking distance (m) in nb directions around the dog, from LiDAR points in the body frame
+    (x forward, y left, z up). Direction i is i * 360/nb degrees counter-clockwise from straight ahead.
+    For each direction the points are rotated into that direction's frame and Test 1's walking corridor is
+    applied (half_width_m, z_min..z_max, from x_min); the free distance is the min_points-th nearest
+    obstacle in it, or `lookahead` when the corridor is clear that far."""
+    out = np.full(nb, float(lookahead))
+    p = np.asarray(points, float).reshape(-1, 3)
+    p = p[np.isfinite(p).all(1) & (p[:, 2] >= corridor["z_min"]) & (p[:, 2] <= corridor["z_max"])]
+    if not len(p):
+        return out
+    th = np.arange(nb) * 2 * math.pi / nb
+    c, s = np.cos(th)[:, None], np.sin(th)[:, None]
+    xr = c * p[None, :, 0] + s * p[None, :, 1]                # coordinates in each direction's frame
+    yr = -s * p[None, :, 0] + c * p[None, :, 1]
+    k = max(int(corridor["min_points"]), 1)
+    for i in range(nb):
+        m = (xr[i] >= corridor["x_min"]) & (xr[i] <= lookahead) & (np.abs(yr[i]) <= corridor["half_width_m"])
+        if m.sum() >= k:
+            out[i] = float(np.sort(xr[i][m])[k - 1])
+    return out
+
+
 class ZoneNavigator:
-    """The decision logic, independent of the robot: feed it classifier outputs, obstacle distances and the
-    heading; it returns velocity requests (vx, wz). States: idle, look, turn, walk, arrived, failed."""
+    """The decision logic, independent of the robot: feed it classifier outputs, the heading and (with LiDAR)
+    the free-space profile; it returns velocity requests (vx, wz). States: idle, look, turn, walk, arrived,
+    failed. Directions are absolute heading bins: bin b points at b * 360/heading_bins degrees.
+
+    Obstacle avoidance is part of the path choice:
+      * while looking around, every LiDAR profile is stored per absolute direction (the forward +-30 deg,
+        where the sensor sees best), so a full turn maps the free distance in all directions;
+      * the walking direction maximises P(target in that direction) x free-space factor, minus directions
+        that blocked a recent leg; if the target's direction is blocked it takes a detour through the free
+        direction closest to it;
+      * while walking, an obstacle within slow_obstacle_m slows the dog and steers it to the freer side;
+        within stop_obstacle_m the leg ends, that direction is remembered as blocked, and it plans again."""
 
     def __init__(self, classes, nav, have_lidar):
         self.classes, self.nav, self.have_lidar = list(classes), dict(nav), have_lidar
         if not have_lidar:
             self.nav["approach_speed"] = min(self.nav["approach_speed"], 0.15)
             self.nav["leg_s"] = min(self.nav["leg_s"], 2.0)
+        self.nb = int(self.nav["heading_bins"])
         self.state, self.target, self.msg = "idle", None, "press 1-%d to choose a zone" % len(classes)
         self.legs = 0
         self.scan = []                      # (heading, prob vector) during LOOK
-        self.best_heading, self.where, self.share, self.bins = None, None, 0.0, None
-        self._recent = deque()              # (t, prob of target) during WALK
+        self.best_heading, self.where, self.share = None, None, 0.0
+        self.bins = self.free = self.score = None
+        self.blocked = {}                   # absolute bin -> leg number when a leg ended blocked there
+        self.detour = False
+        self.exploring, self.explored = False, 0   # walking into open space because the target is not in view
+        self._last_leg_heading = None
+        self.detour_side = 0                # +1 going round obstacles on the left, -1 on the right, 0 none
+        self._explore_heading = None
+        self._world_free = np.full(self.nb, np.nan)
+        self._recent = deque()              # (t, prob of target, target is argmax) during WALK
         self._t0 = 0.0
-        self._start_heading = 0.0
+        self.avoiding = 0                   # -1 right, 0 none, +1 left (for the panel)
+        self._last_free = (None, 0.0)       # latest LiDAR profile while walking (the LiDAR is slower than the loop)
+
+    # ------------------------------------------------------------------ helpers
+    def bin_of(self, heading):
+        return int(round((heading % (2 * math.pi)) / (2 * math.pi) * self.nb)) % self.nb
+
+    def heading_of(self, b):
+        return b * 2 * math.pi / self.nb
+
+    def _free_factor(self, free):
+        nav = self.nav
+        f = (free - nav["stop_obstacle_m"]) / max(nav["want_free_m"] - nav["stop_obstacle_m"], 1e-6)
+        return np.where(np.isnan(free), 0.0, np.clip(f, 0.0, 1.0))
 
     # ------------------------------------------------------------------ commands
     def start(self, k, now, heading):
-        self.target, self.legs = int(k), 0
+        self.target, self.legs, self.blocked = int(k), 0, {}
+        self.explored, self.exploring, self._last_leg_heading = 0, False, None
+        self.detour_side, self._explore_heading = 0, None
         self.msg = f"going to {self.classes[k]}"
         self._look(now, heading)
 
@@ -80,44 +143,118 @@ class ZoneNavigator:
 
     # ------------------------------------------------------------------ states
     def _look(self, now, heading):
-        self.state, self.scan, self._t0, self._start_heading = "look", [], now, heading
+        self.state, self.scan, self._t0 = "look", [], now
+        self._world_free = np.full(self.nb, np.nan)
+        self.avoiding = 0
+        self._last_free = (None, 0.0)
+
+    def _store_free(self, heading, free):
+        """Body-frame profile -> absolute directions, keeping the forward +-2 bins (the LiDAR's best view)."""
+        cb = self.bin_of(heading)
+        for j in (-2, -1, 0, 1, 2):
+            self._world_free[(cb + j) % self.nb] = free[j % self.nb]
 
     def _finish_look(self, now, heading):
-        nav, k = self.nav, self.target
+        nav, k, nb = self.nav, self.target, self.nb
         probs = np.array([p for _, p in self.scan])
-        heads = np.array([(h - self._start_heading) % (2 * math.pi) for h, _ in self.scan])
+        b = np.array([self.bin_of(h) for h, _ in self.scan])
         votes = np.bincount(probs.argmax(1), minlength=len(self.classes)) / len(probs)
         self.where, self.share = int(votes.argmax()), float(votes[k])
-        nb = nav["heading_bins"]
-        b = (heads / (2 * math.pi) * nb).astype(int) % nb
         sums, cnt = np.bincount(b, probs[:, k], nb), np.bincount(b, minlength=nb)
         mean = np.where(cnt > 0, sums / np.maximum(cnt, 1), np.nan)
         filled = np.where(np.isnan(mean), np.nanmean(mean), mean)
-        smooth = (np.roll(filled, 1) + filled + np.roll(filled, -1)) / 3        # circular, +-1 bin
-        self.bins = smooth
-        best = int(np.argmax(smooth))
-        self.best_heading = self._start_heading + (best + 0.5) / nb * 2 * math.pi
+        p = (np.roll(filled, 1) + filled + np.roll(filled, -1)) / 3            # circular, +-1 bin
+        self.bins = p
+        tb = int(np.argmax(p))                                                  # where the target looks likeliest
         if self.share >= nav["arrive_share"]:
             self.state = "arrived"
             self.msg = f"ARRIVED at {self.classes[k]} ({self.share:.0%} of the views)"
-        elif smooth[best] < nav["seen_conf"]:
-            self.state = "failed"
-            self.msg = f"{self.classes[k]} not seen in any direction (best {smooth[best]:.2f})"
-        elif self.legs >= nav["max_legs"]:
+            return
+        if self.legs >= nav["max_legs"]:
             self.state = "failed"
             self.msg = f"gave up after {self.legs} legs (here looks like {self.classes[self.where]})"
-        else:
+            return
+        self.exploring = False
+        if p[tb] < nav["seen_conf"]:
+            if not (self.have_lidar and self.explored < nav["explore_legs"]):
+                self.state = "failed"
+                self.msg = f"{self.classes[k]} not seen in any direction (best {p[tb]:.2f})"
+                return
+            # explore: walk into the most open direction, not back the way it came, then look again
+            self.free = self._world_free.copy()
+            fac = self._free_factor(self.free)
+            back = np.ones(nb)
+            if self._last_leg_heading is not None:
+                bb = self.bin_of(self._last_leg_heading + math.pi)
+                for j in range(-3, 4):
+                    back[(bb + j) % nb] = 0.3
+            keep = np.ones(nb)                                                 # momentum: keep exploring the same way
+            if self._explore_heading is not None:
+                eb = self.bin_of(self._explore_heading)
+                for j in range(-3, 4):
+                    keep[(eb + j) % nb] = 1.6
+            fz = np.nan_to_num(self.free, nan=0.0)
+            edge = np.ones(nb)                                                 # obstacle edges lead round obstacles
+            jump = np.maximum(np.abs(fz - np.roll(fz, 1)), np.abs(fz - np.roll(fz, -1)))
+            edge[(jump >= nav["edge_jump_m"]) & (fz >= nav["want_free_m"])] = 1.8
+            score = fz * (fac > 0) * back * keep * edge
+            best = int(np.argmax(score))
+            if score[best] <= 0:
+                self.state = "failed"
+                self.msg = f"{self.classes[k]} not seen and no free direction to explore"
+                return
+            self.exploring, self.explored, self.detour, self.score = True, self.explored + 1, False, score
+            self.best_heading = self._explore_heading = self.heading_of(best)
             self.state = "turn"
-            self.msg = (f"here looks like {self.classes[self.where]}; {self.classes[k]} is best at "
-                        f"{math.degrees(wrap(self.best_heading - heading)):+.0f} deg")
+            self.msg = (f"{self.classes[k]} not in view (best {p[tb]:.2f}); exploring the most open way "
+                        f"({self.free[best]:.1f} m free, try {self.explored}/{nav['explore_legs']})")
+            return
+        if self.have_lidar:
+            self.free = self._world_free.copy()
+            fac = self._free_factor(self.free)
+            pen = np.ones(nb)
+            for bb, leg in self.blocked.items():                               # avoid recently blocked ways
+                if self.legs - leg < nav["blocked_memory_legs"]:
+                    for j in (-1, 0, 1):
+                        pen[(bb + j) % nb] *= 0.2
+            self.score = p * fac * pen
+            best = int(np.argmax(self.score))
+            if self.score[best] < 0.25 * nav["seen_conf"]:                     # target's way is blocked: detour
+                ok = np.flatnonzero((fac >= 0.6) & (pen >= 1.0))
+                off = (ok - tb + nb / 2) % nb - nb / 2                          # signed bins from the target's way
+                if self.detour_side:                                            # keep going round the same side
+                    same = off * self.detour_side > 0
+                    if same.any():
+                        ok, off = ok[same], off[same]
+                if not len(ok):
+                    self.state = "failed"
+                    self.msg = "boxed in: no free direction (LiDAR)"
+                    return
+                i = int(np.argmin(np.abs(off)))
+                best = int(ok[i])
+                self.detour_side = 1 if off[i] > 0 else -1
+            else:
+                self.detour_side = 0
+        else:
+            self.free, self.score, best = None, p, tb
+        self.detour = abs((best - tb + nb / 2) % nb - nb / 2) > 1
+        self.best_heading = self.heading_of(best)
+        way = f"detour {math.degrees(wrap(self.best_heading - self.heading_of(tb))):+.0f} deg off the target's way" \
+            if self.detour else "clear"
+        free_txt = f", free {self.free[best]:.1f} m" if self.free is not None else ""
+        self.state = "turn"
+        self.msg = (f"here looks like {self.classes[self.where]}; heading {math.degrees(wrap(self.best_heading)):+.0f} "
+                    f"deg towards {self.classes[k]} ({way}{free_txt})")
 
-    def update(self, now, heading, prob=None, obstacle_m=None):
-        """One control step. prob: latest classifier output (None if no new frame); obstacle_m: LiDAR distance
-        to the nearest obstacle ahead (None = clear, 0.0 = no LiDAR data = blocked). Returns (vx, wz)."""
+    def update(self, now, heading, prob=None, free=None):
+        """One control step. prob: latest classifier output (None if no new frame). free: latest LiDAR free-space
+        profile in the body frame (free_profile; None if no new scan; all zeros = no LiDAR data). Returns (vx, wz)."""
         nav, k = self.nav, self.target
         if self.state == "look":
             if prob is not None:
                 self.scan.append((heading, np.asarray(prob, float)))
+            if free is not None and self.have_lidar:
+                self._store_free(heading, np.asarray(free, float))
             turned = sum(abs(wrap(b[0] - a[0])) for a, b in zip(self.scan, self.scan[1:]))
             if turned >= 2 * math.pi - 0.05 and len(self.scan) >= 8:
                 self._finish_look(now, heading)
@@ -127,7 +264,9 @@ class ZoneNavigator:
             err = wrap(self.best_heading - heading)
             if abs(err) < 0.08:
                 self.state, self.legs, self._t0, self._recent = "walk", self.legs + 1, now, deque()
-                self.msg = f"walking towards {self.classes[k]} (leg {self.legs})"
+                self._last_leg_heading = self.best_heading
+                kind = ", exploring" if self.exploring else ", detour" if self.detour else ""
+                self.msg = f"walking towards {self.classes[k]} (leg {self.legs}{kind})"
                 return 0.0, 0.0
             return 0.0, float(np.clip(1.2 * err, -nav["scan_rate"], nav["scan_rate"]))
         if self.state == "walk":
@@ -135,16 +274,33 @@ class ZoneNavigator:
                 self._recent.append((now, float(prob[k]), int(np.argmax(prob)) == k))
             while self._recent and now - self._recent[0][0] > max(nav["early_stop_s"], nav["lost_s"]):
                 self._recent.popleft()
-            end = None
-            if self.have_lidar and obstacle_m is not None:
-                end = "no LiDAR data" if obstacle_m <= 0.0 else (
-                    f"obstacle {obstacle_m:.2f} m ahead" if obstacle_m <= nav["stop_obstacle_m"] else None)
+            end, vx = None, nav["approach_speed"]
+            wz = float(np.clip(0.8 * wrap(self.best_heading - heading), -0.3, 0.3))
+            self.avoiding = 0
+            if free is not None:
+                self._last_free = (free, now)
+            elif self._last_free[0] is not None and now - self._last_free[1] <= 0.5:
+                free = self._last_free[0]                                     # hold the last scan between scans
+            if self.have_lidar and free is not None:
+                free = np.asarray(free, float)
+                if not np.any(free > 0):
+                    end = "no LiDAR data"
+                else:
+                    front = float(free[0])
+                    if front <= nav["stop_obstacle_m"]:
+                        self.blocked[self.bin_of(heading)] = self.legs
+                        end = f"blocked {front:.2f} m ahead"
+                    elif front <= nav["slow_obstacle_m"]:                       # steer round it, slowly
+                        left, right = min(free[1], free[2]), min(free[-1], free[-2])
+                        self.avoiding = 1 if left >= right else -1
+                        wz = self.avoiding * nav["avoid_turn_rate"]
+                        vx = nav["approach_speed"] * 0.4
             span = now - self._recent[0][0] if self._recent else 0.0
-            if end is None and span >= nav["early_stop_s"] * 0.9:
+            if end is None and not self.detour and span >= nav["early_stop_s"] * 0.9:
                 w = [r for r in self._recent if now - r[0] <= nav["early_stop_s"]]
                 if all(r[2] for r in w) and np.mean([r[1] for r in w]) >= nav["early_stop_conf"]:
                     end = f"{self.classes[k]} recognised steadily"
-            if end is None and span >= nav["lost_s"] * 0.9:
+            if end is None and not (self.detour or self.exploring) and span >= nav["lost_s"] * 0.9:
                 w = [r for r in self._recent if now - r[0] <= nav["lost_s"]]
                 if max(r[1] for r in w) < nav["lost_conf"]:
                     end = f"lost sight of {self.classes[k]}"
@@ -154,7 +310,7 @@ class ZoneNavigator:
                 self.msg = f"{end}; looking around"
                 self._look(now, heading)
                 return 0.0, 0.0
-            return nav["approach_speed"], float(np.clip(0.8 * wrap(self.best_heading - heading), -0.3, 0.3))
+            return vx, wz
         return 0.0, 0.0
 
 
@@ -194,37 +350,74 @@ def nav_panel(nav, classes, prob, fps, recording):
     put_text(p, line, (12, y), 0.42, (200, 200, 200))
     k = int(np.argmax(prob))
     put_text(p, f"camera sees: {classes[k]} ({prob[k]:.2f})", (12, 186), 0.5)
-    if nav.bins is not None and nav.target is not None:      # last look-around: target confidence by heading
-        cx, cy, r = PANEL_W // 2, 300, 70
+    if nav.avoiding:
+        put_text(p, f"avoiding obstacle: steering {'left' if nav.avoiding > 0 else 'right'}", (12, 206), 0.45,
+                 (0, 200, 255))
+    if nav.bins is not None and nav.target is not None:      # last look-around, per absolute direction
+        cx, cy, r = PANEL_W // 2, 305, 70
         cv2.circle(p, (cx, cy), r, (70, 70, 70), 1)
         nb = len(nav.bins)
-        for i, v in enumerate(nav.bins):
-            a = -((i + 0.5) / nb * 2 * math.pi)              # drawn relative to the scan start, up = start
-            rr = int(r * float(np.clip(v, 0, 1)))
-            cv2.line(p, (cx, cy), (int(cx + rr * math.sin(-a)), int(cy - rr * math.cos(-a))),
-                     COLORS[nav.target % len(COLORS)], 3)
-        put_text(p, "last look-around: where the target looked likely", (12, 220), 0.4, (170, 170, 170))
+        look = nav.nav.get("lookahead_m", 2.5)
+        for i in range(nb):
+            a = i / nb * 2 * math.pi                         # up = heading 0, counter-clockwise
+            ux, uy = -math.sin(a), -math.cos(a)
+            if nav.free is not None and not np.isnan(nav.free[i]):   # grey: free distance
+                rf = int(r * min(nav.free[i] / look, 1.0))
+                cv2.line(p, (cx, cy), (int(cx + rf * ux), int(cy + rf * uy)), (95, 95, 95), 7)
+            rr = int(r * float(np.clip(nav.bins[i], 0, 1)))  # colour: target likelihood
+            cv2.line(p, (cx, cy), (int(cx + rr * ux), int(cy + rr * uy)), COLORS[nav.target % len(COLORS)], 3)
+        if nav.best_heading is not None:                     # white: chosen direction
+            a = nav.best_heading
+            cv2.line(p, (cx, cy), (int(cx - (r + 8) * math.sin(a)), int(cy - (r + 8) * math.cos(a))),
+                     (255, 255, 255), 1)
+        put_text(p, "look-around: target (colour), free space (grey), chosen (white)", (12, 226), 0.36,
+                 (170, 170, 170))
         if nav.where is not None:
-            put_text(p, f"here looked like {classes[nav.where]}; target share {nav.share:.0%}", (12, 385), 0.42)
+            put_text(p, f"here looked like {classes[nav.where]}; target share {nav.share:.0%}", (12, 392), 0.42)
     put_text(p, f"{fps:4.1f} fps   1-{len(classes)} go  C cancel  V video", (12, VIEW_H - 30), 0.42, (170, 170, 170))
     put_text(p, "REC" if recording else "not recording (V)", (12, VIEW_H - 10), 0.45,
              (60, 60, 235) if recording else (150, 150, 150))
     return p
 
 
-def make_safety(link, go2cfg, allow_no_lidar):
-    """(clearance_fn or None, pose_fn or None). Ethernet: Test 1's LiDAR corridor check and odometry heading."""
-    if link.name == "sdk":
+class LidarProfile:
+    """Free-space profile from the real LiDAR (Ethernet): Test 1's LidarSource + cloud_to_body conversion,
+    then free_profile with Test 1's walking corridor. Returns a new profile per new cloud (None otherwise);
+    all zeros when the cloud is missing or older than max_age_s (= blocked: no data, no walking)."""
+
+    def __init__(self, link, go2cfg, nav, max_age_s=1.0):
         import lidar as lidar_mod
-        from behavior.clearance import make_real_clearance, make_real_pose_fn
         bcfg = yaml.safe_load((Path(lidar_mod.__file__).parent / "config/behaviors.yaml").read_text())
-        src = lidar_mod.LidarSource(go2cfg["lidar"])
-        return (make_real_clearance(src, link.state, lidar_mod, "auto", bcfg["safety"]["corridor"]),
-                make_real_pose_fn(link.state))
+        self.corridor, self.nav, self.max_age_s = bcfg["safety"]["corridor"], nav, max_age_s
+        self.lidar_mod, self.state = lidar_mod, link.state
+        self.src = lidar_mod.LidarSource(go2cfg["lidar"])
+        self._seq = -1
+
+    def __call__(self):
+        from perception.pipeline import cloud_to_body
+        msg, seq, stamp = self.src.latest.get()
+        nb = int(self.nav["heading_bins"])
+        if msg is None or time.monotonic() - stamp > self.max_age_s:
+            return np.zeros(nb)
+        if seq == self._seq:
+            return None
+        self._seq = seq
+        sport = self.state.sport.get()[0] if self.state is not None else None
+        pts, _ = cloud_to_body(msg, sport, "auto", self.lidar_mod)
+        if pts is None:
+            return np.zeros(nb)
+        return free_profile(pts, nb, self.corridor, self.nav["lookahead_m"])
+
+
+def make_safety(link, go2cfg, nav, allow_no_lidar):
+    """(free-space profile fn or None, pose fn or None). Ethernet: real LiDAR profile + odometry heading."""
+    if link.name == "sdk":
+        from behavior.clearance import make_real_pose_fn
+        return LidarProfile(link, go2cfg, nav), make_real_pose_fn(link.state)
     if not allow_no_lidar:
-        raise SystemExit("Autonomous walking needs the LiDAR obstacle check (Ethernet, --source sdk). Over Wi-Fi, "
-                         "run with --allow-no-lidar only in a clear area with someone ready to press SPACE.")
-    log.warning("No LiDAR: obstacle check OFF, speed capped at 0.15 m/s, 2 s legs. Supervise closely.")
+        raise SystemExit("Autonomous walking needs the LiDAR (Ethernet, --source sdk) for obstacle avoidance. Over "
+                         "Wi-Fi, run with --allow-no-lidar only in a clear area with someone ready to press SPACE.")
+    log.warning("No LiDAR: obstacle avoidance OFF, speed capped at 0.15 m/s, 2 s legs. Supervise closely.")
     return None, None
 
 
@@ -248,8 +441,8 @@ def main():
     link, go2cfg = open_link(a)
     a.no_control = False
     tele = start_teleop(link, go2cfg, a, keyboard=not a.headless)
-    clearance, pose_fn = make_safety(link, go2cfg, a.allow_no_lidar)
-    nav = ZoneNavigator(classes, cfg["navigation"], have_lidar=clearance is not None)
+    profile, pose_fn = make_safety(link, go2cfg, cfg["navigation"], a.allow_no_lidar)
+    nav = ZoneNavigator(classes, cfg["navigation"], have_lidar=profile is not None)
     heading = Heading(pose_fn)
     tele.on_manual_input = lambda key: nav.cancel(f"cancelled by key '{key}'")
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -271,8 +464,8 @@ def main():
             if img is not None and seq != last_seq:
                 last_seq = seq
                 prob = new = clf(img)
-            obstacle = clearance(None) if (clearance is not None and nav.state == "walk") else None
-            vx, wz = nav.update(now, h, new, obstacle)
+            free = profile() if (profile is not None and nav.active) else None
+            vx, wz = nav.update(now, h, new, free)
             if nav.active:
                 tele.set_autonomy(vx, 0.0, wz)
             else:
@@ -322,7 +515,7 @@ def main():
             cv2.destroyAllWindows()
         (out / f"goto_{stamp}.json").write_text(json.dumps(
             {"classes": classes, "target": classes[nav.target] if nav.target is not None else None,
-             "final_state": nav.state, "legs": nav.legs, "source": link.name, "lidar": clearance is not None,
+             "final_state": nav.state, "legs": nav.legs, "source": link.name, "lidar": profile is not None,
              "video": mp4.name if writer is not None else None, "events": events}, indent=1))
         print(f"{nav.state}: {nav.msg}")
 
