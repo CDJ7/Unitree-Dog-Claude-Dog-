@@ -1,6 +1,10 @@
-# Real-world Q1: zone classifier on the real Unitree Go2. Edit `classes` to name the areas of YOUR room
-# (3-5 work best); keys 1..N in the recorder and the live demo select them in this order.
-classes: [door, desk, couch, window]
+# Real-world Q1: zone classifier on the real Unitree Go2, plus "go to zone" autonomy (real_go2/goto_zone.py).
+# Keys 1..N in the recorder, the live demo and goto_zone select the zones in this order:
+#   1 lab_1      the desks on one side of the room
+#   2 lab_2      the desks on the other side
+#   3 open_area  the open floor between them
+#   4 shelves    the shelves with the wires
+classes: [lab_1, lab_2, open_area, shelves]
 
 seed: 6010
 data_dir: data_real                    # record_real.py writes data_real/run_000, run_001, ... (git-ignored)
@@ -31,3 +35,18 @@ augment:                               # no horizontal flip: a mirrored room is 
   contrast: 0.3
   saturation: 0.3
   hue: 0.03
+
+navigation:                            # goto_zone.py: turn-and-look localisation + short legs towards the target
+  scan_rate: 0.5                       # rad/s while turning on the spot to look around (one turn ~ 12.6 s)
+  heading_bins: 24                     # 15 deg bins for "which direction looks most like the target"
+  seen_conf: 0.40                      # target must reach this confidence in some direction, else "not seen"
+  arrive_share: 0.50                   # arrived when >= this share of a full turn's views say "target zone"
+  approach_speed: 0.25                 # m/s forward during a leg (capped at 0.15 without LiDAR)
+  leg_s: 3.0                           # s per leg before looking around again (2 s without LiDAR)
+  max_legs: 8                          # give up after this many legs
+  early_stop_conf: 0.80                # stop a leg early when the target is predicted steadily...
+  early_stop_s: 2.0                    # ...for this long (then a full turn confirms arrival)
+  lost_conf: 0.25                      # end the leg if the target's confidence stays below this...
+  lost_s: 1.5                          # ...for this long
+  stop_obstacle_m: 0.50                # LiDAR: end the leg when something is this close ahead
+  hello_on_arrival: true               # wave when it gets there
