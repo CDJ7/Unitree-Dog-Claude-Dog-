@@ -39,6 +39,10 @@ limits, a watchdog, and manual override of anything autonomous.
 
 ---
 
+> **Doing it for the first time?** Follow [`LAB_PLAN.md`](LAB_PLAN.md). It gives the sessions in order,
+> what you should see at each step, what to do if you don't, and how to use Claude Code in VS Code for
+> debugging.
+
 ## Part A — Get it running in WSL from VS Code (once)
 
 ### A1. Open the project in VS Code connected to WSL
@@ -59,7 +63,7 @@ Test 1's venv (`~/go2venv`) already has the Unitree SDK, CycloneDDS, OpenCV and 
 source ~/go2venv/bin/activate
 cd ~/Unitree-Dog-Claude-Dog-/Test2
 pip install -r real_go2/requirements.txt     # PyTorch etc. (a few minutes the first time)
-python -m pytest -q tests/test_real_go2.py tests/test_goto_zone.py    # 6 tests, no robot needed
+python -m pytest -q tests/test_real_go2.py tests/test_goto_zone.py    # 12 tests, no robot needed
 ```
 In VS Code, choose the interpreter with Ctrl+Shift+P → *Python: Select Interpreter* →
 `~/go2venv/bin/python`, so its terminals activate the venv automatically.
@@ -223,8 +227,13 @@ the live accuracy.
 
 ## Part E — Go to zone (autonomous)
 ```bash
+python real_go2/goto_zone.py --source sdk --iface eth1 --lidar-check   # first: LiDAR only, no autonomy
 python real_go2/goto_zone.py --source sdk --iface eth1
 ```
+**`--lidar-check`** shows the live free distance in every direction, and whether the navigator would
+stop, slow down or continue. It sends no autonomous motion. Use it before the first mission to confirm
+that an empty floor reads "clear ahead" (see `LAB_PLAN.md` 1.4).
+
 1. Press **R** (stand).
 2. Click the *Go2 go to zone* window and press **1–4** to choose a zone. For example, **4** sends the dog
    to the shelves.
@@ -236,7 +245,7 @@ python real_go2/goto_zone.py --source sdk --iface eth1
      the target already holds at least half of the views, it has **arrived** and waves.
    - **chooses a path that avoids obstacles:** each direction scores *target likelihood × free space*.
      A direction with a desk 0.5 m away scores near zero even if the target is right behind it. If the
-     target's own direction is blocked, it **detours**: it picks the open direction (≥ 1.5 m free)
+     target's own direction is blocked, it **detours**: it picks the open direction (at least 1.1 m free)
      closest to the target and keeps detouring on the same side, so it doesn't swing back and forth
      around a desk. Directions that just blocked it are remembered and penalised for the next 3 legs.
    - **explores** if the target isn't visible at all, for example hidden behind shelves. It walks toward
@@ -248,7 +257,7 @@ python real_go2/goto_zone.py --source sdk --iface eth1
      and looks around again. The leg also ends early when the target is recognised steadily, or when it
      fades from view.
    - **looks around again**, and repeats, for at most 20 legs. It gives up with "boxed in" when no
-     direction has at least 1.5 m free.
+     direction has at least 1.1 m free.
 
    The panel shows the target, the state, what the camera sees, and a radar. On the radar, the colour
    shows where the target looked likely, grey shows the free space the LiDAR measured in each direction,
@@ -275,6 +284,9 @@ With a body half-width of about 0.16 m, the closest approach leaves about 10 cm 
 nothing in any run. When the zone is hidden, half the runs ran out of exploration legs before seeing it.
 The other half found it. On the real dog, start where the target zone is in view, or walk it part of the
 way. `tests/test_goto_zone.py` checks the avoidance rules and both layouts.
+
+After the trials, `python real_go2/summarize_real.py` gathers the dataset size, test metrics, live
+accuracy and every go-to-zone request into `results/real_q1/summary.md` for the report.
 
 All thresholds are in `real_config.yaml` under `navigation:`. Each run writes
 `results/real_q1/goto_<time>.json`, the event log with every state change and its reason, plus the MP4.

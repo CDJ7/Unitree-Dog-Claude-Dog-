@@ -18,3 +18,4 @@ results/q3/*/deploy_eval_parts/
 data_real/
 results/real_q1/*/best.pt
 results/real_q1/*.mp4
+logs_real/

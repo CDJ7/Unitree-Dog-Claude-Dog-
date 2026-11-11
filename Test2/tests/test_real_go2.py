@@ -51,3 +51,20 @@ def test_webrtc_move_message(monkeypatch):
     assert data["header"]["identity"]["api_id"] == 1008
     assert json.loads(data["parameter"]) == {"x": 0.3, "y": -0.1, "z": 0.5}
     assert sent[1][1]["header"]["identity"]["api_id"] == 1003 and sent[1][1]["parameter"] == ""
+
+
+def test_summarize_counts_robot_missions_only(tmp_path):
+    """summarize_real.goto_table: counts arrived/failed requests from robot runs, skips fake and cancelled."""
+    import json
+    from real_go2 import summarize_real
+    runs = {"goto_1.json": {"source": "sdk", "lidar": True, "missions": [
+                {"target": "shelves", "result": "arrived", "reason": "arrived", "legs": 3},
+                {"target": "shelves", "result": "failed", "reason": "shelves not seen in any direction (best 0.1)",
+                 "legs": 10},
+                {"target": "lab_1", "result": "cancelled", "reason": "cancelled by key ' '", "legs": 1}]},
+            "goto_2.json": {"source": "fake", "missions": [{"target": "lab_1", "result": "arrived", "legs": 1}]}}
+    for name, d in runs.items():
+        (tmp_path / name).write_text(json.dumps(d))
+    table = summarize_real.goto_table(tmp_path)
+    assert "| shelves | 2 | 1 | 3 | shelves not seen in any direction x1 |" in table
+    assert "**1/2** arrived" in table and "lab_1" not in table
