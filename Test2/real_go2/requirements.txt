@@ -1,0 +1,11 @@
+# Real-Go2 Q1 tools, installed INTO Test 1's venv (~/go2venv), which already has cyclonedds 0.10.2,
+# unitree_sdk2py, opencv-python, pynput and PyYAML (see go2_stream/README.md section 2).
+torch
+torchvision
+pandas
+scikit-learn
+matplotlib
+pillow
+pytest
+# Wi-Fi option only (needs `sudo apt install -y portaudio19-dev` first):
+# unitree_webrtc_connect

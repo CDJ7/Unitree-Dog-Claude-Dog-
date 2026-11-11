@@ -87,8 +87,8 @@ def main():
     cfg = load_cfg(a.config)
     seed_all(cfg["seed"])
     torch.set_num_threads(max(1, torch.get_num_threads()))
-    zones = Zones()
-    nc = len(zones)
+    names = cfg.get("classes") or Zones().names     # real-world configs list their own zone names
+    nc = len(names)
     t_start = time.time()
     frames, split, cache, idx = build(cfg, a.data)
     tr_idx = idx["train"]
@@ -152,7 +152,7 @@ def main():
         tag = ""
         if rec["val_macro_f1"] > best:
             best = rec["val_macro_f1"]
-            torch.save({"model": a.model, "state_dict": model.state_dict(), "classes": zones.names,
+            torch.save({"model": a.model, "state_dict": model.state_dict(), "classes": names,
                         "image_hw": cfg["image_hw"], "epoch": ep, "val_macro_f1": best}, out / "best.pt")
             tag = "  * best"
         print(f"epoch {ep}: train loss {rec['train_loss']:.3f} acc {rec['train_acc']:.3f} | val loss {vloss:.3f} "
@@ -162,8 +162,8 @@ def main():
             "epochs": epochs, "best_epoch": int(max(hist, key=lambda r: r["val_macro_f1"])["epoch"]),
             "best_val_macro_f1": best, "seed": cfg["seed"], "config": cfg, "split": split,
             "n_frames": {k: int(len(v)) for k, v in idx.items()}, "n_train_used": int(len(tr_idx)),
-            "train_class_counts": dict(zip(zones.names, map(int, counts))),
-            "class_weights": dict(zip(zones.names, map(float, w))), "torch": torch.__version__,
+            "train_class_counts": dict(zip(names, map(int, counts))),
+            "class_weights": dict(zip(names, map(float, w))), "torch": torch.__version__,
             "threads": torch.get_num_threads(), "wall_time_s": round(time.time() - t_start, 1)}
     (out / "train_config.json").write_text(json.dumps(info, indent=1))
     print(f"done in {info['wall_time_s']} s; best val macro-F1 {best:.3f} (epoch {info['best_epoch']}) -> {out}")

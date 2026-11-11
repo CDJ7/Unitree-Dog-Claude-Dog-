@@ -55,6 +55,10 @@ def index_frames(data_dir):
 def split_runs(frames, cfg, collect_cfg_path=TEST2 / "config/collect.yaml"):
     """{'train': [runs], 'val': [...], 'test': [...]} from the rules in cfg['split']."""
     sp = cfg["split"]
+    if sp.get("mode") == "by_order":        # real-world recordings: last session test, second-to-last val
+        runs = sorted(frames.run.unique())
+        assert len(runs) >= 3, f"need at least 3 recorded sessions for train/val/test, found {len(runs)}"
+        return {"train": runs[:-2], "val": [runs[-2]], "test": [runs[-1]]}
     scenes = [s["name"] for s in yaml.safe_load(Path(collect_cfg_path).read_text())["scenes"]]
     runs = frames.groupby("run").agg(scene=("scene", "first"), route=("route", "first")).reset_index()
     out = {"train": [], "val": [], "test": []}

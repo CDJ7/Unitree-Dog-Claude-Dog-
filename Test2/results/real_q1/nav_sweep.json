@@ -1,0 +1,552 @@
+{
+ "navigation": {
+  "scan_rate": 0.5,
+  "heading_bins": 24,
+  "seen_conf": 0.4,
+  "arrive_share": 0.5,
+  "approach_speed": 0.25,
+  "leg_s": 4.0,
+  "max_legs": 20,
+  "early_stop_conf": 0.8,
+  "early_stop_s": 2.0,
+  "lost_conf": 0.25,
+  "lost_s": 1.5,
+  "lookahead_m": 2.5,
+  "want_free_m": 1.5,
+  "stop_obstacle_m": 0.5,
+  "slow_obstacle_m": 1.0,
+  "avoid_turn_rate": 0.4,
+  "blocked_memory_legs": 3,
+  "explore_legs": 10,
+  "edge_jump_m": 0.8,
+  "hello_on_arrival": true
+ },
+ "layouts": {
+  "low desk blocks the walk, not the view": {
+   "arrived": 16,
+   "runs": 16,
+   "closest_obstacle_m": 0.271,
+   "runs_detail": [
+    {
+     "start": [
+      1.0,
+      1.0,
+      0
+     ],
+     "result": "arrived",
+     "legs": 7,
+     "explored": 0,
+     "end_xy": [
+      4.67,
+      1.66
+     ],
+     "closest_obstacle_m": 0.271,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      1.0,
+      90
+     ],
+     "result": "arrived",
+     "legs": 12,
+     "explored": 0,
+     "end_xy": [
+      4.89,
+      2.26
+     ],
+     "closest_obstacle_m": 0.304,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      1.0,
+      180
+     ],
+     "result": "arrived",
+     "legs": 12,
+     "explored": 0,
+     "end_xy": [
+      4.89,
+      2.26
+     ],
+     "closest_obstacle_m": 0.304,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      1.0,
+      -90
+     ],
+     "result": "arrived",
+     "legs": 11,
+     "explored": 0,
+     "end_xy": [
+      4.79,
+      2.31
+     ],
+     "closest_obstacle_m": 0.326,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      2.0,
+      0
+     ],
+     "result": "arrived",
+     "legs": 11,
+     "explored": 0,
+     "end_xy": [
+      4.84,
+      2.21
+     ],
+     "closest_obstacle_m": 0.398,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      2.0,
+      90
+     ],
+     "result": "arrived",
+     "legs": 14,
+     "explored": 0,
+     "end_xy": [
+      4.88,
+      1.8
+     ],
+     "closest_obstacle_m": 0.35,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      2.0,
+      180
+     ],
+     "result": "arrived",
+     "legs": 19,
+     "explored": 0,
+     "end_xy": [
+      4.72,
+      2.26
+     ],
+     "closest_obstacle_m": 0.357,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      2.0,
+      -90
+     ],
+     "result": "arrived",
+     "legs": 9,
+     "explored": 0,
+     "end_xy": [
+      4.57,
+      2.47
+     ],
+     "closest_obstacle_m": 0.297,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      3.0,
+      0
+     ],
+     "result": "arrived",
+     "legs": 12,
+     "explored": 0,
+     "end_xy": [
+      4.84,
+      1.66
+     ],
+     "closest_obstacle_m": 0.311,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      3.0,
+      90
+     ],
+     "result": "arrived",
+     "legs": 17,
+     "explored": 0,
+     "end_xy": [
+      4.79,
+      2.24
+     ],
+     "closest_obstacle_m": 0.309,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      3.0,
+      180
+     ],
+     "result": "arrived",
+     "legs": 17,
+     "explored": 0,
+     "end_xy": [
+      4.77,
+      2.25
+     ],
+     "closest_obstacle_m": 0.309,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      3.0,
+      -90
+     ],
+     "result": "arrived",
+     "legs": 8,
+     "explored": 0,
+     "end_xy": [
+      4.51,
+      2.24
+     ],
+     "closest_obstacle_m": 0.283,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      0.6,
+      2.0,
+      0
+     ],
+     "result": "arrived",
+     "legs": 10,
+     "explored": 0,
+     "end_xy": [
+      4.57,
+      2.47
+     ],
+     "closest_obstacle_m": 0.297,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      0.6,
+      2.0,
+      90
+     ],
+     "result": "arrived",
+     "legs": 10,
+     "explored": 0,
+     "end_xy": [
+      4.6,
+      2.54
+     ],
+     "closest_obstacle_m": 0.297,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      0.6,
+      2.0,
+      180
+     ],
+     "result": "arrived",
+     "legs": 10,
+     "explored": 0,
+     "end_xy": [
+      4.6,
+      2.54
+     ],
+     "closest_obstacle_m": 0.299,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      0.6,
+      2.0,
+      -90
+     ],
+     "result": "arrived",
+     "legs": 12,
+     "explored": 0,
+     "end_xy": [
+      4.88,
+      2.27
+     ],
+     "closest_obstacle_m": 0.317,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    }
+   ]
+  },
+  "tall shelf hides the zone": {
+   "arrived": 8,
+   "runs": 16,
+   "closest_obstacle_m": 0.252,
+   "runs_detail": [
+    {
+     "start": [
+      1.0,
+      1.0,
+      0
+     ],
+     "result": "arrived",
+     "legs": 9,
+     "explored": 4,
+     "end_xy": [
+      4.65,
+      2.34
+     ],
+     "closest_obstacle_m": 0.254,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      1.0,
+      90
+     ],
+     "result": "arrived",
+     "legs": 9,
+     "explored": 4,
+     "end_xy": [
+      4.65,
+      2.34
+     ],
+     "closest_obstacle_m": 0.253,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      1.0,
+      180
+     ],
+     "result": "failed",
+     "legs": 10,
+     "explored": 10,
+     "end_xy": [
+      0.78,
+      2.42
+     ],
+     "closest_obstacle_m": 0.384,
+     "msg": "shelves not seen in any direction (best 0.07)"
+    },
+    {
+     "start": [
+      1.0,
+      1.0,
+      -90
+     ],
+     "result": "arrived",
+     "legs": 8,
+     "explored": 4,
+     "end_xy": [
+      4.59,
+      1.54
+     ],
+     "closest_obstacle_m": 0.252,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      2.0,
+      0
+     ],
+     "result": "arrived",
+     "legs": 8,
+     "explored": 3,
+     "end_xy": [
+      4.72,
+      1.59
+     ],
+     "closest_obstacle_m": 0.33,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      2.0,
+      90
+     ],
+     "result": "failed",
+     "legs": 10,
+     "explored": 10,
+     "end_xy": [
+      1.22,
+      3.27
+     ],
+     "closest_obstacle_m": 0.402,
+     "msg": "shelves not seen in any direction (best 0.07)"
+    },
+    {
+     "start": [
+      1.0,
+      2.0,
+      180
+     ],
+     "result": "failed",
+     "legs": 10,
+     "explored": 10,
+     "end_xy": [
+      1.26,
+      3.3
+     ],
+     "closest_obstacle_m": 0.426,
+     "msg": "shelves not seen in any direction (best 0.07)"
+    },
+    {
+     "start": [
+      1.0,
+      2.0,
+      -90
+     ],
+     "result": "failed",
+     "legs": 10,
+     "explored": 10,
+     "end_xy": [
+      1.21,
+      3.26
+     ],
+     "closest_obstacle_m": 0.4,
+     "msg": "shelves not seen in any direction (best 0.07)"
+    },
+    {
+     "start": [
+      1.0,
+      3.0,
+      0
+     ],
+     "result": "failed",
+     "legs": 10,
+     "explored": 10,
+     "end_xy": [
+      0.89,
+      3.34
+     ],
+     "closest_obstacle_m": 0.371,
+     "msg": "shelves not seen in any direction (best 0.07)"
+    },
+    {
+     "start": [
+      1.0,
+      3.0,
+      90
+     ],
+     "result": "failed",
+     "legs": 10,
+     "explored": 10,
+     "end_xy": [
+      1.43,
+      2.64
+     ],
+     "closest_obstacle_m": 0.392,
+     "msg": "shelves not seen in any direction (best 0.07)"
+    },
+    {
+     "start": [
+      1.0,
+      3.0,
+      180
+     ],
+     "result": "arrived",
+     "legs": 14,
+     "explored": 9,
+     "end_xy": [
+      4.64,
+      2.4
+     ],
+     "closest_obstacle_m": 0.314,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      1.0,
+      3.0,
+      -90
+     ],
+     "result": "failed",
+     "legs": 10,
+     "explored": 10,
+     "end_xy": [
+      0.89,
+      3.34
+     ],
+     "closest_obstacle_m": 0.372,
+     "msg": "shelves not seen in any direction (best 0.07)"
+    },
+    {
+     "start": [
+      0.6,
+      2.0,
+      0
+     ],
+     "result": "arrived",
+     "legs": 8,
+     "explored": 3,
+     "end_xy": [
+      4.58,
+      1.52
+     ],
+     "closest_obstacle_m": 0.371,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      0.6,
+      2.0,
+      90
+     ],
+     "result": "arrived",
+     "legs": 8,
+     "explored": 3,
+     "end_xy": [
+      4.61,
+      1.52
+     ],
+     "closest_obstacle_m": 0.366,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      0.6,
+      2.0,
+      180
+     ],
+     "result": "arrived",
+     "legs": 8,
+     "explored": 3,
+     "end_xy": [
+      4.61,
+      1.52
+     ],
+     "closest_obstacle_m": 0.367,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "start": [
+      0.6,
+      2.0,
+      -90
+     ],
+     "result": "failed",
+     "legs": 10,
+     "explored": 10,
+     "end_xy": [
+      1.85,
+      0.49
+     ],
+     "closest_obstacle_m": 0.418,
+     "msg": "shelves not seen in any direction (best 0.07)"
+    }
+   ]
+  }
+ }
+}

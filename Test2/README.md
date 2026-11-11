@@ -332,6 +332,11 @@ vote ([`demo_live_r1854.png`](results/q1/demo_live_r1854.png), [`.gif`](results/
 
 ![Live demo GIF: head camera, prediction, map](results/q1/demo_live_r1854.gif)
 
+**On the real Go2:** [`real_go2/`](real_go2/README.md) applies the same method to a real room: record
+labelled frames while driving the real dog (Ethernet or Wi-Fi), retrain with the same `train.py`, and run
+live recognition on the dog's camera with an MP4 for the video. Those tools are tested with a replayed
+camera source; they have not yet been run against the robot.
+
 ### 5.4 Discussion
 * **Transfer learning is worth it:** ImageNet features beat the same-data small CNN by 9.4 points
   overall and by 14.2 points on the unseen scene, where the from-scratch network falls off more (0.738
