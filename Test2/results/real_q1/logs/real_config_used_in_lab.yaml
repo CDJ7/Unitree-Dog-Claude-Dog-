@@ -1,0 +1,78 @@
+# Real-world Q1: zone classifier on the real Unitree Go2, plus "go to zone" autonomy (real_go2/goto_zone.py).
+# Keys 1..N in the recorder, the live demo and goto_zone select the zones in this order:
+#   1 lab_1      the desks on one side of the room
+#   2 lab_2      the desks on the other side
+#   3 open_area  the open floor between them
+#   4 shelves    the shelves with the wires
+classes: [lab_1, lab_2, open_area, shelves]
+
+seed: 6010
+data_dir: data_real                    # record_real.py writes data_real/run_000, run_001, ... (git-ignored)
+results_dir: results/real_q1
+image_hw: [168, 224]                   # network input, same as the simulated Q1
+crop: center43                         # 16:9 Go2 frames -> centred 4:3 window -> 320 x 240 (as the sim camera)
+record_hz: 5                           # saved frames per second, as in Q2
+
+split:
+  mode: by_order                       # recording sessions in order: last -> test, second-to-last -> val, rest -> train
+                                       # (record at least 3 sessions; 4-5 is better)
+
+train:                                 # same recipe as the simulated Q1 (config/q1_train.yaml)
+  epochs: 8
+  batch_size: 32                       # 64 in the simulated Q1; 32 fits the laptop (WSL ~3.7 GB RAM: 64 was OOM-killed)
+  lr_head: 1.0e-3
+  lr_backbone: 2.0e-4
+  weight_decay: 1.0e-4
+  label_smoothing: 0.05
+  class_weighted_loss: true
+  num_workers: 0                       # no extra loader processes (memory)
+  epoch_fraction: 1.0                  # real sets are small: use every training frame each epoch
+
+augment:                               # no horizontal flip: a mirrored room is a different room
+  crop_scale: [0.8, 1.0]
+  rotation_deg: 5
+  brightness: 0.3
+  contrast: 0.3
+  saturation: 0.3
+  hue: 0.03
+
+navigation:                            # goto_zone.py: turn-and-look localisation + short legs towards the target
+  scan_rate: 0.5                       # rad/s while turning on the spot to look around (one turn ~ 12.6 s)
+  heading_bins: 24                     # 15 deg bins for "which direction looks most like the target"
+  seen_conf: 0.40                      # target must reach this confidence in some direction, else "not seen"
+  arrive_share: 0.50                   # arrived when >= this share of a full turn's views say "target zone"
+  approach_speed: 0.25                 # m/s forward during a leg (capped at 0.15 without LiDAR)
+  # --speed / the G key pick one of these (walking speed and look-around turn rate; the teleop limits change too,
+  # see SPEED_PRESETS in sources.py). Faster look-arounds give the classifier fewer frames per direction.
+  speed_presets:
+    slow:   {approach_speed: 0.25, scan_rate: 0.5}
+    medium: {approach_speed: 0.35, scan_rate: 0.6}
+    fast:   {approach_speed: 0.45, scan_rate: 0.7}
+  leg_s: 4.0                           # s per leg before looking around again (2 s without LiDAR)
+  max_legs: 20                         # give up after this many legs
+  early_stop_conf: 0.80                # stop a leg early when the target is predicted steadily...
+  early_stop_s: 2.0                    # ...for this long (then a full turn confirms arrival)
+  lost_conf: 0.25                      # end the leg if the target's confidence stays below this...
+  lost_s: 1.5                          # ...for this long
+  # turning to the chosen heading. The Go2 barely turns on the spot at small rates, so a purely proportional
+  # turn stalls short of the heading; the rate never drops below turn_min_rate until within turn_tolerance_rad.
+  turn_gain: 1.5                       # rad/s per rad of heading error (capped at turn_max_rate)
+  turn_max_rate: 1.0                   # rad/s: turning to a chosen heading is fast in every speed preset
+                                       # (the look-around spin stays at scan_rate: the classifier needs frames)
+  turn_min_rate: 0.25                  # rad/s: never ask for less while turning on the spot
+  turn_tolerance_rad: 0.10             # ~6 deg: close enough, start walking (walking corrects the rest)
+  turn_timeout_s: 12.0                 # still not there after this: walk if within 20 deg, else look again
+  # obstacle avoidance (LiDAR, Ethernet): part of choosing the direction and of walking
+  # rt/utlidar/cloud is in the LiDAR's own frame (mounted upside down: z points DOWN, so the floor looked like an
+  # obstacle at 0.05 m in every direction). cloud_deskewed is in the odom frame, converted to the body frame with
+  # the dog's pose (floor at about -0.31 m, below the corridor), with the dog's own body already removed.
+  lidar_topic: rt/utlidar/cloud_deskewed
+  lookahead_m: 2.5                    # free space is measured up to this far in every direction
+  want_free_m: 1.5                     # a direction counts as fully free with this much room
+  stop_obstacle_m: 0.50                # end the leg (and remember the direction as blocked) this close
+  slow_obstacle_m: 1.00                # closer than this: slow down and steer to the freer side
+  avoid_turn_rate: 0.40                # rad/s while steering round an obstacle
+  blocked_memory_legs: 3               # avoid a direction that blocked a leg for this many legs
+  explore_legs: 10                     # target not in view: walk into the most open direction, at most this often
+  edge_jump_m: 0.8                     # exploring prefers directions just past an obstacle's edge (free-space jump)
+  hello_on_arrival: true               # wave when it gets there

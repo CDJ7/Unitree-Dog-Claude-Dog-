@@ -45,9 +45,24 @@ import yaml
 TEST2 = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TEST2))
 from real_go2.live_zone import COLORS, PANEL_W, VIEW_H, VIEW_W, Classifier, put_text  # noqa: E402
-from real_go2.sources import add_source_args, open_link, start_teleop  # noqa: E402
+from real_go2.sources import GO2_STREAM, add_source_args, cycle_speed, open_link, start_teleop  # noqa: E402
 
 log = logging.getLogger("goto_zone")
+
+
+def _go2_stream_first():
+    """Make `perception` / `behavior` resolve to Test 1's go2_stream packages. Loading the Q1 model imports
+    go2sim.paths, which puts ../Phase_2_Investigator (it has its own `perception` package) first on sys.path."""
+    p = str(GO2_STREAM)
+    if sys.path[0] != p:
+        if p in sys.path:
+            sys.path.remove(p)
+        sys.path.insert(0, p)
+    for name in ("perception", "behavior"):
+        mod = sys.modules.get(name)
+        if mod is not None and not str(getattr(mod, "__file__", "") or "").startswith(p):
+            for k in [k for k in sys.modules if k == name or k.startswith(name + ".")]:
+                del sys.modules[k]
 
 
 def wrap(a):
@@ -113,6 +128,7 @@ class ZoneNavigator:
         self._t0 = 0.0
         self.avoiding = 0                   # -1 right, 0 none, +1 left (for the panel)
         self._last_free = (None, 0.0)       # latest LiDAR profile while walking (the LiDAR is slower than the loop)
+        self._turn_t0 = None                # when the current TURN started (for turn_timeout_s)
 
     # ------------------------------------------------------------------ helpers
     def bin_of(self, heading):
@@ -144,7 +160,7 @@ class ZoneNavigator:
 
     # ------------------------------------------------------------------ states
     def _look(self, now, heading):
-        self.state, self.scan, self._t0 = "look", [], now
+        self.state, self.scan, self._t0, self._turn_t0 = "look", [], now, None
         self._world_free = np.full(self.nb, np.nan)
         self.avoiding = 0
         self._last_free = (None, 0.0)
@@ -263,13 +279,24 @@ class ZoneNavigator:
             return 0.0, nav["scan_rate"]
         if self.state == "turn":
             err = wrap(self.best_heading - heading)
-            if abs(err) < 0.08:
+            if self._turn_t0 is None:
+                self._turn_t0 = now
+            timed_out = now - self._turn_t0 >= nav.get("turn_timeout_s", 12.0)
+            if timed_out and abs(err) > math.radians(20):
+                self._turn_t0 = None
+                self.msg = f"turn did not reach the heading ({math.degrees(err):+.0f} deg left); looking around"
+                self._look(now, heading)
+                return 0.0, 0.0
+            if abs(err) < nav.get("turn_tolerance_rad", 0.10) or timed_out:
+                self._turn_t0 = None
                 self.state, self.legs, self._t0, self._recent = "walk", self.legs + 1, now, deque()
                 self._last_leg_heading = self.best_heading
                 kind = ", exploring" if self.exploring else ", detour" if self.detour else ""
                 self.msg = f"walking towards {self.classes[k]} (leg {self.legs}{kind})"
                 return 0.0, 0.0
-            return 0.0, float(np.clip(1.2 * err, -nav["scan_rate"], nav["scan_rate"]))
+            # proportional, but never below turn_min_rate: the Go2 barely turns on the spot at small rates
+            rate = min(abs(nav.get("turn_gain", 1.5) * err), nav.get("turn_max_rate", nav["scan_rate"]))
+            return 0.0, math.copysign(max(rate, nav.get("turn_min_rate", 0.25)), err)
         if self.state == "walk":
             if prob is not None:
                 self._recent.append((now, float(prob[k]), int(np.argmax(prob)) == k))
@@ -428,8 +455,10 @@ class LidarProfile:
         bcfg = yaml.safe_load((Path(lidar_mod.__file__).parent / "config/behaviors.yaml").read_text())
         self.corridor, self.nav, self.max_age_s = bcfg["safety"]["corridor"], nav, max_age_s
         self.lidar_mod, self.state = lidar_mod, link.state
-        self.src = lidar_mod.LidarSource(go2cfg["lidar"])
-        self._seq = -1
+        lcfg = dict(go2cfg["lidar"])
+        lcfg["topic"] = nav.get("lidar_topic", lcfg["topic"])    # Test 1's config file itself is not changed
+        self.src = lidar_mod.LidarSource(lcfg)
+        self._seq, self._warned = -1, False
 
     def __call__(self):
         from perception.pipeline import cloud_to_body
@@ -440,6 +469,15 @@ class LidarProfile:
         if seq == self._seq:
             return None
         self._seq = seq
+        frame_id = str(getattr(msg.header, "frame_id", ""))
+        if "odom" not in frame_id.lower():
+            # A cloud in the sensor's own frame (e.g. rt/utlidar/cloud, 'utlidar_lidar') is upside down and tilted
+            # relative to the body: the floor lands inside the corridor. Treat it as no data (= no walking).
+            if not self._warned:
+                log.error("LiDAR cloud frame is '%s', not odom: free space can't be computed from it. Use "
+                          "navigation.lidar_topic: rt/utlidar/cloud_deskewed in real_config.yaml.", frame_id)
+                self._warned = True
+            return np.zeros(nb)
         sport = self.state.sport.get()[0] if self.state is not None else None
         pts, _ = cloud_to_body(msg, sport, "auto", self.lidar_mod)
         if pts is None:
@@ -447,15 +485,34 @@ class LidarProfile:
         return free_profile(pts, nb, self.corridor, self.nav["lookahead_m"])
 
 
+def apply_nav_speed(nav, nav_cfg, name):
+    """Go-to-zone's own walking / look-around speeds for a preset (navigation.speed_presets in real_config.yaml).
+    Without the LiDAR the walking speed stays capped at 0.15 m/s."""
+    p = nav_cfg.get("speed_presets", {}).get(name)
+    if not p:
+        return
+    nav.nav["scan_rate"] = float(p["scan_rate"])
+    nav.nav["approach_speed"] = float(p["approach_speed"]) if nav.have_lidar else min(float(p["approach_speed"]), 0.15)
+    log.info("Go-to-zone speed %s: walk %.2f m/s, look-around %.2f rad/s", name.upper(),
+             nav.nav["approach_speed"], nav.nav["scan_rate"])
+
+
 def make_safety(link, go2cfg, nav, allow_no_lidar):
     """(free-space profile fn or None, pose fn or None). Ethernet: real LiDAR profile + odometry heading."""
     if link.name == "sdk":
+        _go2_stream_first()
         from behavior.clearance import make_real_pose_fn
+        from perception.pipeline import cloud_to_body  # noqa: F401  (load now, before anything can shadow it)
         return LidarProfile(link, go2cfg, nav), make_real_pose_fn(link.state)
     if not allow_no_lidar:
         raise SystemExit("Autonomous walking needs the LiDAR (Ethernet, --source sdk) for obstacle avoidance. Over "
                          "Wi-Fi, run with --allow-no-lidar only in a clear area with someone ready to press SPACE.")
     log.warning("No LiDAR: obstacle avoidance OFF, speed capped at 0.15 m/s, 2 s legs. Supervise closely.")
+    if link.name == "webrtc":                       # Wi-Fi still has the dog's IMU heading: turns use it
+        def pose():
+            p = link.pose()
+            return None if math.isnan(p[2]) else p
+        return None, pose
     return None, None
 
 
@@ -484,6 +541,7 @@ def main():
     tele = start_teleop(link, go2cfg, a, keyboard=not a.headless)
     profile, pose_fn = make_safety(link, go2cfg, cfg["navigation"], a.allow_no_lidar)
     nav = ZoneNavigator(classes, cfg["navigation"], have_lidar=profile is not None)
+    apply_nav_speed(nav, cfg["navigation"], tele.speed_name)
     heading = Heading(pose_fn)
     tele.on_manual_input = lambda key: nav.cancel(f"cancelled by key '{key}'")
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -503,7 +561,7 @@ def main():
             missions[-1].update(result="replaced", reason="new zone requested", legs=nav.legs,
                                 seconds=round(now - t0 - missions[-1]["t"], 1))
         nav.start(k, now, h)
-        missions.append({"target": classes[k], "t": round(now - t0, 2), "result": None})
+        missions.append({"target": classes[k], "t": round(now - t0, 2), "result": None, "speed": tele.speed_name})
 
     if a.target and not a.lidar_check:
         k = classes.index(a.target) if a.target in classes else int(a.target) - 1
@@ -554,6 +612,7 @@ def main():
                     tele.request_action("hello")
                 last_state = nav.state
             view = np.zeros((VIEW_H, VIEW_W, 3), np.uint8) if img is None else cv2.resize(img, (VIEW_W, VIEW_H))
+            put_text(view, f"speed {tele.speed_name.upper()} (G)", (12, VIEW_H - 14), 0.5)
             comp = np.hstack([view, nav_panel(nav, classes, prob, link.fps(), recording)])
             if recording:
                 if writer is None:
@@ -577,6 +636,10 @@ def main():
                 begin(key - ord("1"), now, h)
             elif key in (ord("c"), ord("C")):
                 nav.cancel()
+            elif key in (ord("g"), ord("G")):
+                name = cycle_speed(tele, go2cfg)
+                apply_nav_speed(nav, cfg["navigation"], name)
+                events.append({"t": round(now - t0, 2), "state": nav.state, "msg": f"speed -> {name}"})
             elif key in (ord("v"), ord("V")):
                 recording = not recording
     except KeyboardInterrupt:

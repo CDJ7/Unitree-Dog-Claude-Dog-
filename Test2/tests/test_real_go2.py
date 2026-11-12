@@ -68,3 +68,40 @@ def test_summarize_counts_robot_missions_only(tmp_path):
     table = summarize_real.goto_table(tmp_path)
     assert "| shelves | 2 | 1 | 3 | shelves not seen in any direction x1 |" in table
     assert "**1/2** arrived" in table and "lab_1" not in table
+
+
+def test_speed_presets_cycle_and_respect_hard_caps():
+    """--speed / G: slow -> medium -> fast -> slow; each one changes the teleop limits; Test 1's hard caps still win."""
+    import yaml
+    from real_go2.sources import GO2_STREAM, SPEED_PRESETS, cycle_speed, set_speed
+    cfg = yaml.safe_load((GO2_STREAM / "config.yaml").read_text())
+    c = cfg["control"]
+
+    class Tele:                                     # stands in for Test 1's Teleop: only .limits is used
+        limits = (0, 0, 0)
+
+    t = Tele()
+    set_speed(t, c, "slow")
+    assert t.limits == (0.25, 0.75 * 0.25, 1.2)              # turning is fast in every preset
+    seen = []
+    for _ in range(3):
+        seen.append(cycle_speed(t, cfg))
+        assert t.limits[0] <= c["hard_cap_vx"] and t.limits[1] <= c["hard_cap_vy"] and t.limits[2] <= c["hard_cap_vyaw"]
+    assert seen == ["medium", "fast", "slow"]
+    set_speed(t, c, "fast")
+    assert t.limits[0] > SPEED_PRESETS["slow"]["vx"]
+    assert all(p["vyaw"] == 1.2 for p in SPEED_PRESETS.values())
+    set_speed(t, c, "fast", max_speed=0.3)          # --max-speed overrides the forward speed only
+    assert t.limits[0] == 0.3 and t.limits[2] == SPEED_PRESETS["fast"]["vyaw"]
+
+
+def test_goto_zone_speed_presets_keep_no_lidar_cap():
+    import yaml
+    from real_go2.goto_zone import ZoneNavigator, apply_nav_speed
+    cfg = yaml.safe_load((Path(__file__).resolve().parents[1] / "real_go2/real_config.yaml").read_text())
+    nav = ZoneNavigator(cfg["classes"], cfg["navigation"], have_lidar=True)
+    apply_nav_speed(nav, cfg["navigation"], "fast")
+    assert nav.nav["approach_speed"] == 0.45 and nav.nav["scan_rate"] == 0.7
+    blind = ZoneNavigator(cfg["classes"], cfg["navigation"], have_lidar=False)
+    apply_nav_speed(blind, cfg["navigation"], "fast")
+    assert blind.nav["approach_speed"] <= 0.15

@@ -22,6 +22,7 @@ chase view, the head camera that Q1 classifies, and the top-down map with the zo
 |---|---|---|
 | **Q2** data | 36 runs, **17,123** zone-labelled frames with IMU, joints, foot contacts, pose and commands at 50 Hz, 573 m walked | [section 4](#4-q2-dog-data-and-simulation) |
 | **Q1** zone classifier | ResNet18 transfer learning: **0.882** test accuracy (0.880 on a scene never seen in training), vs small CNN 0.788 and colour histograms 0.31-0.41; **0.911** live in MuJoCo | [section 5](#5-q1-supervised-learning-crime-scene-zone-classifier) |
+| **Q1 on the real Go2** | 5 lab sessions, **7,346** operator-labelled frames, 4 zones (lab_1, lab_2, open_area, shelves); the same ResNet18 recipe scores **0.814** on a held-out session (macro-F1 0.803); go-to-zone with LiDAR avoidance 16/16 / 8/16 in a simulated room, robot trials pending | [`real_go2/`](real_go2/README.md), REPORT.md section 7 |
 | **Q3** RL search | PPO with a training curriculum, on the Go2's real body shape: finds all evidence in **0.533** of 2-D test episodes vs random 0.050 and greedy 0.300 (a map-following planner: 0.700); on the full MuJoCo Go2, **0.667** over 60 starts, ahead of the planner (0.650) and greedy (0.183) | [section 6](#6-q3-reinforcement-learning-evidence-search) |
 
 ---
@@ -332,10 +333,27 @@ vote ([`demo_live_r1854.png`](results/q1/demo_live_r1854.png), [`.gif`](results/
 
 ![Live demo GIF: head camera, prediction, map](results/q1/demo_live_r1854.gif)
 
-**On the real Go2:** [`real_go2/`](real_go2/README.md) applies the same method to a real room: record
-labelled frames while driving the real dog (Ethernet or Wi-Fi), retrain with the same `train.py`, and run
-live recognition on the dog's camera with an MP4 for the video. Those tools are tested with a replayed
-camera source; they have not yet been run against the robot.
+**On the real Go2:** [`real_go2/`](real_go2/README.md) applies the same method to the lab. The operator
+records labelled frames while driving the real dog over Ethernet, and the model is retrained with the same
+`train.py`.
+
+| | Value |
+|---|---|
+| Sessions | 5 (11 Nov 2026, Ethernet, 5 Hz) |
+| Labelled frames | 7,346: lab_1 1,857, lab_2 1,718, open_area 2,139, shelves 1,632 |
+| Split | sessions 1–3 train (4,686), 4 validation (1,185), 5 test (1,475) |
+| Training | ResNet18, 8 epochs, batch 32, laptop CPU, 10,116 s; best validation macro-F1 0.843 (epoch 5) |
+| **Test accuracy** | **0.814** (macro-F1 0.803; 1 s vote 0.820) |
+| Per-zone F1 | lab_1 0.951, lab_2 0.764, open_area 0.785, shelves 0.714 |
+
+**Main error:** open_area and shelves frames are predicted as lab_2. Open-area accuracy depends strongly on
+the dog's heading: 0.24 facing 45°, against 0.90 facing −135°. The camera shows the zone the dog *faces*
+rather than the one it stands in.
+
+**Sources and reproduction:**
+- Results: `results/real_q1/` (`metrics.json`, `error_analysis.json`, `dataset_summary.json`, figures).
+- `python real_go2/analyze_real.py` regenerates the figures and the analysis.
+- The live demo video and the go-to-zone trials on the dog are next.
 
 ### 5.4 Discussion
 * **Transfer learning is worth it:** ImageNet features beat the same-data small CNN by 9.4 points

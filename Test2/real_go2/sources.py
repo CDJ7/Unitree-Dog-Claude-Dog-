@@ -36,6 +36,15 @@ if str(GO2_STREAM) not in sys.path:
 
 log = logging.getLogger("real_go2")
 
+# Speed presets (G cycles them while a script runs). vx: forward limit (m/s, W/S); vyaw: turn limit (rad/s, Q/E),
+# fast in every preset (Test 1's hard cap) so the dog turns well on the spot; sideways is 0.75 x vx. These cap the keys and the autonomy alike; Test 1's hard caps (0.6 m/s, 1.2 rad/s) still apply.
+# slow = the old default. Go-to-zone's own walking / look-around speeds per preset are in real_config.yaml.
+SPEED_PRESETS = {
+    "slow":   {"vx": 0.25, "vyaw": 1.2},
+    "medium": {"vx": 0.40, "vyaw": 1.2},
+    "fast":   {"vx": 0.60, "vyaw": 1.2},
+}
+
 OUT_W, OUT_H = 320, 240                      # same frame size as the simulated Q2 dataset
 
 
@@ -168,6 +177,7 @@ class WebRTCLink:
         self._fps = 0.0
         self.loop = asyncio.new_event_loop()
         self._normal_mode = normal_mode
+        self._sport = (None, 0.0)          # latest rt/lf/sportmodestate message (dict), monotonic time
         self._thread = threading.Thread(target=self._run, name="webrtc", daemon=True)
         self._thread.start()
         if not self.connected.wait(timeout_s):
@@ -177,7 +187,10 @@ class WebRTCLink:
 
     async def _on_track(self, track):
         while True:
-            frame = await track.recv()
+            try:
+                frame = await track.recv()
+            except Exception:               # noqa: BLE001 - the track ends when the connection closes
+                return
             self.frames.put(frame.to_ndarray(format="bgr24"))
             now = time.monotonic()
             self._times = [t for t in self._times if now - t < 2.0] + [now]
@@ -193,6 +206,9 @@ class WebRTCLink:
                     await self._ensure_normal_mode()
                 self.conn.video.switchVideoChannel(True)
                 self.conn.video.add_track_callback(self._on_track)
+                from unitree_webrtc_connect.constants import RTC_TOPIC
+                self.conn.datachannel.pub_sub.subscribe(              # IMU heading + odometry, ~20 Hz
+                    RTC_TOPIC["LF_SPORT_MOD_STATE"], lambda m: setattr(self, "_sport", (m.get("data"), time.monotonic())))
                 self.connected.set()
             except Exception as e:          # noqa: BLE001 - reported to the main thread
                 self.error = f"{type(e).__name__}: {e}"
@@ -222,11 +238,19 @@ class WebRTCLink:
     def fps(self):
         return self._fps
 
-    def pose(self):
+    def pose(self, max_age_s=0.5):
+        """(x, y, yaw) from the dog's own state over Wi-Fi (IMU yaw), NaN if none arrived recently."""
+        d, t = self._sport
+        try:
+            if d is not None and time.monotonic() - t <= max_age_s:
+                return float(d["position"][0]), float(d["position"][1]), float(d["imu_state"]["rpy"][2])
+        except (KeyError, IndexError, TypeError, ValueError):
+            pass
         return (math.nan, math.nan, math.nan)
 
     def status_lines(self):
-        return ["wifi (webrtc)"]
+        yaw = self.pose()[2]
+        return ["wifi (webrtc)" + ("" if math.isnan(yaw) else f"  heading {math.degrees(yaw):+.0f} deg")]
 
     def close(self):
         async def bye():
@@ -302,7 +326,9 @@ def add_source_args(ap):
     ap.add_argument("--aes-key", help="webrtc: per-device key, needed on Go2 firmware >= 1.1.15 "
                                       "(or set GO2_AES_KEY)")
     ap.add_argument("--no-control", action="store_true", help="camera only, do not drive the dog")
-    ap.add_argument("--max-speed", type=float, default=0.3, help="teleop forward speed limit, m/s")
+    ap.add_argument("--speed", choices=list(SPEED_PRESETS), default="slow",
+                    help="starting speed preset (G in the window cycles slow -> medium -> fast while running)")
+    ap.add_argument("--max-speed", type=float, help="override the preset's forward speed limit, m/s")
     ap.add_argument("--fake-hz", type=float, default=5.0, help="fake: replay rate (frames per second)")
 
 
@@ -311,26 +337,71 @@ def go2_config():
     return yaml.safe_load((GO2_STREAM / "config.yaml").read_text())
 
 
+def dog_ifaces(prefix="192.168.123."):
+    """Interfaces with an IPv4 address on the dog's subnet (from `ip -o -4 addr`)."""
+    import subprocess
+    try:
+        out = subprocess.run(["ip", "-o", "-4", "addr"], capture_output=True, text=True, timeout=5).stdout
+    except Exception:
+        return []
+    return [ln.split()[1] for ln in out.splitlines() if len(ln.split()) > 3 and ln.split()[3].startswith(prefix)]
+
+
 def open_link(a):
     """Open the chosen source. Returns (link, go2_stream config)."""
     import os
     cfg = go2_config()
     if a.source == "sdk":
         iface = a.iface or cfg["network"]["iface"]
+        found = dog_ifaces()
+        if iface not in found and len(found) == 1:
+            # WSL renames adapters on restart (eth1 -> eth0): use the one actually on the dog's subnet
+            log.warning("Interface '%s' has no 192.168.123.x address; using '%s', which does.", iface, found[0])
+            iface = found[0]
         if not Path(f"/sys/class/net/{iface}").exists():
             raise SystemExit(f"No network interface '{iface}'. Available: {', '.join(os.listdir('/sys/class/net'))}. "
                              "Pass --iface (on WSL see real_go2/README.md, 'mirrored networking').")
+        if iface not in found:
+            raise SystemExit(f"Interface '{iface}' has no 192.168.123.x address (found: {', '.join(found) or 'none'}). "
+                             "Check the cable and the Windows static IP, then `ip -br addr | grep 192.168.123`.")
         return SdkLink(iface, cfg), cfg
     if a.source == "webrtc":
         return WebRTCLink(ip=a.ip, ap=a.ap, aes_key=a.aes_key or os.environ.get("GO2_AES_KEY")), cfg
     return FakeLink(hz=a.fake_hz), cfg
 
 
+def set_speed(tele, control_cfg, name, max_speed=None):
+    """Apply a speed preset to the running teleop: its limits cap the keys AND autonomy. Test 1's hard caps
+    (config.yaml control.hard_cap_*) still win. Returns the limits (vx, vy, vyaw)."""
+    vx, wz = SPEED_PRESETS[name]["vx"], SPEED_PRESETS[name]["vyaw"]
+    if max_speed is not None:
+        vx = max_speed
+    c = control_cfg
+    tele.limits = (min(vx, c["hard_cap_vx"]), min(0.75 * vx, c["hard_cap_vy"]), min(wz, c["hard_cap_vyaw"]))
+    tele.speed_name = name
+    log.info("Speed %s: forward %.2f m/s, turn %.2f rad/s", name.upper(), tele.limits[0], tele.limits[2])
+    return tele.limits
+
+
+def next_speed(name):
+    names = list(SPEED_PRESETS)
+    return names[(names.index(name) + 1) % len(names)]
+
+
 def start_teleop(link, cfg, a, keyboard=True):
-    """Test 1's keyboard teleop (W/S/A/D/Q/E, R stand, F down, SPACE stop, ESC quit) on this link."""
+    """Test 1's keyboard teleop (W/S/A/D/Q/E, R stand, F down, SPACE stop, ESC quit) on this link,
+    at the --speed preset (G cycles it, see set_speed)."""
     if a.no_control:
         return None
     from teleop import Teleop
     tele = Teleop(cfg["control"], client=link.sport_client, max_speed=a.max_speed)
+    set_speed(tele, cfg["control"], getattr(a, "speed", "slow"), a.max_speed)
     tele.start(use_keyboard=keyboard)
     return tele
+
+
+def cycle_speed(tele, cfg):
+    """G key: slow -> medium -> fast -> slow. Returns the new preset name."""
+    name = next_speed(getattr(tele, "speed_name", "slow"))
+    set_speed(tele, cfg["control"], name)
+    return name

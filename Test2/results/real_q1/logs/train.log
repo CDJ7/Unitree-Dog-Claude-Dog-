@@ -1,0 +1,43 @@
+resnet18: 11.18 M params, weights: torchvision ResNet18_Weights.IMAGENET1K_V1; train 4686 / val 1185 / test 1475 frames; 8 epochs
+  ep 1 batch 0/146 loss 1.441 (38 s)
+  ep 1 batch 40/146 loss 0.958 (669 s)
+  ep 1 batch 80/146 loss 0.529 (1127 s)
+  ep 1 batch 120/146 loss 0.411 (1573 s)
+epoch 1: train loss 0.746 acc 0.745 | val loss 0.700 acc 0.821 macro-F1 0.826 (1949.0 s)  * best
+  ep 2 batch 0/146 loss 0.378 (29 s)
+  ep 2 batch 40/146 loss 0.426 (272 s)
+  ep 2 batch 80/146 loss 0.479 (415 s)
+  ep 2 batch 120/146 loss 0.310 (533 s)
+epoch 2: train loss 0.360 acc 0.940 | val loss 0.718 acc 0.823 macro-F1 0.827 (642.5 s)  * best
+  ep 3 batch 0/146 loss 0.285 (6 s)
+  ep 3 batch 40/146 loss 0.241 (433 s)
+  ep 3 batch 80/146 loss 0.299 (864 s)
+  ep 3 batch 120/146 loss 0.252 (1296 s)
+epoch 3: train loss 0.297 acc 0.967 | val loss 0.706 acc 0.827 macro-F1 0.833 (1626.7 s)  * best
+  ep 4 batch 0/146 loss 0.235 (9 s)
+  ep 4 batch 40/146 loss 0.270 (419 s)
+  ep 4 batch 80/146 loss 0.229 (781 s)
+  ep 4 batch 120/146 loss 0.350 (1159 s)
+epoch 4: train loss 0.271 acc 0.976 | val loss 0.685 acc 0.832 macro-F1 0.835 (1439.1 s)  * best
+  ep 5 batch 0/146 loss 0.240 (11 s)
+  ep 5 batch 40/146 loss 0.259 (395 s)
+  ep 5 batch 80/146 loss 0.296 (729 s)
+  ep 5 batch 120/146 loss 0.274 (1039 s)
+epoch 5: train loss 0.256 acc 0.982 | val loss 0.651 acc 0.838 macro-F1 0.843 (1323.6 s)  * best
+  ep 6 batch 0/146 loss 0.259 (12 s)
+  ep 6 batch 40/146 loss 0.309 (390 s)
+  ep 6 batch 80/146 loss 0.217 (749 s)
+  ep 6 batch 120/146 loss 0.238 (1089 s)
+epoch 6: train loss 0.247 acc 0.985 | val loss 0.690 acc 0.823 macro-F1 0.829 (1332.5 s)
+  ep 7 batch 0/146 loss 0.213 (12 s)
+  ep 7 batch 40/146 loss 0.213 (326 s)
+  ep 7 batch 80/146 loss 0.266 (641 s)
+  ep 7 batch 120/146 loss 0.261 (961 s)
+epoch 7: train loss 0.240 acc 0.987 | val loss 0.683 acc 0.826 macro-F1 0.832 (1181.7 s)
+  ep 8 batch 0/146 loss 0.222 (6 s)
+  ep 8 batch 40/146 loss 0.267 (144 s)
+  ep 8 batch 80/146 loss 0.226 (284 s)
+  ep 8 batch 120/146 loss 0.209 (403 s)
+epoch 8: train loss 0.235 acc 0.990 | val loss 0.665 acc 0.830 macro-F1 0.836 (514.7 s)
+done in 10116.1 s; best val macro-F1 0.843 (epoch 5) -> ~/Unitree-Dog-Claude-Dog-/Test2/results/real_q1/resnet18
+train exit 0

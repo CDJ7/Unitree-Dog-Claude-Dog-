@@ -145,3 +145,55 @@ def test_closed_loop_explores_when_the_zone_is_hidden():
     nav, x, y, clear = nav_sim.run(CLASSES, NAV, shelf, shelf)
     assert nav.state == "arrived", f"ended {nav.state}: {nav.msg} at ({x:.2f}, {y:.2f})"
     assert nav.explored >= 1 and clear > 0.2, f"explored {nav.explored}, closest {clear:.2f} m"
+
+
+def test_turn_reaches_heading_despite_turn_deadband():
+    """The Go2 barely turns on the spot below ~0.2 rad/s. A purely proportional turn stalls there; the minimum turn
+    rate gets it within turn_tolerance_rad, quickly, from any starting error."""
+    for err0 in (math.radians(d) for d in (8, 30, -45, 170)):
+        nav = ZoneNavigator(CLASSES, NAV, have_lidar=True)
+        nav.state, nav.target, nav.best_heading = "turn", SHELVES, 0.0
+        t, h = 0.0, -err0
+        for _ in range(300):
+            vx, wz = nav.update(t, h)
+            if nav.state != "turn":
+                break
+            if abs(wz) < 0.2:                       # deadband
+                wz = 0.0
+            t, h = t + 0.1, wrap(h + wz * 0.1)
+        assert nav.state == "walk", f"start error {math.degrees(err0):+.0f} deg: still {nav.state} after {t:.1f} s"
+        assert abs(wrap(h)) <= NAV["turn_tolerance_rad"] + 0.05 and t < 10, (math.degrees(h), t)
+
+
+def test_turn_timeout_looks_again():
+    """If the dog cannot turn at all (stuck), the turn gives up and looks around again instead of spinning forever."""
+    nav = ZoneNavigator(CLASSES, NAV, have_lidar=True)
+    nav.state, nav.target, nav.best_heading = "turn", SHELVES, math.pi / 2
+    t = 0.0
+    while nav.state == "turn" and t < 60:
+        nav.update(t, 0.0)
+        t += 0.1
+    assert nav.state == "look" and t <= NAV["turn_timeout_s"] + 0.2
+
+
+def test_closed_loop_with_turn_deadband():
+    """Same desk layout, but turns on the spot below 0.2 rad/s do nothing: it still arrives."""
+    desk = nav_sim.box(2.3, 2.7, 1.0, 3.0)
+    nav, x, y, clear = nav_sim.run(CLASSES, NAV, desk, [], turn_deadband=0.2)
+    assert nav.state == "arrived", f"ended {nav.state}: {nav.msg} at ({x:.2f}, {y:.2f})"
+    assert clear > 0.2
+
+
+def test_floor_below_body_is_not_an_obstacle():
+    """Body frame as the dog reports it standing (odom cloud via cloud_to_body): floor at about -0.31 m. An open
+    floor gives the full lookahead everywhere; a box 1 m ahead is seen only ahead. (The raw rt/utlidar/cloud has
+    z pointing down, which put the floor at +0.39 m - inside the corridor - and read 0.05 m in every direction.)"""
+    rng = np.random.default_rng(0)
+    r, a = rng.uniform(0.37, 3.0, 5000), rng.uniform(0, 2 * math.pi, 5000)
+    floor = np.column_stack([r * np.cos(a), r * np.sin(a), rng.normal(-0.33, 0.02, 5000)])
+    assert np.all(free_profile(floor, NB, CORRIDOR, LOOK) == LOOK)
+    box = np.column_stack([rng.uniform(1.0, 1.2, 200), rng.uniform(-0.2, 0.2, 200), rng.uniform(-0.3, 0.2, 200)])
+    p = free_profile(np.vstack([floor, box]), NB, CORRIDOR, LOOK)
+    assert abs(p[0] - 1.0) < 0.1 and p[NB // 4] == LOOK and p[NB // 2] == LOOK
+    flipped = floor * np.array([1, 1, -1])            # the raw sensor frame's mistake
+    assert np.all(free_profile(flipped, NB, CORRIDOR, LOOK) < 0.5)   # blocked in every direction

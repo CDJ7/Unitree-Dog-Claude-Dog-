@@ -1,0 +1,31 @@
+{
+ "run": "run_003",
+ "scene": "real",
+ "route": {
+  "name": "teleop",
+  "kind": "manual"
+ },
+ "source": "sdk",
+ "classes": [
+  "lab_1",
+  "lab_2",
+  "open_area",
+  "shelves"
+ ],
+ "record_hz": 5,
+ "crop": "center43",
+ "image_size": [
+  320,
+  240
+ ],
+ "started": "2026-11-11T15:43:36",
+ "robot": "Unitree Go2 (real)",
+ "frames": 1185,
+ "frames_per_zone": {
+  "lab_1": 247,
+  "lab_2": 276,
+  "open_area": 361,
+  "shelves": 301
+ },
+ "duration_s": 277.8
+}
