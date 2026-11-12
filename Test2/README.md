@@ -22,7 +22,7 @@ chase view, the head camera that Q1 classifies, and the top-down map with the zo
 |---|---|---|
 | **Q2** data | 36 runs, **17,123** zone-labelled frames with IMU, joints, foot contacts, pose and commands at 50 Hz, 573 m walked | [section 4](#4-q2-dog-data-and-simulation) |
 | **Q1** zone classifier | ResNet18 transfer learning: **0.882** test accuracy (0.880 on a scene never seen in training), vs small CNN 0.788 and colour histograms 0.31-0.41; **0.911** live in MuJoCo | [section 5](#5-q1-supervised-learning-crime-scene-zone-classifier) |
-| **Q1 on the real Go2** | 5 lab sessions, **7,346** operator-labelled frames, 4 zones (lab_1, lab_2, open_area, shelves); the same ResNet18 recipe scores **0.814** on a held-out session (macro-F1 0.803); go-to-zone with LiDAR avoidance 16/16 / 8/16 in a simulated room, robot trials pending | [`real_go2/`](real_go2/README.md), REPORT.md section 7 |
+| **Q1 on the real Go2** | 5 lab sessions, **7,346** operator-labelled frames, 4 zones (lab_1, lab_2, open_area, shelves); the same ResNet18 recipe scores **0.814** on a held-out session (macro-F1 0.803); go-to-zone with LiDAR avoidance 16/16 / 10/16 in a simulated room, robot trials pending | [`real_go2/`](real_go2/README.md), REPORT.md section 7 |
 | **Q3** RL search | PPO with a training curriculum, on the Go2's real body shape: finds all evidence in **0.533** of 2-D test episodes vs random 0.050 and greedy 0.300 (a map-following planner: 0.700); on the full MuJoCo Go2, **0.667** over 60 starts, ahead of the planner (0.650) and greedy (0.183) | [section 6](#6-q3-reinforcement-learning-evidence-search) |
 
 ---

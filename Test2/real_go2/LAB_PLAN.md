@@ -198,7 +198,7 @@ Press **R**, click the window and press **V** to record. Then press a zone numbe
 - **Cancelled requests:** a request you cancel with SPACE is logged as "cancelled" and is not counted as
   a success or a failure. Note why in your notes.
 - **Starting point:** start with the target zone in view. Finding a zone it can't see is the weak point;
-  it was 8/16 in simulation.
+  it was 10/16 in simulation.
 
 Each run writes `results/real_q1/goto_<time>.json`. It lists every request with its result and reason
 (arrived, blocked, boxed in, not seen, out of legs), plus the MP4.

@@ -291,12 +291,12 @@ run from 4 starting points × 4 starting headings, and the result is saved in
 
 | Layout | Reached the zone | Closest approach to an obstacle (from the dog's centre) |
 |---|---|---|
-| Low desk blocks the walk, not the view | 16/16 | 0.27 m |
-| Tall shelf hides the zone from the start | 8/16 | 0.25 m |
+| Low desk blocks the walk, not the view | 16/16 | 0.26 m |
+| Tall shelf hides the zone from the start | 10/16 | 0.25 m |
 
 With a body half-width of about 0.16 m, the closest approach leaves about 10 cm to spare, and it hit
-nothing in any run. When the zone is hidden, half the runs ran out of exploration legs before seeing it.
-The other half found it. On the real dog, start where the target zone is in view, or walk it part of the
+nothing in any run. When the zone is hidden, 6 of 16 runs ran out of exploration legs before seeing it;
+the other 10 found it. On the real dog, start where the target zone is in view, or walk it part of the
 way. `tests/test_goto_zone.py` checks the avoidance rules and both layouts.
 
 After the trials, `python real_go2/summarize_real.py` gathers the dataset size, test metrics, live
