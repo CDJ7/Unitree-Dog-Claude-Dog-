@@ -30,7 +30,7 @@ import yaml
 
 TEST2 = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TEST2))
-from real_go2.sources import add_source_args, crop_resize, open_link, start_teleop  # noqa: E402
+from real_go2.sources import add_source_args, crop_resize, cycle_speed, open_link, start_teleop  # noqa: E402
 
 COLS = ["t", "frame", "zone_id", "zone", "cmd_vx", "cmd_vy", "cmd_yaw_rate", "base_x", "base_y", "base_yaw"]
 
@@ -118,7 +118,8 @@ def main():
             put_text(view, "  ".join(f"{i + 1}:{c} {counts[i]}" for i, c in enumerate(classes)), (12, 466), 0.5)
             if tele:
                 s = tele.snapshot()
-                put_text(view, f"cmd vx {s['vx']:+.2f} vy {s['vy']:+.2f} wz {s['vyaw']:+.2f}  {s['status']}", (12, 94), 0.5)
+                put_text(view, f"speed {tele.speed_name.upper()} (G)   cmd vx {s['vx']:+.2f} vy {s['vy']:+.2f} "
+                               f"wz {s['vyaw']:+.2f}  {s['status']}", (12, 94), 0.5)
             for i, line in enumerate(link.status_lines()[:2]):
                 put_text(view, line, (12, 118 + 22 * i), 0.5)
             if img is None:
@@ -133,6 +134,8 @@ def main():
                 zone = -1
             elif k in (ord("p"), ord("P")):
                 recording = not recording
+            elif k in (ord("g"), ord("G")) and tele:
+                cycle_speed(tele, go2cfg)
     except KeyboardInterrupt:
         pass
     finally:

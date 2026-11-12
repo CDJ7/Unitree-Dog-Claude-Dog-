@@ -53,9 +53,10 @@ def prob_for(k, conf, n):
 
 
 def run(classes, nav_cfg, obstacles, view_blockers, start=(1.0, 2.0, 0.0), target=(5.2, 2.0), zone_x=4.5,
-        target_k=None, other_k=None, steps=12000, trace=None):
+        target_k=None, other_k=None, steps=12000, trace=None, turn_deadband=0.0):
     """Closed loop until arrived/failed. Returns (navigator, x, y, closest approach to any obstacle in m).
-    If `trace` is a list, (x, y) of every step is appended to it."""
+    If `trace` is a list, (x, y) of every step is appended to it. turn_deadband (rad/s): turning on the spot
+    slower than this does nothing, like a legged robot that needs a minimum rate to step round."""
     n = len(classes)
     target_k = classes.index("shelves") if target_k is None else target_k
     other_k = classes.index("open_area") if other_k is None else other_k
@@ -81,6 +82,8 @@ def run(classes, nav_cfg, obstacles, view_blockers, start=(1.0, 2.0, 0.0), targe
         x, y = x + vx * math.cos(h) * dt, y + vx * math.sin(h) * dt
         if trace is not None:
             trace.append((x, y))
+        if abs(vx) < 0.05 and abs(wz) < turn_deadband:
+            wz = 0.0
         h, t = wrap(h + wz * dt), t + dt
         closest = min(closest, min(raycast(x, y, a, segs, 9.0) for a in np.linspace(0, 2 * math.pi, 36, endpoint=False)))
     return nav, x, y, closest

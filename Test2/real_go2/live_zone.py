@@ -33,7 +33,7 @@ import yaml
 
 TEST2 = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TEST2))
-from real_go2.sources import add_source_args, crop_resize, open_link, start_teleop  # noqa: E402
+from real_go2.sources import add_source_args, crop_resize, cycle_speed, open_link, start_teleop  # noqa: E402
 
 PANEL_W, VIEW_W, VIEW_H = 330, 768, 432          # composite video 1098 x 432 (camera shown 16:9)
 COLORS = [(214, 120, 42), (52, 104, 235), (122, 175, 27), (0, 161, 237), (164, 123, 232), (0, 131, 0)]
@@ -149,6 +149,8 @@ def main():
             view = np.zeros((VIEW_H, VIEW_W, 3), np.uint8) if img is None else cv2.resize(img, (VIEW_W, VIEW_H))
             if img is None:
                 put_text(view, "waiting for the camera ...", (250, 220), 0.8)
+            if tele:
+                put_text(view, f"speed {tele.speed_name.upper()} (G)", (12, VIEW_H - 14), 0.5)
             comp = np.hstack([view, panel(classes, prob, smooth_k, true_k, acc, link.fps(), infer_ms, recording)])
             if recording:
                 if writer is None:
@@ -174,6 +176,8 @@ def main():
                 true_k = -1
             elif key in (ord("v"), ord("V")):
                 recording = not recording
+            elif key in (ord("g"), ord("G")) and tele:
+                cycle_speed(tele, go2cfg)
     except KeyboardInterrupt:
         pass
     finally:
