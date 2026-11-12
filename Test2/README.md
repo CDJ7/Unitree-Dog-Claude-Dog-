@@ -22,7 +22,7 @@ chase view, the head camera that Q1 classifies, and the top-down map with the zo
 |---|---|---|
 | **Q2** data | 36 runs, **17,123** zone-labelled frames with IMU, joints, foot contacts, pose and commands at 50 Hz, 573 m walked | [section 4](#4-q2-dog-data-and-simulation) |
 | **Q1** zone classifier | ResNet18 transfer learning: **0.882** test accuracy (0.880 on a scene never seen in training), vs small CNN 0.788 and colour histograms 0.31-0.41; **0.911** live in MuJoCo | [section 5](#5-q1-supervised-learning-crime-scene-zone-classifier) |
-| **Q1 on the real Go2** | 5 lab sessions, **7,346** operator-labelled frames, 4 zones (lab_1, lab_2, open_area, shelves); the same ResNet18 recipe scores **0.814** on a held-out session (macro-F1 0.803); go-to-zone with LiDAR avoidance 16/16 / 10/16 in a simulated room, robot trials pending | [`real_go2/`](real_go2/README.md), REPORT.md section 7 |
+| **Q1 on the real Go2** | 5 lab sessions, **7,346** operator-labelled frames, 4 zones (lab_1, lab_2, open_area, shelves); the same ResNet18 recipe scores **0.814** on a held-out session (macro-F1 0.803); go-to-zone with LiDAR avoidance 16/16 / 10/16 in a simulated room, robot trials pending | [section 5.5](#55-q1-on-the-real-go2-in-the-lab-which-part-of-the-lab-am-i-in) |
 | **Q3** RL search | PPO with a training curriculum, on the Go2's real body shape: finds all evidence in **0.533** of 2-D test episodes vs random 0.050 and greedy 0.300 (a map-following planner: 0.700); on the full MuJoCo Go2, **0.667** over 60 starts, ahead of the planner (0.650) and greedy (0.183) | [section 6](#6-q3-reinforcement-learning-evidence-search) |
 
 ---
@@ -33,6 +33,7 @@ chase view, the head camera that Q1 classifies, and the top-down map with the zo
 3. [Setup and reproduction](#3-setup-and-reproduction)
 4. [Q2: Dog data and simulation](#4-q2-dog-data-and-simulation)
 5. [Q1: Supervised learning, crime-scene zone classifier](#5-q1-supervised-learning-crime-scene-zone-classifier)
+   - [5.5 Q1 on the real Go2 in the lab](#55-q1-on-the-real-go2-in-the-lab-which-part-of-the-lab-am-i-in)
 6. [Q3: Reinforcement learning, evidence search](#6-q3-reinforcement-learning-evidence-search)
 7. [Limitations and future work](#7-limitations-and-future-work)
 8. [How Test 2 builds on Test 1](#8-how-test-2-builds-on-test-1)
@@ -333,27 +334,8 @@ vote ([`demo_live_r1854.png`](results/q1/demo_live_r1854.png), [`.gif`](results/
 
 ![Live demo GIF: head camera, prediction, map](results/q1/demo_live_r1854.gif)
 
-**On the real Go2:** [`real_go2/`](real_go2/README.md) applies the same method to the lab. The operator
-records labelled frames while driving the real dog over Ethernet, and the model is retrained with the same
-`train.py`.
-
-| | Value |
-|---|---|
-| Sessions | 5 (11 Nov 2026, Ethernet, 5 Hz) |
-| Labelled frames | 7,346: lab_1 1,857, lab_2 1,718, open_area 2,139, shelves 1,632 |
-| Split | sessions 1–3 train (4,686), 4 validation (1,185), 5 test (1,475) |
-| Training | ResNet18, 8 epochs, batch 32, laptop CPU, 10,116 s; best validation macro-F1 0.843 (epoch 5) |
-| **Test accuracy** | **0.814** (macro-F1 0.803; 1 s vote 0.820) |
-| Per-zone F1 | lab_1 0.951, lab_2 0.764, open_area 0.785, shelves 0.714 |
-
-**Main error:** open_area and shelves frames are predicted as lab_2. Open-area accuracy depends strongly on
-the dog's heading: 0.24 facing 45°, against 0.90 facing −135°. The camera shows the zone the dog *faces*
-rather than the one it stands in.
-
-**Sources and reproduction:**
-- Results: `results/real_q1/` (`metrics.json`, `error_analysis.json`, `dataset_summary.json`, figures).
-- `python real_go2/analyze_real.py` regenerates the figures and the analysis.
-- The live demo video and the go-to-zone trials on the dog are next.
+**On the real Go2:** the same method was trained and tested on the real dog in the lab. It scores **0.814**
+on a held-out session; see [section 5.5](#55-q1-on-the-real-go2-in-the-lab-which-part-of-the-lab-am-i-in).
 
 ### 5.4 Discussion
 * **Transfer learning is worth it:** ImageNet features beat the same-data small CNN by 9.4 points
@@ -375,6 +357,119 @@ rather than the one it stands in.
 * The small CNN run was stopped by this environment's 2 h limit on background jobs after epoch 10 of 12;
   the checkpoint used is the best-validation epoch 9 (recorded in its `train_config.json`). Its
   validation curve is noisy, so 2 more epochs would probably change little.
+
+### 5.5 Q1 on the real Go2 in the lab: "which part of the lab am I in?"
+
+The real dog learns to recognise **which zone of the lab it is in** from its head camera alone, using the
+same training recipe as the simulated Q1. The lab is split into four zones:
+
+| Key | Zone | What it is |
+|---|---|---|
+| 1 | `lab_1` | the desks on one side of the room |
+| 2 | `lab_2` | the desks on the other side |
+| 3 | `open_area` | the open floor between them |
+| 4 | `shelves` | the shelves with the wires |
+
+#### How it works
+1. **Record:** the dog is driven around the lab over Ethernet (keyboard teleop), and the operator presses
+   the number of the zone it is in. Each session saves camera frames at 5 Hz plus the commands and the
+   dog's odometry pose.
+2. **Train:** an ImageNet-pretrained **ResNet18** is fine-tuned to map one camera frame to one of the four
+   zones.
+   - Sessions 1–3 are used for training, session 4 for validation, and session 5 is held out as the test.
+   - The test is a full walk the model has never seen.
+3. **Use:**
+   - `live_zone.py` shows the predicted zone live on the dog's camera.
+   - `goto_zone.py` sends the dog to a zone you pick. It looks around, picks the direction where the
+     target zone appears, and walks there, using the LiDAR to go around obstacles.
+
+![Camera frames per zone](results/real_q1/real_sample_frames.png)
+
+*What the dog sees: two training frames per zone from the Go2's head camera. The real camera adds motion
+blur when turning (lab_2, top), window glare and floor reflections.*
+
+#### The data
+| Session | Used for | lab_1 | lab_2 | open_area | shelves | Frames |
+|---|---|---|---|---|---|---|
+| run_000 | train | 588 | 311 | 576 | 485 | 1,960 |
+| run_001 | train | 295 | 554 | 417 | 250 | 1,516 |
+| run_002 | train | 292 | 270 | 320 | 328 | 1,210 |
+| run_003 | validation | 247 | 276 | 361 | 301 | 1,185 |
+| run_004 | **test** | 435 | 307 | 465 | 268 | 1,475 |
+| **Total** | | 1,857 | 1,718 | 2,139 | 1,632 | **7,346** |
+
+All five sessions were recorded on 11 Nov 2026, about 24.5 minutes of labelled walking in total.
+
+#### Training
+- ResNet18 (11.2 M parameters), ImageNet weights, 8 epochs, batch size 32.
+- Colour and crop augmentation, and a class-weighted loss.
+- It trained on the laptop CPU in **10,116 s (about 2.8 h)**.
+- The best validation macro-F1 was **0.843** (epoch 5); that checkpoint is the one tested.
+
+![Training curves](results/real_q1/curves_resnet18.png)
+
+*Training accuracy climbs to 0.99, while validation stays at 0.82–0.84 from the first epoch. With only
+three training walks, the limit is how well one walk's views carry over to another, not training time.*
+
+#### Success rates on the held-out session
+| Measure | Result |
+|---|---|
+| **Accuracy** (1,475 frames) | **0.814** |
+| Macro-F1 | 0.803 |
+| Accuracy with a 1 s majority vote | 0.820 |
+| Simulated Q1, for comparison | 0.882 |
+
+| Zone | Correctly recognised (recall) | Precision | F1 |
+|---|---|---|---|
+| lab_1 | **0.926** | 0.976 | 0.951 |
+| lab_2 | **0.974** | 0.628 | 0.764 |
+| open_area | **0.664** | 0.960 | 0.785 |
+| shelves | **0.709** | 0.720 | 0.714 |
+
+![Confusion matrix](results/real_q1/confusion_resnet18.png)
+
+*Rows are the true zone, columns the prediction. lab_1 and lab_2 are almost never confused with each
+other. Most errors are open_area or shelves frames called lab_2.*
+
+![Test session](results/real_q1/real_test_session.png)
+
+*The test walk. Left: the dog's path, coloured by the true zone, with every wrong frame circled. Right:
+the true zone over time (black) and each prediction (green right, red wrong).*
+
+#### What we found
+- **It works on a walk it has never seen:** 0.814 accuracy from about 15 minutes of training walks.
+  That is 7 points below the simulator, a reasonable cost for real images.
+- **The camera sees where the dog *faces*, not where it *stands*.** The open area sits between the other
+  zones, so looking out from it you mostly see desks or shelves. Its accuracy depends on the heading:
+  0.24 facing one way and 0.90 facing another. The simulator showed the same effect.
+- **Errors come in streaks** of up to 8.8 s while the dog faces one way, so a 1 s vote helps little (0.814
+  → 0.820). This is also why go-to-zone decides "have I arrived?" from a full turn on the spot, which
+  averages over every direction, rather than from one view.
+- **Confidence is meaningful:** the 67 % of frames predicted with ≥ 0.9 confidence are 0.908 accurate.
+- **Found in the lab:** the Go2's LiDAR is mounted upside down. In its raw cloud the floor looked like an
+  obstacle 5 cm away in every direction. Switching to the deskewed, odometry-frame cloud fixed it, before
+  any autonomous motion.
+
+#### Go to zone: obstacle-aware navigation (simulation check)
+Before the robot trials, the navigator was tested in a simulated 6 × 4 m room. Each layout was run from
+4 starts × 4 headings:
+
+| Layout | Reached the zone | Closest approach to the obstacle |
+|---|---|---|
+| A desk blocks the way (zone visible) | **16/16** | 0.26 m from the dog's centre |
+| A shelf hides the zone | **10/16** | 0.25 m |
+
+![Navigator paths](results/real_q1/nav_sim_paths.png)
+
+*Every simulated run: green arrived, red ran out of exploration. No run hit the obstacle.*
+
+#### Video
+*Coming soon: the live zone recognition and go-to-zone trials on the real dog.*
+
+The numbers above come from the files in [`results/real_q1/`](results/real_q1/). How to
+reproduce them, and how to run everything on the dog, is in [`real_go2/README.md`](real_go2/README.md)
+and [`real_go2/LAB_PLAN.md`](real_go2/LAB_PLAN.md). The full analysis is section 7 of
+[`REPORT.md`](REPORT.md). `python real_go2/analyze_real.py` regenerates the figures and the analysis.
 
 ---
 
