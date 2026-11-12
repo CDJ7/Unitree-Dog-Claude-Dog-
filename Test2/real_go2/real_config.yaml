@@ -19,13 +19,13 @@ split:
 
 train:                                 # same recipe as the simulated Q1 (config/q1_train.yaml)
   epochs: 8
-  batch_size: 64
+  batch_size: 32                       # 64 in the simulated Q1; 32 fits the laptop (WSL ~3.7 GB RAM: 64 was OOM-killed)
   lr_head: 1.0e-3
   lr_backbone: 2.0e-4
   weight_decay: 1.0e-4
   label_smoothing: 0.05
   class_weighted_loss: true
-  num_workers: 2
+  num_workers: 0                       # no extra loader processes (memory)
   epoch_fraction: 1.0                  # real sets are small: use every training frame each epoch
 
 augment:                               # no horizontal flip: a mirrored room is a different room

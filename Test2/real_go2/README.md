@@ -20,10 +20,13 @@ the zone everywhere:
 | 3 | `open_area` | the open floor between them |
 | 4 | `shelves` | the shelves with the wires |
 
-> **Status:** everything was tested end to end with a *fake* camera (replayed simulator frames):
-> recording, training, evaluation, the live demo, go-to-zone and the MP4s. The navigator logic is also
-> covered by unit tests. The connections to the real dog (`--source sdk`, `--source webrtc`) have **not
-> yet been run against the robot**. The first session is the real test; send any error message.
+> **Status (12 Nov 2026):**
+> - **Done on the dog over Ethernet:** 5 recording sessions (7,346 labelled frames), training and
+>   evaluation. The held-out session scores **0.814** accuracy and macro-F1 0.803 (`results/real_q1/`,
+>   REPORT.md section 7.6).
+> - **LiDAR check run on the dog.** It led to two fixes: the deskewed LiDAR topic (the raw cloud is upside
+>   down, so the floor looked like an obstacle) and a minimum turn rate.
+> - **Still to do:** the live-demo video and the go-to-zone trials on the dog.
 
 | Script | Step |
 |---|---|

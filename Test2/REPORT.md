@@ -43,7 +43,7 @@ and furniture.
 - **Development:** four training runs were needed. The report documents each step, including a failed one,
   with paired statistical tests.
 
-**Toward the real Go2 (section 7, in progress):** the Q1 pipeline is carried over to the physical dog in a
+**On the real Go2 (section 7):** the Q1 pipeline is carried over to the physical dog in a
 four-zone lab (lab_1, lab_2, open_area, shelves).
 - **Tools:** connections over Ethernet (Unitree SDK) and Wi-Fi (WebRTC), a labelled recorder, retraining
   with the unchanged Q1 code, and a live recognition demo.
@@ -51,7 +51,10 @@ four-zone lab (lab_1, lab_2, open_area, shelves).
   obstacles on the way with the LiDAR.
 - **Checked in simulation:** in a closed-loop 2-D room it reached the zone in **16/16** runs when a desk
   blocked the way, and in **8/16** when a shelf hid the zone, with no collisions.
-- **Pending:** the robot sessions. Their numbers will come from the result files those runs write.
+- **Real data:** 5 sessions on the real dog gave 7,346 labelled frames. On a held-out session the
+  ResNet18 is right **0.814** of the time (macro-F1 0.803; simulation 0.882). Most errors happen when
+  the dog stands in one zone but faces another.
+- **Pending:** the live-demo video and the go-to-zone trials on the dog.
 
 ---
 
@@ -780,9 +783,10 @@ starts, so its MuJoCo success of 0.667 is a slightly optimistic estimate.
 
 Sections 4–6 ran entirely in simulation. This section carries Q1 onto the **physical Unitree Go2** in the
 lab, and adds a small autonomous behaviour on top of it: *pick a zone, and the dog goes there*. The
-software is complete and tested without the robot. The data collection and the runs on the dog are still
-to be done. Every real-robot number will be filled in from the files those runs write (section 7.6), and
-none is reported before then.
+data was recorded on the real dog, the classifier was trained and tested on it, and the LiDAR check was
+run on the robot (sections 7.5 and 7.6). The live-demo video and the go-to-zone trials on the dog are still
+to come. Every real-robot number is read from the files those runs wrote, and nothing is reported for the
+runs not yet done.
 
 ### 7.1 Goal and lab zones
 The question is whether the Q1 recipe, an ImageNet ResNet18 fine-tuned on frames labelled by zone, works on
@@ -923,36 +927,172 @@ noise or legged motion. The tests (`tests/test_goto_zone.py`) also check each ru
 - the dog slows and steers at 1 m, and stops and remembers the direction at 0.5 m;
 - walls on all sides end in "boxed in".
 
-### 7.5 What has been tested so far
+### 7.5 What has been run on the robot
 | Component | Without the robot | On the robot |
 |---|---|---|
-| Recording, training, evaluation, live demo, go-to-zone, MP4s | End to end with the `fake` source (replayed simulator frames) | Pending |
-| Navigator decisions and obstacle avoidance | 23 tests pass, plus the closed-loop sweep of section 7.4 | Pending |
-| Ethernet connection (`sdk`) | Code paths reuse Test 1's tested `go2_stream` modules | Pending: Test 1's `preflight.py` first |
-| Wi-Fi connection (`webrtc`) | Written against `unitree_webrtc_connect` 2.2.0 | Pending |
+| Ethernet connection (`sdk`): camera, state, LiDAR, teleop | Code paths reuse Test 1's `go2_stream` modules | **Done:** used for all 5 recording sessions |
+| Recording with operator labels | `fake` source | **Done:** 5 sessions, 7,346 labelled frames |
+| Training and evaluation | `fake` source | **Done:** on the lab laptop (section 7.6) |
+| LiDAR free-space check | 23 tests, closed-loop sweep (section 7.4) | **Done, with two fixes** (below) |
+| Live recognition demo, go-to-zone trials | `fake` source | Pending: the videos and trial logs are the next step |
+| Wi-Fi connection (`webrtc`) | Written against `unitree_webrtc_connect` 2.2.0 | Not used: Ethernet worked |
 
-### 7.6 Results on the real Go2 (to be completed)
-After the lab sessions, `python real_go2/summarize_real.py` collects every number below from the result
-files into `results/real_q1/summary.md`:
-- the frames per zone and session;
-- the test-session accuracy, macro-F1 and per-zone scores (`metrics.json`);
-- the live accuracy (`live_*.json`);
-- every go-to-zone request on the robot, by target, with the failure reasons (`goto_*.json`).
+**Changes made in the lab:** the configuration that was actually used is saved as
+`results/real_q1/logs/real_config_used_in_lab.yaml`.
+- **Training memory:** the laptop's WSL has about 3.7 GB of RAM. Batch size 64 was killed for running out
+  of memory, so training used **batch size 32** and no extra loader processes. The rest of the recipe is
+  unchanged.
+- **LiDAR frame:** the raw LiDAR topic `rt/utlidar/cloud` is in the sensor's own frame, and the sensor is
+  mounted upside down (z points down). The floor therefore looked like an obstacle 0.05 m away in every
+  direction, and the navigator would never have walked. The fix reads `rt/utlidar/cloud_deskewed`
+  instead. That cloud is in the odometry frame and is converted to the body frame with the dog's pose. The
+  floor then sits at about −0.31 m, below the corridor, and the dog's own body is already removed. This is
+  the false-obstacle risk Test 1 had flagged, and the `--lidar-check` mode caught it before any
+  autonomous motion.
+- **Turning:** at small commanded rates the Go2 barely turns on the spot, so a purely proportional turn
+  stalled short of the chosen heading. Turning now uses a gain of 1.5 rad/s per rad of heading error, a
+  minimum rate of 0.25 rad/s, a maximum of 1.0 rad/s, a ~6° tolerance and a 12 s timeout. Slow, medium
+  and fast speed presets were also added (0.25 / 0.35 / 0.45 m/s walking).
 
-| Measure | Simulated Q1 (section 5) | Real Go2 |
+### 7.6 Results on the real Go2
+
+#### Dataset
+All five sessions were recorded on 11 November 2026 between 15:13 and 15:53, over Ethernet at 5 Hz. The
+dog was driven by keyboard teleop, and the operator keyed in the zone. Sessions are split in order: the
+first three train, the fourth validates, and the fifth is the test set.
+
+| Session | Split | lab_1 | lab_2 | open_area | shelves | Frames | Labelled walking |
+|---|---|---|---|---|---|---|---|
+| run_000 | train | 588 | 311 | 576 | 485 | 1,960 | 392 s |
+| run_001 | train | 295 | 554 | 417 | 250 | 1,516 | 303 s |
+| run_002 | train | 292 | 270 | 320 | 328 | 1,210 | 242 s |
+| run_003 | val | 247 | 276 | 361 | 301 | 1,185 | 237 s |
+| run_004 | **test** | 435 | 307 | 465 | 268 | 1,475 | 295 s |
+| **All** | | **1,857** | **1,718** | **2,139** | **1,632** | **7,346** | 24.5 min |
+
+*Source: `results/real_q1/dataset_summary.json`, computed from each session's `states.csv` (copies in
+`results/real_q1/dataset/`). The images stay out of git.*
+
+The classes are balanced within a factor of 1.31. The training loss is class-weighted as in section 5.3,
+with weights between 0.89 and 1.10.
+
+![Real Go2 camera frames per zone](results/real_q1/real_sample_frames.png)
+
+*Figure 7.2 — Two training frames per zone from the Go2's head camera, after the centred 4:3 crop. The
+lab_2 example shows the motion blur that turning on the spot causes. `results/real_q1/real_sample_frames.png`.*
+
+#### Training
+Training used the section 5.3 recipe (ImageNet ResNet18, 8 epochs, separate learning rates for the head
+and the backbone, label smoothing 0.05, colour and crop augmentation, no flips) with batch size 32. It ran
+on the laptop CPU (3 threads, PyTorch 2.14.1) and took **10,116 s**, about 2.8 h. Validation macro-F1
+peaked at **0.843 in epoch 5**, and that checkpoint is the one tested.
+
+![Training curves](results/real_q1/curves_resnet18.png)
+
+*Figure 7.3 — Training and validation curves. `results/real_q1/curves_resnet18.png`, from
+`resnet18/history.json`.*
+
+- **Fit:** training accuracy reaches 0.990, while validation stays at 0.82–0.84 from the first epoch on.
+- **Meaning:** the network fits the three training walks almost perfectly. What limits it is how well the
+  views of one walk carry over to another, not training time.
+- **Comparison:** in simulation, validation kept rising, from 0.794 to 0.920 (section 5.3). Here it is
+  flat, which points to the small number of distinct training walks (3, against 24 simulated runs).
+
+#### Test session (run_004, never seen in training)
+| Measure | Simulated Q1 (section 5.4) | **Real Go2, held-out session** |
 |---|---|---|
-| Test accuracy, held-out session | 0.882 | *pending* |
-| Live accuracy on the walking dog | 0.911 | *pending* |
-| Go-to-zone arrivals | 16/16 desk, 8/16 hidden (section 7.4) | *pending* |
+| Accuracy | 0.882 (0.880 unseen scene) | **0.814** |
+| Macro-F1 | — | **0.803** |
+| Accuracy, 1 s majority vote | — | **0.820** |
 
-**Expectations, to be checked against the data:**
-- **lab_1 and lab_2** are both rows of desks and may be confused. The confusion matrix will show it, and
-  the fix is more sessions that include each side's distinguishing walls, windows and doors.
-- **Accuracy:** real images vary more than the randomised simulation (people, chairs, daylight), so the
-  accuracy may fall below the simulated 0.882. The test session is a separate walk, so it measures this
-  honestly.
-- **LiDAR:** Test 1 noted that its corridor check is not yet tuned on the real robot. Floor points
-  could cause false "blocked" stops. Test 1's dry-run mode checks this before any autonomous motion.
+| Zone | Precision | Recall | F1 | Frames |
+|---|---|---|---|---|
+| lab_1 | 0.976 | 0.926 | 0.951 | 435 |
+| lab_2 | 0.628 | **0.974** | 0.764 | 307 |
+| open_area | 0.960 | **0.664** | 0.785 | 465 |
+| shelves | 0.720 | 0.709 | 0.714 | 268 |
+
+*Source: `results/real_q1/metrics.json` (`real_go2/evaluate_real.py`). The accuracy recomputed from
+`resnet18/test_predictions.csv` is the same, 0.8142.*
+
+![Confusion matrix, real Go2](results/real_q1/confusion_resnet18.png)
+
+*Figure 7.4 — Confusion matrix on the held-out session. Rows are the true zone the operator keyed in;
+columns are the prediction. `results/real_q1/confusion_resnet18.png`.*
+
+![Test session path and timeline](results/real_q1/real_test_session.png)
+
+*Figure 7.5 — The test session. Left: the dog's odometry path, coloured by the true zone, with every
+misclassified frame circled. Right: the true zone (black) and the prediction for each frame (green
+correct, red wrong). `results/real_q1/real_test_session.png`.*
+
+#### Where the errors come from
+All the analysis below is in `results/real_q1/error_analysis.json` (`real_go2/analyze_real.py`).
+
+- **lab_2 absorbs the errors.** Most mistakes are other zones called lab_2: 83 open_area frames and
+  70 shelves frames. That gives lab_2 high recall (0.974) but low precision (0.628).
+  - lab_1 is clearly separable: F1 0.951, and only 24 of its frames were taken for lab_2.
+  - The expected lab_1 / lab_2 mix-up therefore mostly did not happen.
+- **The camera sees where the dog faces, not where it stands.** This is the same effect section 5.4
+  found in simulation. Open-area accuracy depends strongly on the dog's heading (odometry yaw, 45° bins):
+
+  | Heading | Open-area accuracy | Frames |
+  |---|---|---|
+  | 45° | 0.237 | 59 |
+  | 135° | 0.462 | 39 |
+  | −180° | 0.481 | 52 |
+  | −135° | 0.900 | 50 |
+  | −90° | 0.875 | 64 |
+
+  The open area is a gap between the other zones, so in most directions its view is filled by desks or
+  shelves that belong to another zone. Shelves frames vary in the same way: 0.44 at −90° and 0.91 at 45°.
+- **Errors come in streaks, not single frames.** There are 35 error streaks. The median is 3 frames, and
+  the longest is 44 frames (8.8 s) while the dog faced one direction. A 1 s majority vote therefore only
+  raises the accuracy from 0.814 to 0.820. The views themselves are ambiguous; the errors are not random
+  noise.
+- **Zone boundaries matter less than in simulation:**
+
+  | Frames from the nearest zone change | Accuracy | Frames |
+  |---|---|---|
+  | 0–5 (within 1 s) | 0.648 | 54 |
+  | 5–15 | 0.805 | 118 |
+  | 15–50 | 0.914 | 337 |
+  | 50 or more | 0.790 | 966 |
+
+  Frames within 1 s of a zone change are the hardest. But accuracy far from a boundary is not near 1 as
+  it was in simulation, because of the heading effect.
+- **Confidence is informative:**
+  - The median confidence is 0.958 on correct frames and 0.821 on wrong ones.
+  - Frames with confidence ≥ 0.9 (66.7 % of them) are 0.908 accurate.
+
+  The go-to-zone navigator relies on this in two ways. It stops a leg only on a target held at ≥ 0.8 for
+  2 s. And it decides arrival from a whole look-around turn, not from one view: the look-around votes over
+  every heading, so the heading effect averages out. The open area's recall of 0.664 is still above the
+  0.5 arrival share.
+
+#### Live demo and go-to-zone (pending)
+| Measure | Simulation | Real Go2 |
+|---|---|---|
+| Live accuracy on the walking dog | 0.911 (section 5.6) | *pending: `live_*.json`* |
+| Go-to-zone arrivals | 16/16 desk, 8/16 hidden (section 7.4) | *pending: `goto_*.json`, trial protocol in `real_go2/LAB_PLAN.md`* |
+
+#### Discussion
+- **The method transfers.** The same recipe that reached 0.882 in simulation reaches **0.814** on a real
+  walk it never saw, from about 15 minutes of labelled training walking (3 sessions). The real camera adds
+  motion blur, glare from windows and reflections on the floor (Figure 7.2), and people and chairs move
+  between sessions. A drop of 7 points is a reasonable cost.
+- **The labels limit accuracy more than the network does.** A zone label says where the dog *stands*,
+  while the camera shows where it *faces*. In a room whose middle zone is a gap between the others, the
+  two often differ.
+  - *Option 1:* label by what is in view.
+  - *Option 2:* classify a short sequence of frames from a turn, as the navigator's look-around already
+    does.
+
+  Either would address the main error source.
+- **Variation is limited.** All sessions were recorded within 40 minutes on one afternoon, in the same
+  light. The test session shows that the model handles a new walk. It does not show how the model copes
+  with another time of day, or with the room rearranged. More varied sessions, as `LAB_PLAN.md` suggests,
+  would test that.
 
 ---
 
@@ -981,9 +1121,12 @@ files into `results/real_q1/summary.md`:
 
 ## 9. Limitations and future work
 
-- **Simulation only, so far.** No result in sections 4–6 comes from the physical Go2. Section 7 prepares
-  the real-robot version of Q1 and go-to-zone, but its robot runs are pending. For Q3, the sim-to-real
-  path would be:
+- **Mostly simulation.** No result in sections 4–6 comes from the physical Go2. Section 7 carries Q1 to
+  the real dog: its classifier is trained and tested on real data, but the go-to-zone trials on the dog
+  are still pending.
+- **Real Q1 data** comes from one afternoon in one room. The zone labels describe where the dog stands,
+  not what the camera sees, which causes most of the errors (section 7.6).
+- **Q3 sim-to-real:** the path would be:
   - replace ground-truth evidence positions by detections, from the Phase 2 stain detector or a camera
     classifier;
   - replace the raster lidar by the Go2's L1 LiDAR scans;
@@ -1032,6 +1175,7 @@ python q3_rl/evaluate.py                                  # Q3 2-D test
 python q3_rl/deploy_eval.py                               # Q3 MuJoCo, 60 starts
 python report/make_report_figures.py                      # report figures
 python real_go2/nav_sim.py                                # go-to-zone closed-loop sweep (7.4)
+python real_go2/analyze_real.py                           # real-Go2 figures + error analysis (7.6)
 python real_go2/summarize_real.py                         # real-Go2 tables (7.6)
 python -m pytest -q tests                                 # 23 tests
 ```
@@ -1064,9 +1208,12 @@ This project put a simulated Unitree Go2 to work in a MuJoCo crime scene.
   - That is better than a greedy controller (0.183) and on par with a map-based planner (0.650).
   - Getting there took four documented training runs. The key lessons were that the policy needs a route
     hint, and that a realistic body model needs a curriculum to be learnable.
-- **Real Go2:** the Q1 pipeline and a go-to-zone behaviour with LiDAR obstacle avoidance are ready for the
-  lab. In a simulated room they reached the zone 16/16 times around a desk and 8/16 times when it was
-  hidden, without collisions. The robot sessions are the next step.
+- **Real Go2:**
+  - Recorded in the lab, the Q1 recipe recognises the four zones on a walk it never saw with **0.814**
+    accuracy. Most errors come from the camera facing a different zone from the one the dog stands in.
+  - Go-to-zone with LiDAR obstacle avoidance reached the zone 16/16 times around a desk and 8/16 times
+    when it was hidden, in a simulated room, without collisions.
+  - Its trials on the dog are the next step.
 - **Open:** stepping on evidence remains the main weakness, together with the move from simulation to the
   real dog.
 

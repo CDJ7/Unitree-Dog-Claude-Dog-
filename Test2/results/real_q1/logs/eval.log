@@ -1,0 +1,5 @@
+test session ['run_004']: 1475 frames, accuracy 0.814, macro-F1 0.803, 1 s smoothed 0.820 -> ~/Unitree-Dog-Claude-Dog-/Test2/results/real_q1
+  lab_1        P 0.976 R 0.926 F1 0.951 (n=435)
+  lab_2        P 0.628 R 0.974 F1 0.764 (n=307)
+  open_area    P 0.960 R 0.664 F1 0.785 (n=465)
+  shelves      P 0.720 R 0.709 F1 0.714 (n=268)

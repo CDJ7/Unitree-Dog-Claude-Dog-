@@ -1,0 +1,196 @@
+{
+ "frames": 1475,
+ "accuracy": 0.8142,
+ "frame_rate_hz": 5.0,
+ "zone_changes": 6,
+ "accuracy_by_distance_to_zone_change": [
+  {
+   "frames_from_zone_change": "0-5",
+   "n": 54,
+   "accuracy": 0.6481
+  },
+  {
+   "frames_from_zone_change": "5-15",
+   "n": 118,
+   "accuracy": 0.8051
+  },
+  {
+   "frames_from_zone_change": "15-50",
+   "n": 337,
+   "accuracy": 0.9139
+  },
+  {
+   "frames_from_zone_change": "50-inf",
+   "n": 966,
+   "accuracy": 0.7899
+  }
+ ],
+ "accuracy_by_confidence": [
+  {
+   "min_conf": 0.0,
+   "share_of_frames": 1.0,
+   "accuracy": 0.8142
+  },
+  {
+   "min_conf": 0.5,
+   "share_of_frames": 0.9647,
+   "accuracy": 0.8278
+  },
+  {
+   "min_conf": 0.7,
+   "share_of_frames": 0.8658,
+   "accuracy": 0.8543
+  },
+  {
+   "min_conf": 0.9,
+   "share_of_frames": 0.6671,
+   "accuracy": 0.9075
+  }
+ ],
+ "median_conf_correct": 0.9577,
+ "median_conf_wrong": 0.8213,
+ "accuracy_by_heading_45deg_bins": {
+  "lab_1": {
+   "-180": {
+    "n": 18,
+    "accuracy": 0.889
+   },
+   "-135": {
+    "n": 71,
+    "accuracy": 0.986
+   },
+   "-90": {
+    "n": 11,
+    "accuracy": 0.636
+   },
+   "-45": {
+    "n": 118,
+    "accuracy": 0.941
+   },
+   "0": {
+    "n": 25,
+    "accuracy": 0.76
+   },
+   "45": {
+    "n": 22,
+    "accuracy": 0.682
+   },
+   "90": {
+    "n": 39,
+    "accuracy": 0.872
+   },
+   "135": {
+    "n": 131,
+    "accuracy": 1.0
+   }
+  },
+  "lab_2": {
+   "-180": {
+    "n": 31,
+    "accuracy": 1.0
+   },
+   "-135": {
+    "n": 40,
+    "accuracy": 1.0
+   },
+   "-90": {
+    "n": 35,
+    "accuracy": 1.0
+   },
+   "-45": {
+    "n": 33,
+    "accuracy": 1.0
+   },
+   "0": {
+    "n": 32,
+    "accuracy": 0.938
+   },
+   "45": {
+    "n": 43,
+    "accuracy": 0.977
+   },
+   "90": {
+    "n": 45,
+    "accuracy": 0.933
+   },
+   "135": {
+    "n": 48,
+    "accuracy": 0.958
+   }
+  },
+  "open_area": {
+   "-180": {
+    "n": 52,
+    "accuracy": 0.481
+   },
+   "-135": {
+    "n": 50,
+    "accuracy": 0.9
+   },
+   "-90": {
+    "n": 64,
+    "accuracy": 0.875
+   },
+   "-45": {
+    "n": 54,
+    "accuracy": 0.611
+   },
+   "0": {
+    "n": 44,
+    "accuracy": 0.818
+   },
+   "45": {
+    "n": 59,
+    "accuracy": 0.237
+   },
+   "90": {
+    "n": 103,
+    "accuracy": 0.796
+   },
+   "135": {
+    "n": 39,
+    "accuracy": 0.462
+   }
+  },
+  "shelves": {
+   "-180": {
+    "n": 49,
+    "accuracy": 0.776
+   },
+   "-135": {
+    "n": 6,
+    "accuracy": 0.0
+   },
+   "-90": {
+    "n": 25,
+    "accuracy": 0.44
+   },
+   "-45": {
+    "n": 75,
+    "accuracy": 0.64
+   },
+   "0": {
+    "n": 18,
+    "accuracy": 0.833
+   },
+   "45": {
+    "n": 22,
+    "accuracy": 0.909
+   },
+   "90": {
+    "n": 18,
+    "accuracy": 0.722
+   },
+   "135": {
+    "n": 55,
+    "accuracy": 0.818
+   }
+  }
+ },
+ "error_streaks": {
+  "count": 35,
+  "median_frames": 3.0,
+  "longest_frames": 44,
+  "longest_s": 8.8
+ }
+}

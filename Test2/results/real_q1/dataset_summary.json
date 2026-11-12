@@ -1,0 +1,81 @@
+{
+ "sessions": {
+  "run_000": {
+   "split": "train",
+   "frames": 1960,
+   "per_zone": {
+    "lab_1": 588,
+    "lab_2": 311,
+    "open_area": 576,
+    "shelves": 485
+   },
+   "labelled_walk_s": 391.8,
+   "session_s": 607.3,
+   "started": "2026-11-11T15:13:53",
+   "source": "sdk"
+  },
+  "run_001": {
+   "split": "train",
+   "frames": 1516,
+   "per_zone": {
+    "lab_1": 295,
+    "lab_2": 554,
+    "open_area": 417,
+    "shelves": 250
+   },
+   "labelled_walk_s": 303.0,
+   "session_s": 355.7,
+   "started": "2026-11-11T15:30:19",
+   "source": "sdk"
+  },
+  "run_002": {
+   "split": "train",
+   "frames": 1210,
+   "per_zone": {
+    "lab_1": 292,
+    "lab_2": 270,
+    "open_area": 320,
+    "shelves": 328
+   },
+   "labelled_walk_s": 241.8,
+   "session_s": 279.1,
+   "started": "2026-11-11T15:38:45",
+   "source": "sdk"
+  },
+  "run_003": {
+   "split": "val",
+   "frames": 1185,
+   "per_zone": {
+    "lab_1": 247,
+    "lab_2": 276,
+    "open_area": 361,
+    "shelves": 301
+   },
+   "labelled_walk_s": 236.8,
+   "session_s": 277.8,
+   "started": "2026-11-11T15:43:36",
+   "source": "sdk"
+  },
+  "run_004": {
+   "split": "test",
+   "frames": 1475,
+   "per_zone": {
+    "lab_1": 435,
+    "lab_2": 307,
+    "open_area": 465,
+    "shelves": 268
+   },
+   "labelled_walk_s": 294.8,
+   "session_s": 317.2,
+   "started": "2026-11-11T15:48:45",
+   "source": "sdk"
+  }
+ },
+ "total_frames": 7346,
+ "total_per_zone": {
+  "lab_1": 1857,
+  "lab_2": 1718,
+  "open_area": 2139,
+  "shelves": 1632
+ }
+}

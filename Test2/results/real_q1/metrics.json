@@ -1,0 +1,77 @@
+{
+ "split": {
+  "train": [
+   "run_000",
+   "run_001",
+   "run_002"
+  ],
+  "val": [
+   "run_003"
+  ],
+  "test": [
+   "run_004"
+  ]
+ },
+ "classes": [
+  "lab_1",
+  "lab_2",
+  "open_area",
+  "shelves"
+ ],
+ "n_test_frames": 1475,
+ "accuracy": 0.8142,
+ "macro_f1": 0.8034,
+ "accuracy_smoothed_1s": 0.8203,
+ "per_class": {
+  "lab_1": {
+   "precision": 0.9758,
+   "recall": 0.9264,
+   "f1": 0.9505,
+   "support": 435
+  },
+  "lab_2": {
+   "precision": 0.6282,
+   "recall": 0.9739,
+   "f1": 0.7637,
+   "support": 307
+  },
+  "open_area": {
+   "precision": 0.9596,
+   "recall": 0.6645,
+   "f1": 0.7853,
+   "support": 465
+  },
+  "shelves": {
+   "precision": 0.7197,
+   "recall": 0.709,
+   "f1": 0.7143,
+   "support": 268
+  }
+ },
+ "confusion": [
+  [
+   403,
+   24,
+   7,
+   1
+  ],
+  [
+   0,
+   299,
+   5,
+   3
+  ],
+  [
+   3,
+   83,
+   309,
+   70
+  ],
+  [
+   7,
+   70,
+   1,
+   190
+  ]
+ ]
+}
