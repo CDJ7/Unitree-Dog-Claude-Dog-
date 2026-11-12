@@ -50,7 +50,7 @@ four-zone lab (lab_1, lab_2, open_area, shelves).
 - **Autonomy:** a *go-to-zone* behaviour finds a requested zone with the camera classifier and avoids
   obstacles on the way with the LiDAR.
 - **Checked in simulation:** in a closed-loop 2-D room it reached the zone in **16/16** runs when a desk
-  blocked the way, and in **8/16** when a shelf hid the zone, with no collisions.
+  blocked the way, and in **10/16** when a shelf hid the zone, with no collisions.
 - **Real data:** 5 sessions on the real dog gave 7,346 labelled frames. On a held-out session the
   ResNet18 is right **0.814** of the time (macro-F1 0.803; simulation 0.882). Most errors happen when
   the dog stands in one zone but faces another.
@@ -899,11 +899,12 @@ Two layouts were tested, each from 4 starting points × 4 starting headings:
 
 | Layout | Reached the zone | Legs used (arrived runs) | Closest approach to an obstacle |
 |---|---|---|---|
-| Low desk blocks the walk, not the view | **16/16** | 7–19 | 0.27 m |
-| Tall shelf hides the zone | **8/16** | 8–14 | 0.25 m |
+| Low desk blocks the walk, not the view | **16/16** | 7–16 | 0.26 m |
+| Tall shelf hides the zone | **10/16** | 7–14 | 0.25 m |
 
-*Source: `results/real_q1/nav_sweep.json`. The closest approach is measured from the robot's centre; the
-Go2's half-width is about 0.16 m.*
+*Source: `results/real_q1/nav_sweep.json`, run with the turning controller added in the lab (section 7.5).
+With the earlier proportional turn, the same sweep gave 16/16 and 8/16. The closest approach is measured
+from the robot's centre; the Go2's half-width is about 0.16 m.*
 
 ![Navigator paths in the simulated room](results/real_q1/nav_sim_paths.png)
 
@@ -912,7 +913,7 @@ yellow area is the target zone. Green runs arrived, red runs did not. `results/r
 
 **Results:**
 - **Avoidance:** it is reliable. No run touched an obstacle, and every desk run detoured around it.
-- **Hidden zone:** finding it is the weak point. All 8 failures used their 10 exploration legs on the
+- **Hidden zone:** finding it is the weak point. All 6 failures used their 10 exploration legs on the
   starting side of the shelf, then stopped with "shelves not seen in any direction". The successful
   runs went round an end of the shelf early.
 - **Cause:** exploration only remembers the previous direction and recently blocked headings. It has no map
@@ -1074,7 +1075,7 @@ All the analysis below is in `results/real_q1/error_analysis.json` (`real_go2/an
 | Measure | Simulation | Real Go2 |
 |---|---|---|
 | Live accuracy on the walking dog | 0.911 (section 5.6) | *pending: `live_*.json`* |
-| Go-to-zone arrivals | 16/16 desk, 8/16 hidden (section 7.4) | *pending: `goto_*.json`, trial protocol in `real_go2/LAB_PLAN.md`* |
+| Go-to-zone arrivals | 16/16 desk, 10/16 hidden (section 7.4) | *pending: `goto_*.json`, trial protocol in `real_go2/LAB_PLAN.md`* |
 
 #### Discussion
 - **The method transfers.** The same recipe that reached 0.882 in simulation reaches **0.814** on a real
@@ -1211,7 +1212,7 @@ This project put a simulated Unitree Go2 to work in a MuJoCo crime scene.
 - **Real Go2:**
   - Recorded in the lab, the Q1 recipe recognises the four zones on a walk it never saw with **0.814**
     accuracy. Most errors come from the camera facing a different zone from the one the dog stands in.
-  - Go-to-zone with LiDAR obstacle avoidance reached the zone 16/16 times around a desk and 8/16 times
+  - Go-to-zone with LiDAR obstacle avoidance reached the zone 16/16 times around a desk and 10/16 times
     when it was hidden, in a simulated room, without collisions.
   - Its trials on the dog are the next step.
 - **Open:** stepping on evidence remains the main weakness, together with the move from simulation to the

@@ -105,17 +105,28 @@ discovery cannot reach the dog. Mirrored mode (Windows 11 22H2 or later) gives W
    Set-NetFirewallHyperVVMSetting -Name '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -DefaultInboundAction Allow
    ```
 
-### A4 (alternative). Connect by Wi-Fi
-Recording and the live demo work over Wi-Fi. Go-to-zone needs the LiDAR, which this connection doesn't
-provide, so it only runs with `--allow-no-lidar` (slower, closely supervised).
-1. `sudo apt install -y portaudio19-dev && pip install unitree_webrtc_connect`
-2. In the Unitree app, connect the dog to the lab Wi-Fi (STA mode) and note its IP. The laptop must be on
-   the same network.
-3. If the app shows firmware **1.1.15 or newer**, fetch the dog's key once:
-   `unitree-fetch-aes-key --email <your Unitree account> --device-type Go2`. It asks for the password.
-   Then run `export GO2_AES_KEY=<key>`.
-4. **Close the Unitree app.** The dog accepts only one Wi-Fi client.
-5. Use `--source webrtc --ip <dog IP>` instead of `--source sdk --iface eth1` in the commands below.
+### A4 (alternative). Connect by Wi-Fi (no cable: you can stay away from the dog)
+Recording, the live demo and go-to-zone work over Wi-Fi, with the camera (about 14 fps) and the dog's IMU heading,
+but **no LiDAR**: go-to-zone only runs with `--allow-no-lidar` (walking capped at 0.15 m/s, closely supervised).
+Checked on our dog: it needs **no AES key** (its handshake is the older type), and the Wi-Fi code connects in about 2 s.
+
+**Option 1: the dog's own hotspot (simplest).**
+1. In the Unitree app, set the dog's Wi-Fi mode to **AP** (hotspot). Note the network name and password.
+2. **Close the Unitree app** (the dog accepts one Wi-Fi client), then join that network from Windows.
+   While on it, the laptop has **no internet** (Claude Code and pip won't work until you switch back).
+3. Unplug the Ethernet cable and run with `--source webrtc --ap`:
+   ```bash
+   python real_go2/record_real.py --source webrtc --ap --speed medium
+   python real_go2/goto_zone.py --source webrtc --ap --allow-no-lidar --model results/q1/resnet18/best.pt
+   ```
+
+**Option 2: dog and laptop on the same Wi-Fi network (keeps the laptop's internet).**
+1. In the Unitree app, connect the dog to the network (STA mode) and note the IP it gets.
+   Public / campus networks often block devices from talking to each other; if it won't connect, use Option 1.
+2. Close the Unitree app, then use `--source webrtc --ip <dog IP>`.
+
+If the dog's firmware is later updated to 1.1.15 or newer, it will ask for a key (`AesKeyRequiredError`):
+`unitree-fetch-aes-key --email <your Unitree account> --device-type Go2`, then `export GO2_AES_KEY=<key>`.
 
 ### A5. Dry run without the dog (2 minutes)
 ```bash
@@ -280,12 +291,12 @@ run from 4 starting points × 4 starting headings, and the result is saved in
 
 | Layout | Reached the zone | Closest approach to an obstacle (from the dog's centre) |
 |---|---|---|
-| Low desk blocks the walk, not the view | 16/16 | 0.27 m |
-| Tall shelf hides the zone from the start | 8/16 | 0.25 m |
+| Low desk blocks the walk, not the view | 16/16 | 0.26 m |
+| Tall shelf hides the zone from the start | 10/16 | 0.25 m |
 
 With a body half-width of about 0.16 m, the closest approach leaves about 10 cm to spare, and it hit
-nothing in any run. When the zone is hidden, half the runs ran out of exploration legs before seeing it.
-The other half found it. On the real dog, start where the target zone is in view, or walk it part of the
+nothing in any run. When the zone is hidden, 6 of 16 runs ran out of exploration legs before seeing it;
+the other 10 found it. On the real dog, start where the target zone is in view, or walk it part of the
 way. `tests/test_goto_zone.py` checks the avoidance rules and both layouts.
 
 After the trials, `python real_go2/summarize_real.py` gathers the dataset size, test metrics, live
