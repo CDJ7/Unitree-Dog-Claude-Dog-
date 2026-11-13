@@ -47,14 +47,21 @@ and furniture.
 four-zone lab (lab_1, lab_2, open_area, shelves).
 - **Tools:** connections over Ethernet (Unitree SDK) and Wi-Fi (WebRTC), a labelled recorder, retraining
   with the unchanged Q1 code, and a live recognition demo.
-- **Autonomy:** a *go-to-zone* behaviour finds a requested zone with the camera classifier and avoids
-  obstacles on the way with the LiDAR.
-- **Checked in simulation:** in a closed-loop 2-D room it reached the zone in **16/16** runs when a desk
-  blocked the way, and in **10/16** when a shelf hid the zone, with no collisions.
 - **Real data:** 5 sessions on the real dog gave 7,346 labelled frames. On a held-out session the
   ResNet18 is right **0.814** of the time (macro-F1 0.803; simulation 0.882). Most errors happen when
   the dog stands in one zone but faces another.
-- **Pending:** the live-demo video and the go-to-zone trials on the dog.
+- **Zone map:** the sessions' odometry, aligned by their zone labels, gives a map of the lab. A histogram
+  filter localises the dog on it from odometry and the classifier, which lifts the zone accuracy on the
+  held-out session from 0.814 to **0.839**, and lets the dog follow planned routes.
+- **Autonomy:** *go-to-zone* sends the dog to a requested zone: it localises on the map, follows a route,
+  and stops for obstacles with the LiDAR. Arrival needs the map as well as the camera.
+  - In simulation on the real map, with the real classifier's outputs replayed, it reached the right zone
+    in **34/36** requests with no wrong arrivals; the camera-only navigator managed 20/36, with 6 wrong
+    arrivals.
+  - **On the real dog** (13 Nov 2026, [video](https://www.youtube.com/watch?v=lcDZeDCFg5E)), **all 6 requests that ran to the end
+    arrived** (median 55 s); 6 more were cancelled by the operator. The first lab attempt showed that the
+    LiDAR stop distance had to be measured from the dog's nose, not its centre.
+- **Pending:** the live recognition demo with operator-keyed accuracy (`live_zone.py`).
 
 ---
 
@@ -783,10 +790,11 @@ starts, so its MuJoCo success of 0.667 is a slightly optimistic estimate.
 
 Sections 4–6 ran entirely in simulation. This section carries Q1 onto the **physical Unitree Go2** in the
 lab, and adds a small autonomous behaviour on top of it: *pick a zone, and the dog goes there*. The
-data was recorded on the real dog, the classifier was trained and tested on it, and the LiDAR check was
-run on the robot (sections 7.5 and 7.6). The live-demo video and the go-to-zone trials on the dog are still
-to come. Every real-robot number is read from the files those runs wrote, and nothing is reported for the
-runs not yet done.
+data was recorded on the real dog, the classifier was trained and tested on it (sections 7.5 and 7.6),
+a zone map built from the recordings localises the dog (section 7.7), and go-to-zone was run on the dog in
+the lab and filmed (section 7.8). Only the live recognition demo with operator-keyed accuracy is still to
+come. Every real-robot number is read from the files those runs wrote, and nothing is reported for runs
+not yet done.
 
 ### 7.1 Goal and lab zones
 The question is whether the Q1 recipe, an ImageNet ResNet18 fine-tuned on frames labelled by zone, works on
@@ -816,7 +824,8 @@ so Q1's training code runs unchanged.
 | Train | `q1_supervised/train.py --config real_go2/real_config.yaml` | The same ResNet18 recipe as section 5.3. The split is by session order: the last session is the test set, the second-to-last the validation set. |
 | Evaluate | `evaluate_real.py` | Accuracy, macro-F1, per-zone scores, 1 s smoothed accuracy and a confusion matrix on the held-out session. |
 | Live demo | `live_zone.py` | Classifies the live camera with an on-screen panel. The operator keys in the true zone, and the panel shows a running live accuracy. Recorded to MP4. |
-| Go to zone | `goto_zone.py` | The autonomous behaviour of section 7.3. |
+| Zone map | `zone_map.py` | Aligns the recorded sessions into a map of the lab; localiser and route planner (section 7.7). |
+| Go to zone | `goto_zone.py` | The autonomous behaviour of sections 7.3 and 7.7. |
 
 **Preprocessing:**
 - The Go2 camera gives 16:9 frames.
@@ -833,13 +842,16 @@ modifies. It provides:
 
 ### 7.3 Go-to-zone: finding a zone and avoiding obstacles
 The classifier says *which zone the camera sees*, not where the zone is. The navigator turns that into
-motion, with the LiDAR handling everything in the way. It repeats three steps until it arrives, gives up,
-or the operator takes over.
+motion, with the LiDAR handling everything in the way. This section describes the **camera-only search**.
+It was the whole navigator for the first lab trials. With the zone map (section 7.7), it is what the dog
+does until it has localised; after that the dog follows a planned route. It repeats three steps until it
+arrives, gives up, or the operator takes over.
 
 1. **Look around.** The dog turns once on the spot. For each of 24 headings it stores:
    - the classifier's probability that the camera sees the **target** zone;
-   - the **free distance** ahead from the LiDAR. This uses Test 1's body corridor: 0.6 m wide, between
-     −0.15 and +0.45 m in height, so the floor is ignored.
+   - the **free distance** ahead from the LiDAR. This uses Test 1's body corridor, 0.6 m wide, with its
+     lower edge moved from −0.15 to −0.20 m (about 11 cm above the floor, section 7.5) and its upper edge
+     at +0.45 m, so the floor is ignored.
 
    From one turn come two answers. *Where am I* is the zone most views belong to. If the target holds at
    least half the views, the dog has **arrived** and waves.
@@ -847,11 +859,11 @@ or the operator takes over.
 
    $$\text{score}(h) = P(\text{target}\mid h)\;\times\;f_{\text{free}}(h)\;\times\;\text{penalty}_{\text{blocked}}(h),$$
 
-   - $f_{\text{free}}$ is 0 up to `stop_obstacle_m` = 0.5 m of free distance and rises linearly to 1 at
-     `want_free_m` = 1.5 m.
+   - $f_{\text{free}}$ is 0 up to `stop_obstacle_m` = 0.6 m of free distance and rises linearly to 1 at
+     `want_free_m` = 1.6 m.
    - Headings that stopped the dog in the last 3 legs get a penalty of 0.2.
 
-   So a desk 0.5 m away cancels a direction even when the target is visible right behind it.
+   So a desk 0.6 m away cancels a direction even when the target is visible right behind it.
    - **Detour:** if the best score is low because the target's own direction is blocked, the dog takes the
      open heading (at least 1.1 m free and not recently blocked) closest to the
      target. It keeps the side it chose, so it doesn't swing
@@ -860,30 +872,35 @@ or the operator takes over.
      10 legs. The score favours continuing the previous direction (×1.6) and passing the edge of an
      obstacle (×1.8), where a hidden zone tends to come into view. It avoids turning back (×0.3).
    - **Boxed in:** if no heading has 1.1 m free, the dog stops and reports it.
-3. **Walk one leg** of up to 4 s at 0.25 m/s, re-checking the LiDAR on every scan:
-   - something within **1.0 m** ahead: slow to 40 % and steer toward the freer side;
-   - something within **0.5 m**: stop, remember that heading as blocked, and look again;
-   - the target recognised steadily (confidence ≥ 0.8 for 2 s), or lost (< 0.25 for 1.5 s): end the leg
-     early.
+3. **Walk one leg** of up to 6 s (10 s while exploring to localise) at the preset speed (0.25 / 0.35 /
+   0.45 m/s), re-checking the LiDAR on every scan. The distances are measured from the dog's centre and
+   grow with the speed $v$ (`reaction_s` = 0.5 s for LiDAR delay and braking):
+   - something within **1.10 m + 0.5 s × v** ahead (1.28 m at 0.35 m/s): slow to 40 % and steer toward the
+     freer side;
+   - something within **0.60 m + 0.5 s × v** (0.78 m at 0.35 m/s): stop, remember that heading as blocked,
+     and look again;
+   - the target recognised steadily (confidence ≥ 0.8 for 2 s; with the zone map, only if the map also
+     puts the dog in the target zone), or lost (< 0.25 for 1.5 s): end the leg early.
 
    It gives up after 20 legs.
 
 | Parameter (`navigation:`) | Value | Parameter | Value |
 |---|---|---|---|
-| `heading_bins` | 24 (15°) | `stop_obstacle_m` | 0.50 m |
-| `scan_rate` | 0.5 rad/s | `slow_obstacle_m` | 1.00 m |
-| `arrive_share` | 0.50 | `want_free_m` | 1.5 m |
-| `approach_speed` | 0.25 m/s | `lookahead_m` | 2.5 m |
-| `leg_s` | 4.0 s | `blocked_memory_legs` | 3 |
-| `max_legs` | 20 | `explore_legs` | 10 |
+| `heading_bins` | 24 (15°) | `stop_obstacle_m` | 0.60 m (+ 0.5 s × v) |
+| `scan_rate` | 0.5–0.7 rad/s (preset) | `slow_obstacle_m` | 1.10 m (+ 0.5 s × v) |
+| `arrive_share` | 0.50 | `want_free_m` | 1.6 m |
+| `approach_speed` | 0.25–0.45 m/s (preset) | `lookahead_m` | 2.5 m |
+| `leg_s` | 6.0 s | `blocked_memory_legs` | 3 |
+| `max_legs` | 20 | `explore_legs` | 10 (20 with the map) |
 
 Without the LiDAR (Wi-Fi, or `--allow-no-lidar`), there is no obstacle check. The navigator then caps the
 speed at 0.15 m/s and the legs at 2 s, and is meant only for a clear floor under close supervision.
 
 **Logging:** every run writes `results/real_q1/goto_<time>.json`. It lists each zone request with its
 target, its result (arrived, failed, cancelled), the reason, the legs used and the time taken, plus every
-state change. The MP4 shows the camera next to a radar of the target likelihood, the free space and the
-chosen heading.
+state change, and, with the zone map, the map position and belief every 0.5 s. The MP4 shows the camera
+with a mini-map of the estimated position and route, next to a radar of the target likelihood, the free
+space and the chosen heading.
 
 ### 7.4 Closed-loop check in a simulated room
 Before the robot, the navigator was run closed-loop in a 2-D room ([`real_go2/nav_sim.py`](real_go2/nav_sim.py)):
@@ -899,12 +916,14 @@ Two layouts were tested, each from 4 starting points × 4 starting headings:
 
 | Layout | Reached the zone | Legs used (arrived runs) | Closest approach to an obstacle |
 |---|---|---|---|
-| Low desk blocks the walk, not the view | **16/16** | 7–16 | 0.26 m |
-| Tall shelf hides the zone | **10/16** | 7–14 | 0.25 m |
+| Low desk blocks the walk, not the view | **16/16** | 8–12 | 0.25 m |
+| Tall shelf hides the zone | **3/16** | 7–9 | 0.26 m |
 
-*Source: `results/real_q1/nav_sweep.json`, run with the turning controller added in the lab (section 7.5).
-With the earlier proportional turn, the same sweep gave 16/16 and 8/16. The closest approach is measured
-from the robot's centre; the Go2's half-width is about 0.16 m.*
+*Source: `results/real_q1/nav_sweep.json`, with the current settings (section 7.5: turning controller,
+stop distances measured for the nose). Earlier versions of the same sweep gave 16/16 and 8/16 (first
+version), then 16/16 and 10/16 (turning controller, stop at 0.5 m). The closest approach is measured from
+the robot's centre in any direction, usually sideways while passing the obstacle; the Go2's half-width is
+about 0.16 m.*
 
 ![Navigator paths in the simulated room](results/real_q1/nav_sim_paths.png)
 
@@ -913,19 +932,19 @@ yellow area is the target zone. Green runs arrived, red runs did not. `results/r
 
 **Results:**
 - **Avoidance:** it is reliable. No run touched an obstacle, and every desk run detoured around it.
-- **Hidden zone:** finding it is the weak point. All 6 failures used their 10 exploration legs on the
-  starting side of the shelf, then stopped with "shelves not seen in any direction". The successful
-  runs went round an end of the shelf early.
-- **Cause:** exploration only remembers the previous direction and recently blocked headings. It has no map
-  of where it has already been, so it can circle. A small visited-area map from the dog's odometry would be
-  the natural fix.
-- **Practical rule:** on the real dog, start each request where the target zone is in view.
+- **Hidden zone:** finding it is the weak point of the camera-only search. The shelf leaves 0.8 m gaps to
+  the walls. With the larger stop distances adopted after the first lab trial (section 7.5), a gap that
+  narrow counts as too tight, so 13 runs used their exploration legs on the starting side and stopped
+  with "shelves not seen in any direction". With 1.0 m gaps it arrives from every start tested
+  (`tests/test_goto_zone.py`). The safer margins trade some reach in tight spaces for not touching things.
+- **Cause:** the camera-only search has no map of where it has already been, so it can circle. The zone
+  map of section 7.7 is that map, built from the recordings' odometry.
 
 The simulation tests the decision logic and the avoidance rules. It does not test the real camera, LiDAR
 noise or legged motion. The tests (`tests/test_goto_zone.py`) also check each rule on scripted inputs:
 - the corridor ignores the floor;
 - a blocked target direction triggers a detour;
-- the dog slows and steers at 1 m, and stops and remembers the direction at 0.5 m;
+- the dog slows and steers, then stops and remembers the direction, at the configured distances;
 - walls on all sides end in "boxed in".
 
 ### 7.5 What has been run on the robot
@@ -934,8 +953,9 @@ noise or legged motion. The tests (`tests/test_goto_zone.py`) also check each ru
 | Ethernet connection (`sdk`): camera, state, LiDAR, teleop | Code paths reuse Test 1's `go2_stream` modules | **Done:** used for all 5 recording sessions |
 | Recording with operator labels | `fake` source | **Done:** 5 sessions, 7,346 labelled frames |
 | Training and evaluation | `fake` source | **Done:** on the lab laptop (section 7.6) |
-| LiDAR free-space check | 23 tests, closed-loop sweep (section 7.4) | **Done, with two fixes** (below) |
-| Live recognition demo, go-to-zone trials | `fake` source | Pending: the videos and trial logs are the next step |
+| LiDAR free-space check | Tests, closed-loop sweep (section 7.4) | **Done, with two fixes** (below) |
+| Go-to-zone trials | `fake` source, closed-loop sweeps (7.4, 7.7) | **Done:** three lab runs on 13 Nov 2026, filmed (section 7.8) |
+| Live recognition demo with operator-keyed accuracy | `fake` source | Pending |
 | Wi-Fi connection (`webrtc`) | Written against `unitree_webrtc_connect` 2.2.0 | Not used: Ethernet worked |
 
 **Changes made in the lab:** the configuration that was actually used is saved as
@@ -954,6 +974,20 @@ noise or legged motion. The tests (`tests/test_goto_zone.py`) also check each ru
   stalled short of the chosen heading. Turning now uses a gain of 1.5 rad/s per rad of heading error, a
   minimum rate of 0.25 rad/s, a maximum of 1.0 rad/s, a ~6° tolerance and a 12 s timeout. Slow, medium
   and fast speed presets were also added (0.25 / 0.35 / 0.45 m/s walking).
+- **Stop distances (13 Nov, after the dog touched obstacles):** the LiDAR's free distance is measured from
+  the body centre, and the Go2's nose is about 0.35 m ahead of it. A fixed 0.5 m stop left about 15 cm,
+  before LiDAR delay and braking; one leg logged an obstacle 0.20 m from the centre. The stop distance is
+  now 0.60 m + 0.5 s × speed (0.78 m at 0.35 m/s), the slow-down distance 1.10 m + the same, and the
+  corridor starts about 11 cm above the floor instead of 16 cm. In the next run the dog stopped with the
+  obstacle 0.57–0.77 m from its centre (10 stops, section 7.8).
+- **A look-around loop (13 Nov):** with the zone map on, the camera and the map agreed on the zone, but
+  the map was not yet sure of the exact position, so arrival was refused, and each leg ended after 2 s
+  when the camera "recognised" the target. The dog turned on the spot more than it walked. Arrival is now
+  also accepted when the map was ≥ 90 % sure of the zone before the look-around and the camera agrees, and
+  with the map the camera alone no longer ends a leg early.
+
+The current settings are in `real_go2/real_config.yaml`; the configuration used for the recordings and
+training on 11 Nov is `results/real_q1/logs/real_config_used_in_lab.yaml`.
 
 ### 7.6 Results on the real Go2
 
@@ -1066,16 +1100,20 @@ All the analysis below is in `results/real_q1/error_analysis.json` (`real_go2/an
   - The median confidence is 0.958 on correct frames and 0.821 on wrong ones.
   - Frames with confidence ≥ 0.9 (66.7 % of them) are 0.908 accurate.
 
-  The go-to-zone navigator relies on this in two ways. It stops a leg only on a target held at ≥ 0.8 for
+  The camera-only navigator relies on this in two ways. It stops a leg only on a target held at ≥ 0.8 for
   2 s. And it decides arrival from a whole look-around turn, not from one view: the look-around votes over
   every heading, so the heading effect averages out. The open area's recall of 0.664 is still above the
   0.5 arrival share.
+- **Streaks are what a map can fix.** A streak of wrong frames while the dog faces one way cannot be voted
+  away from one spot, but the dog's odometry knows it has not moved into another zone. Section 7.7 uses
+  this.
 
-#### Live demo and go-to-zone (pending)
+#### Live demo
 | Measure | Simulation | Real Go2 |
 |---|---|---|
 | Live accuracy on the walking dog | 0.911 (section 5.6) | *pending: `live_*.json`* |
-| Go-to-zone arrivals | 16/16 desk, 10/16 hidden (section 7.4) | *pending: `goto_*.json`, trial protocol in `real_go2/LAB_PLAN.md`* |
+
+Go-to-zone on the real dog is reported in section 7.8.
 
 #### Discussion
 - **The method transfers.** The same recipe that reached 0.882 in simulation reaches **0.814** on a real
@@ -1094,6 +1132,160 @@ All the analysis below is in `results/real_q1/error_analysis.json` (`real_go2/an
   light. The test session shows that the model handles a new walk. It does not show how the model copes
   with another time of day, or with the room rearranged. More varied sessions, as `LAB_PLAN.md` suggests,
   would test that.
+
+### 7.7 A zone map from the recordings: localisation and routes
+Section 7.6 showed why the camera alone is a weak guide: frames are wrong in streaks while the dog faces
+one way, and open_area is often taken for lab_2 or shelves. In the first lab trials (section 7.8) the
+camera-only navigator wandered when the target was not in view, and could stop in a zone the camera
+mistook for the target. The recordings hold more than images, though: every frame also has the dog's
+odometry pose. [`real_go2/zone_map.py`](real_go2/zone_map.py) turns that into a map.
+
+**Aligning the sessions.** Each session's odometry starts wherever the dog was switched on, so the five
+paths are in five different frames. Each session is aligned to the longest one (run_000) by the rotation
+and shift that best match their zone labels: a grid search over 4° and 0.5 m steps, then two finer
+searches, scoring the share of points whose label agrees with the reference's blurred label map. Each
+session is then refined against all the others together. The zone labels of the aligned sessions agree
+on 0.79–0.84 of the points (`zone_map.npz`, `info`); less than 1 because zone borders are fuzzy and the
+odometry drifts.
+
+The aligned points are gridded at 0.25 m:
+- $P(\text{zone}\mid\text{cell})$ from the labels, blurred by 0.75 m;
+- how well each cell is known (how much was recorded nearby);
+- the **walkable** area: cells within 0.5 m of a recorded position, 93.5 m² in all.
+
+![Zone map of the lab](results/real_q1/zone_map.png)
+
+*Figure 7.6 — The zone map: all five sessions aligned. Shaded cells are walkable, coloured by the most
+likely zone; dots are the recorded positions. lab_1 is at one end, open_area in the middle, lab_2 and
+shelves beyond it. `results/real_q1/zone_map.png`.*
+
+**Localisation.** A histogram filter estimates where this run's odometry frame sits on the map: one
+hypothesis for each of 72 rotations (5°) and each walkable start cell. The map position of odometry
+position $p$ under hypothesis $(\theta, m_0)$ is $m_0 + R(\theta)(p - p_0)$. At most 4 times a second, the
+classifier output $q$ re-weights every hypothesis by the likelihood
+
+$$L = k\,\textstyle\sum_z P(z\mid\text{cell})\,\tilde q_z + (1-k)\,0.08, \qquad \tilde q = 0.7\,q + 0.3/4,$$
+
+raised to the power 0.3, where $k$ is how well the cell is known. The exponent and the mixing with uniform
+reflect that consecutive frames are not independent and that the classifier is over-confident. Every 6 s
+the belief is blurred slightly to allow for odometry drift. A single path through several zones fits only
+one place on the map, so the filter converges once the dog has walked through two or three zones, even
+though one frame in five is wrong. The dog is **localised** when at least half the belief lies within
+0.75 m and 10° of the best hypothesis. The filter runs all the time, also while the dog is driven by hand.
+
+**Tuning and held-out test.** The three filter settings were chosen on the **validation** session
+(run_003, map from the three training sessions, its real classifier outputs from
+`evaluate_real.py --split val`): the best of 12 combinations (`localization_tuning.json`) gave a zone
+accuracy of 0.878 against the classifier's 0.838 there. They were then run once on the **test** session
+(run_004, map from the other four sessions), replaying its odometry and its real classifier outputs. The
+reference path is run_004 aligned to the map by its labels (zone agreement 0.825):
+
+| Test session (run_004), `localization_eval.json` | Value |
+|---|---|
+| First localised | after 52 s of walking |
+| Frames localised | 82.4 % |
+| Position error once localised (median) | **0.61 m** (70.8 % within 1 m) |
+| Rotation error once localised (median) | 3° |
+| Zone accuracy, whole session: classifier / map belief | 0.814 / **0.839** |
+| Zone accuracy after first localising: classifier / map belief | 0.788 / 0.805 |
+
+![Localisation on the held-out session](results/real_q1/localization_eval.png)
+
+*Figure 7.7 — The held-out session replayed through the localiser. Left: the reference path (black) and
+the localiser's estimate whenever localised (red). Right: the true zone, the classifier's wrong frames and
+the map belief's wrong frames. `results/real_q1/localization_eval.png`.*
+
+The zone accuracy gains only 2.5 points, because the remaining belief errors sit at zone borders, where
+a 0.6 m position error decides the zone. What the map adds is mainly **where the dog is and where the
+target is**, which the navigator needs.
+
+**Navigation with the map** (`goto_zone.py`, on by default when the map exists and the connection gives
+odometry):
+- **Route:** once localised, Dijkstra over the walkable cells, with a cost that keeps to the middle of
+  the walked corridors, to a cell at least 0.75 m inside the target zone where its probability is ≥ 0.8.
+  The dog follows the path point 1.2 m ahead, turning on the spot first if it is more than 50° off, and
+  re-plans every 3 s. The LiDAR rules of section 7.3 apply unchanged; a spot that blocked the dog is
+  avoided in later plans.
+- **Arrival:** after a look-around, either the dog is localised, the map puts it in the target zone with
+  ≥ 60 % and the camera agrees in ≥ 20 % of the views; or the map was already ≥ 90 % sure of the zone
+  before the look-around and the camera holds ≥ 50 % of the views. If the camera says "here" but the map
+  disagrees, the dog explores instead of stopping.
+- **Not localised yet:** the camera-only search of section 7.3, with 10 s exploring legs and up to
+  20 of them, while the filter gathers evidence.
+
+**Closed loop on the real map** ([`real_go2/nav_sim.py`](real_go2/nav_sim.py) `--map`): the walkable area
+is free space and everything else an obstacle for the simulated LiDAR. The "camera" replays the
+validation session's real classifier outputs for the zone the dog is in, in recorded order, so the real
+confusions and their streaks are kept. The odometry frame is rotated and shifted at random. Each of the 12
+zone pairs is run from 3 random starts, from a cold start (not localised), with the zone map and with the
+camera-only navigator on exactly the same cases:
+
+| `nav_map_sweep.json`, 36 requests | Camera only | **Zone map** |
+|---|---|---|
+| Arrived in the right zone | 20 | **34** |
+| Arrived in the wrong zone | 6 | **0** |
+| Gave up | 10 | 2 |
+| Median time when right (cold start) | 138 s | 133 s |
+
+![Zone-map navigation in simulation](results/real_q1/nav_map_paths.png)
+
+*Figure 7.8 — Every zone-map request on the real map, by target: green arrived in the right zone, red did
+not. `results/real_q1/nav_map_paths.png`.*
+
+- All 6 wrong camera-only arrivals stopped in open_area and declared lab_2: the confusion of section 7.6.
+- The two zone-map failures ran out of their 20 legs.
+- **Caveat:** the simulated camera does not depend on the heading, so the camera-only navigator cannot
+  "see" a zone from a distance here, which makes it weaker than on the real dog. The wrong-arrival count is
+  the fair comparison; the success count favours the map.
+- The tests (`tests/test_zone_map.py`) check the alignment, the planner, convergence of the filter, a
+  closed-loop arrival, and that a camera fooled for a whole look-around cannot declare arrival.
+
+### 7.8 Go-to-zone on the real dog
+**Video:** [youtube.com/watch?v=lcDZeDCFg5E](https://www.youtube.com/watch?v=lcDZeDCFg5E). The screen recording of the same run is
+[`results/real_q1/goto_20261113_171129.mp4`](results/real_q1/goto_20261113_171129.mp4) (camera with the
+mini-map, and the navigator panel).
+
+Three runs were made in the lab on 13 November 2026, over Ethernet with the LiDAR, at medium speed, with
+the operator's hand on the stop key. Each wrote a `goto_<time>.json` log.
+
+| Run | Navigator | Requests | Arrived | Cancelled | What happened |
+|---|---|---|---|---|---|
+| `goto_20261113_154652` | camera only, stop at 0.5 m | 6 | 4 | 2 | Wandered when the target was not in view (one request used 8 legs before being cancelled). |
+| `goto_20261113_165620` | zone map, stop at 0.5 m | 2 | 0 | 2 | Touched obstacles; one leg logged 0.20 m from the centre. The look-around loop of section 7.5. Both fixed. |
+| **`goto_20261113_171129`** | **zone map, new stop distances** | 12 | **6** | 6 | **The filmed run.** No failures. |
+
+The filmed run (`goto_20261113_171129.json`):
+
+| Request | Result | Time | Map belief at the end |
+|---|---|---|---|
+| open_area | arrived | 47 s | open_area 90 % |
+| shelves | arrived | 59 s | shelves 78 % |
+| lab_1 | arrived | 15 s | lab_1 74 % |
+| open_area | arrived | 92 s | open_area 91 % |
+| shelves | arrived | 66 s | shelves 76 % |
+| lab_2 | arrived | 52 s | lab_2 92 % |
+
+- **6 of 6 requests that ran to the end arrived**, in a median of 55 s, each with the map localised and
+  favouring the target zone. The log records what the dog decided, not an independent ground truth;
+  the video shows where it stopped.
+- **6 requests were cancelled** with a key by the operator (4 for lab_1, 2 for lab_2). The log stores no
+  reason. In 4 of them the map was not localised at the time; driving the dog through a couple of zones
+  before a request, as `LAB_PLAN.md` now advises, avoids that. They count as neither success nor failure.
+- **Obstacles:** the dog stopped for an obstacle 10 times, with the obstacle 0.57–0.77 m from its centre
+  (0.22–0.42 m from its nose), against the 0.78 m threshold at this speed. The shortfall is the LiDAR delay
+  and braking that `reaction_s` allows for. No collisions were reported.
+
+**Discussion.**
+- **Mapping beat recognising.** The classifier did not change between the runs. What changed was using the
+  odometry the recordings already held: the map turned a 0.81-accurate frame classifier into a navigator
+  that knows where it is, plans routes to zones it cannot see, and refuses to stop on the camera's word
+  alone.
+- **The first real run found what the simulator could not.** The simulated room checked the distance from
+  the robot's centre; on the real dog, the body in front of that point decides whether it touches
+  something. The fix shows in the logs: stops at 0.57–0.77 m instead of 0.20 m.
+- **Limits:** six completed requests in one afternoon, one room, one operator; arrival is judged from the
+  log and the video, not measured. The map only covers ground walked while recording, and a rearranged
+  room would need new sessions and a rebuilt map (`python real_go2/zone_map.py`).
 
 ---
 
@@ -1123,8 +1315,8 @@ All the analysis below is in `results/real_q1/error_analysis.json` (`real_go2/an
 ## 9. Limitations and future work
 
 - **Mostly simulation.** No result in sections 4–6 comes from the physical Go2. Section 7 carries Q1 to
-  the real dog: its classifier is trained and tested on real data, but the go-to-zone trials on the dog
-  are still pending.
+  the real dog: its classifier is trained and tested on real data, and go-to-zone ran on the dog, but in
+  one afternoon with six completed requests. The live demo with operator-keyed accuracy is pending.
 - **Real Q1 data** comes from one afternoon in one room. The zone labels describe where the dog stands,
   not what the camera sees, which causes most of the errors (section 7.6).
 - **Q3 sim-to-real:** the path would be:
@@ -1176,9 +1368,14 @@ python q3_rl/evaluate.py                                  # Q3 2-D test
 python q3_rl/deploy_eval.py                               # Q3 MuJoCo, 60 starts
 python report/make_report_figures.py                      # report figures
 python real_go2/nav_sim.py                                # go-to-zone closed-loop sweep (7.4)
+python real_go2/evaluate_real.py --split val              # validation predictions (7.7)
+python real_go2/zone_map.py                               # zone map (7.7)
+python real_go2/zone_map.py --tune                        # localiser settings on validation (7.7)
+python real_go2/zone_map.py --eval                        # localisation on the test session (7.7)
+python real_go2/nav_sim.py --map                          # zone-map navigation sweep (7.7)
 python real_go2/analyze_real.py                           # real-Go2 figures + error analysis (7.6)
 python real_go2/summarize_real.py                         # real-Go2 tables (7.6)
-python -m pytest -q tests                                 # 23 tests
+python -m pytest -q tests                                 # 34 tests
 ```
 
 - **Colab:** both notebooks were run end to end on Google Colab itself:
@@ -1212,11 +1409,13 @@ This project put a simulated Unitree Go2 to work in a MuJoCo crime scene.
 - **Real Go2:**
   - Recorded in the lab, the Q1 recipe recognises the four zones on a walk it never saw with **0.814**
     accuracy. Most errors come from the camera facing a different zone from the one the dog stands in.
-  - Go-to-zone with LiDAR obstacle avoidance reached the zone 16/16 times around a desk and 10/16 times
-    when it was hidden, in a simulated room, without collisions.
-  - Its trials on the dog are the next step.
-- **Open:** stepping on evidence remains the main weakness, together with the move from simulation to the
-  real dog.
+  - Aligning the recording sessions' odometry gives a map of the lab. Localising on it from odometry and
+    the classifier, go-to-zone reached the right zone in 34/36 simulated requests on the real map with no
+    wrong arrivals (camera only: 20/36, 6 wrong).
+  - On the real dog, all 6 requests that ran to the end arrived, stopping for obstacles with room to
+    spare after the stop distance was corrected for the dog's body ([video](https://www.youtube.com/watch?v=lcDZeDCFg5E)).
+- **Open:** stepping on evidence remains the main weakness in simulation; on the real dog, more trials,
+  rooms and times of day are the next step.
 
 ---
 
