@@ -243,6 +243,12 @@ Driving is as in recording. The output, `results/real_q1/live_<time>.mp4`, `.csv
 the live accuracy.
 
 ## Part E — Go to zone (autonomous)
+**Video of a successful lab run (13 Nov 2026, zone map on):**
+[youtube.com/watch?v=lcDZeDCFg5E](https://www.youtube.com/watch?v=lcDZeDCFg5E). The screen recording is
+[`results/real_q1/goto_20261113_171129.mp4`](../results/real_q1/goto_20261113_171129.mp4), and its log is
+[`goto_20261113_171129.json`](../results/real_q1/goto_20261113_171129.json): 6 of 6 completed requests
+arrived in the right zone.
+
 ```bash
 python real_go2/goto_zone.py --source sdk --iface eth1 --lidar-check   # first: LiDAR only, no autonomy
 python real_go2/goto_zone.py --source sdk --iface eth1
