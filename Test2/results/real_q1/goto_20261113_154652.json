@@ -1,0 +1,348 @@
+{
+ "classes": [
+  "lab_1",
+  "lab_2",
+  "open_area",
+  "shelves"
+ ],
+ "target": "open_area",
+ "final_state": "arrived",
+ "legs": 2,
+ "source": "sdk",
+ "lidar": true,
+ "video": null,
+ "missions": [
+  {
+   "target": "lab_1",
+   "t": 32.68,
+   "result": "arrived",
+   "speed": "medium",
+   "reason": "ARRIVED at lab_1 (57% of the views)",
+   "legs": 1,
+   "explored": 0,
+   "seconds": 41.0
+  },
+  {
+   "target": "shelves",
+   "t": 101.18,
+   "result": "cancelled",
+   "speed": "medium",
+   "reason": "cancelled by key 'space'",
+   "legs": 2,
+   "explored": 2,
+   "seconds": 67.8
+  },
+  {
+   "target": "shelves",
+   "t": 195.88,
+   "result": "arrived",
+   "speed": "medium",
+   "reason": "ARRIVED at shelves (59% of the views)",
+   "legs": 1,
+   "explored": 0,
+   "seconds": 49.0
+  },
+  {
+   "target": "lab_2",
+   "t": 254.1,
+   "result": "cancelled",
+   "speed": "medium",
+   "reason": "cancelled by key 'space'",
+   "legs": 8,
+   "explored": 1,
+   "seconds": 223.1
+  },
+  {
+   "target": "lab_2",
+   "t": 509.95,
+   "result": "arrived",
+   "speed": "medium",
+   "reason": "ARRIVED at lab_2 (91% of the views)",
+   "legs": 0,
+   "explored": 0,
+   "seconds": 14.7
+  },
+  {
+   "target": "open_area",
+   "t": 537.79,
+   "result": "arrived",
+   "speed": "medium",
+   "reason": "ARRIVED at open_area (58% of the views)",
+   "legs": 2,
+   "explored": 1,
+   "seconds": 74.8
+  }
+ ],
+ "events": [
+  {
+   "t": 32.79,
+   "state": "look",
+   "msg": "going to lab_1"
+  },
+  {
+   "t": 48.42,
+   "state": "turn",
+   "msg": "here looks like lab_1; heading -15 deg towards lab_1 (clear, free 2.5 m)"
+  },
+  {
+   "t": 56.41,
+   "state": "walk",
+   "msg": "walking towards lab_1 (leg 1)"
+  },
+  {
+   "t": 58.73,
+   "state": "look",
+   "msg": "lab_1 recognised steadily; looking around"
+  },
+  {
+   "t": 73.67,
+   "state": "arrived",
+   "msg": "ARRIVED at lab_1 (57% of the views)"
+  },
+  {
+   "t": 101.37,
+   "state": "look",
+   "msg": "going to shelves"
+  },
+  {
+   "t": 116.62,
+   "state": "turn",
+   "msg": "shelves not in view (best 0.21); exploring the most open way (2.5 m free, try 1/10)"
+  },
+  {
+   "t": 119.42,
+   "state": "walk",
+   "msg": "walking towards shelves (leg 1, exploring)"
+  },
+  {
+   "t": 123.44,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 143.47,
+   "state": "turn",
+   "msg": "shelves not in view (best 0.18); exploring the most open way (2.5 m free, try 2/10)"
+  },
+  {
+   "t": 155.76,
+   "state": "walk",
+   "msg": "walking towards shelves (leg 2, exploring)"
+  },
+  {
+   "t": 159.92,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 168.96,
+   "state": "idle",
+   "msg": "cancelled by key 'space'"
+  },
+  {
+   "t": 196.03,
+   "state": "look",
+   "msg": "going to shelves"
+  },
+  {
+   "t": 212.22,
+   "state": "turn",
+   "msg": "here looks like open_area; heading -105 deg towards shelves (clear, free 2.5 m)"
+  },
+  {
+   "t": 224.37,
+   "state": "walk",
+   "msg": "walking towards shelves (leg 1)"
+  },
+  {
+   "t": 228.38,
+   "state": "look",
+   "msg": "shelves recognised steadily; looking around"
+  },
+  {
+   "t": 244.84,
+   "state": "arrived",
+   "msg": "ARRIVED at shelves (59% of the views)"
+  },
+  {
+   "t": 254.2,
+   "state": "look",
+   "msg": "going to lab_2"
+  },
+  {
+   "t": 266.73,
+   "state": "turn",
+   "msg": "here looks like shelves; heading +90 deg towards lab_2 (clear, free 2.5 m)"
+  },
+  {
+   "t": 278.95,
+   "state": "walk",
+   "msg": "walking towards lab_2 (leg 1)"
+  },
+  {
+   "t": 283.04,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 297.95,
+   "state": "turn",
+   "msg": "lab_2 not in view (best 0.23); exploring the most open way (2.5 m free, try 1/10)"
+  },
+  {
+   "t": 310.19,
+   "state": "walk",
+   "msg": "walking towards lab_2 (leg 2, exploring)"
+  },
+  {
+   "t": 314.3,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 329.88,
+   "state": "turn",
+   "msg": "here looks like shelves; heading -15 deg towards lab_2 (clear, free 2.5 m)"
+  },
+  {
+   "t": 342.12,
+   "state": "walk",
+   "msg": "walking towards lab_2 (leg 3)"
+  },
+  {
+   "t": 346.24,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 361.46,
+   "state": "turn",
+   "msg": "here looks like shelves; heading -15 deg towards lab_2 (clear, free 2.5 m)"
+  },
+  {
+   "t": 362.67,
+   "state": "walk",
+   "msg": "walking towards lab_2 (leg 4)"
+  },
+  {
+   "t": 366.68,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 381.16,
+   "state": "turn",
+   "msg": "here looks like lab_1; heading -30 deg towards lab_2 (clear, free 2.5 m)"
+  },
+  {
+   "t": 393.39,
+   "state": "walk",
+   "msg": "walking towards lab_2 (leg 5)"
+  },
+  {
+   "t": 397.51,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 412.36,
+   "state": "turn",
+   "msg": "here looks like lab_1; heading +0 deg towards lab_2 (detour +75 deg off the target's way, free 2.5 m)"
+  },
+  {
+   "t": 413.36,
+   "state": "walk",
+   "msg": "walking towards lab_2 (leg 6, detour)"
+  },
+  {
+   "t": 414.18,
+   "state": "look",
+   "msg": "blocked 0.49 m ahead; looking around"
+  },
+  {
+   "t": 429.2,
+   "state": "turn",
+   "msg": "here looks like lab_1; heading +45 deg towards lab_2 (detour +135 deg off the target's way, free 2.5 m)"
+  },
+  {
+   "t": 430.55,
+   "state": "walk",
+   "msg": "walking towards lab_2 (leg 7, detour)"
+  },
+  {
+   "t": 434.57,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 449.84,
+   "state": "turn",
+   "msg": "here looks like lab_1; heading -120 deg towards lab_2 (detour -60 deg off the target's way, free 1.6 m)"
+  },
+  {
+   "t": 462.07,
+   "state": "walk",
+   "msg": "walking towards lab_2 (leg 8, detour)"
+  },
+  {
+   "t": 466.13,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 477.24,
+   "state": "idle",
+   "msg": "cancelled by key 'space'"
+  },
+  {
+   "t": 510.1,
+   "state": "look",
+   "msg": "going to lab_2"
+  },
+  {
+   "t": 524.64,
+   "state": "arrived",
+   "msg": "ARRIVED at lab_2 (91% of the views)"
+  },
+  {
+   "t": 537.88,
+   "state": "look",
+   "msg": "going to open_area"
+  },
+  {
+   "t": 552.59,
+   "state": "turn",
+   "msg": "open_area not in view (best 0.33); exploring the most open way (2.5 m free, try 1/10)"
+  },
+  {
+   "t": 556.66,
+   "state": "walk",
+   "msg": "walking towards open_area (leg 1, exploring)"
+  },
+  {
+   "t": 560.75,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 580.16,
+   "state": "turn",
+   "msg": "here looks like lab_2; heading +120 deg towards open_area (clear, free 2.5 m)"
+  },
+  {
+   "t": 592.31,
+   "state": "walk",
+   "msg": "walking towards open_area (leg 2)"
+  },
+  {
+   "t": 596.46,
+   "state": "look",
+   "msg": "leg done; looking around"
+  },
+  {
+   "t": 612.6,
+   "state": "arrived",
+   "msg": "ARRIVED at open_area (58% of the views)"
+  }
+ ]
+}

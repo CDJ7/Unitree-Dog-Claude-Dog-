@@ -1,0 +1,52 @@
+{
+ "test_session": "run_004",
+ "map_sessions": [
+  "run_000",
+  "run_001",
+  "run_002",
+  "run_003"
+ ],
+ "map_config": {
+  "file": "results/real_q1/zone_map.npz",
+  "res_m": 0.25,
+  "blur_m": 0.75,
+  "walk_m": 0.5,
+  "heading_bins": 72,
+  "update_hz": 4.0,
+  "evidence_weight": 0.3,
+  "classifier_floor": 0.3,
+  "off_map_like": 0.08,
+  "diffuse_s": 6.0,
+  "localized_conf": 0.5,
+  "lost_conf": 0.25,
+  "arrive_prob": 0.6,
+  "arrive_min_share": 0.2,
+  "core_prob": 0.8,
+  "lookahead_m": 1.2,
+  "replan_s": 3.0,
+  "route_max_s": 90.0,
+  "turn_in_place_deg": 50.0,
+  "still_weight": 1.0,
+  "still_m": 0.15,
+  "explore_leg_s": 10.0
+ },
+ "reference_alignment": {
+  "rotation_deg": 257.0,
+  "zone_agreement": 0.825
+ },
+ "frames": 1475,
+ "first_localized_s": 52.0,
+ "share_frames_localized": 0.824,
+ "after_first_localized": {
+  "frames": 1215,
+  "median_position_error_m": 0.61,
+  "share_position_error_below_1m": 0.708,
+  "median_rotation_error_deg": 3.0,
+  "zone_accuracy_classifier": 0.788,
+  "zone_accuracy_localizer": 0.805
+ },
+ "whole_session": {
+  "zone_accuracy_classifier": 0.814,
+  "zone_accuracy_localizer": 0.839
+ }
+}

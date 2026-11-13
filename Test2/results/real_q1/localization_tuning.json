@@ -1,0 +1,337 @@
+{
+ "tuned_on": "run_003",
+ "map_sessions": [
+  "run_000",
+  "run_001",
+  "run_002"
+ ],
+ "grid": {
+  "evidence_weight": [
+   0.1,
+   0.2,
+   0.3
+  ],
+  "classifier_floor": [
+   0.3,
+   0.5
+  ],
+  "diffuse_s": [
+   2.0,
+   6.0
+  ]
+ },
+ "best": {
+  "settings": {
+   "evidence_weight": 0.3,
+   "classifier_floor": 0.3,
+   "diffuse_s": 6.0
+  },
+  "score": 1.728,
+  "localised_within_1m": 0.85,
+  "frames": 1185,
+  "first_localized_s": 35.6,
+  "share_frames_localized": 0.85,
+  "after_first_localized": {
+   "frames": 1007,
+   "median_position_error_m": 0.4,
+   "share_position_error_below_1m": 1.0,
+   "median_rotation_error_deg": 4.0,
+   "zone_accuracy_classifier": 0.833,
+   "zone_accuracy_localizer": 0.87
+  },
+  "whole_session": {
+   "zone_accuracy_classifier": 0.838,
+   "zone_accuracy_localizer": 0.878
+  }
+ },
+ "all": [
+  {
+   "settings": {
+    "evidence_weight": 0.1,
+    "classifier_floor": 0.3,
+    "diffuse_s": 2.0
+   },
+   "score": 1.601,
+   "localised_within_1m": 0.716,
+   "frames": 1185,
+   "first_localized_s": 67.2,
+   "share_frames_localized": 0.716,
+   "after_first_localized": {
+    "frames": 849,
+    "median_position_error_m": 0.36,
+    "share_position_error_below_1m": 1.0,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.808,
+    "zone_accuracy_localizer": 0.875
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.885
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.1,
+    "classifier_floor": 0.3,
+    "diffuse_s": 6.0
+   },
+   "score": 1.625,
+   "localised_within_1m": 0.738,
+   "frames": 1185,
+   "first_localized_s": 62.0,
+   "share_frames_localized": 0.738,
+   "after_first_localized": {
+    "frames": 875,
+    "median_position_error_m": 0.37,
+    "share_position_error_below_1m": 1.0,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.814,
+    "zone_accuracy_localizer": 0.881
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.887
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.1,
+    "classifier_floor": 0.5,
+    "diffuse_s": 2.0
+   },
+   "score": 1.567,
+   "localised_within_1m": 0.689,
+   "frames": 1185,
+   "first_localized_s": 72.4,
+   "share_frames_localized": 0.689,
+   "after_first_localized": {
+    "frames": 823,
+    "median_position_error_m": 0.37,
+    "share_position_error_below_1m": 1.0,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.813,
+    "zone_accuracy_localizer": 0.872
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.878
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.1,
+    "classifier_floor": 0.5,
+    "diffuse_s": 6.0
+   },
+   "score": 1.604,
+   "localised_within_1m": 0.725,
+   "frames": 1185,
+   "first_localized_s": 65.2,
+   "share_frames_localized": 0.725,
+   "after_first_localized": {
+    "frames": 859,
+    "median_position_error_m": 0.39,
+    "share_position_error_below_1m": 1.0,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.81,
+    "zone_accuracy_localizer": 0.878
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.879
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.2,
+    "classifier_floor": 0.3,
+    "diffuse_s": 2.0
+   },
+   "score": 1.641,
+   "localised_within_1m": 0.772,
+   "frames": 1185,
+   "first_localized_s": 53.2,
+   "share_frames_localized": 0.776,
+   "after_first_localized": {
+    "frames": 919,
+    "median_position_error_m": 0.41,
+    "share_position_error_below_1m": 0.996,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.823,
+    "zone_accuracy_localizer": 0.855
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.869
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.2,
+    "classifier_floor": 0.3,
+    "diffuse_s": 6.0
+   },
+   "score": 1.689,
+   "localised_within_1m": 0.799,
+   "frames": 1185,
+   "first_localized_s": 42.0,
+   "share_frames_localized": 0.799,
+   "after_first_localized": {
+    "frames": 975,
+    "median_position_error_m": 0.38,
+    "share_position_error_below_1m": 1.0,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.831,
+    "zone_accuracy_localizer": 0.886
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.89
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.2,
+    "classifier_floor": 0.5,
+    "diffuse_s": 2.0
+   },
+   "score": 1.63,
+   "localised_within_1m": 0.752,
+   "frames": 1185,
+   "first_localized_s": 58.4,
+   "share_frames_localized": 0.754,
+   "after_first_localized": {
+    "frames": 893,
+    "median_position_error_m": 0.38,
+    "share_position_error_below_1m": 0.998,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.817,
+    "zone_accuracy_localizer": 0.868
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.878
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.2,
+    "classifier_floor": 0.5,
+    "diffuse_s": 6.0
+   },
+   "score": 1.647,
+   "localised_within_1m": 0.759,
+   "frames": 1185,
+   "first_localized_s": 56.8,
+   "share_frames_localized": 0.759,
+   "after_first_localized": {
+    "frames": 901,
+    "median_position_error_m": 0.37,
+    "share_position_error_below_1m": 1.0,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.819,
+    "zone_accuracy_localizer": 0.881
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.888
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.3,
+    "classifier_floor": 0.3,
+    "diffuse_s": 2.0
+   },
+   "score": 1.691,
+   "localised_within_1m": 0.83,
+   "frames": 1185,
+   "first_localized_s": 38.0,
+   "share_frames_localized": 0.84,
+   "after_first_localized": {
+    "frames": 995,
+    "median_position_error_m": 0.42,
+    "share_position_error_below_1m": 0.988,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.831,
+    "zone_accuracy_localizer": 0.848
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.861
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.3,
+    "classifier_floor": 0.3,
+    "diffuse_s": 6.0
+   },
+   "score": 1.728,
+   "localised_within_1m": 0.85,
+   "frames": 1185,
+   "first_localized_s": 35.6,
+   "share_frames_localized": 0.85,
+   "after_first_localized": {
+    "frames": 1007,
+    "median_position_error_m": 0.4,
+    "share_position_error_below_1m": 1.0,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.833,
+    "zone_accuracy_localizer": 0.87
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.878
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.3,
+    "classifier_floor": 0.5,
+    "diffuse_s": 2.0
+   },
+   "score": 1.674,
+   "localised_within_1m": 0.808,
+   "frames": 1185,
+   "first_localized_s": 41.2,
+   "share_frames_localized": 0.816,
+   "after_first_localized": {
+    "frames": 979,
+    "median_position_error_m": 0.42,
+    "share_position_error_below_1m": 0.99,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.828,
+    "zone_accuracy_localizer": 0.854
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.866
+   }
+  },
+  {
+   "settings": {
+    "evidence_weight": 0.3,
+    "classifier_floor": 0.5,
+    "diffuse_s": 6.0
+   },
+   "score": 1.723,
+   "localised_within_1m": 0.836,
+   "frames": 1185,
+   "first_localized_s": 38.8,
+   "share_frames_localized": 0.836,
+   "after_first_localized": {
+    "frames": 991,
+    "median_position_error_m": 0.39,
+    "share_position_error_below_1m": 1.0,
+    "median_rotation_error_deg": 4.0,
+    "zone_accuracy_classifier": 0.83,
+    "zone_accuracy_localizer": 0.881
+   },
+   "whole_session": {
+    "zone_accuracy_classifier": 0.838,
+    "zone_accuracy_localizer": 0.887
+   }
+  }
+ ]
+}

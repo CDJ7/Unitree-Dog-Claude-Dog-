@@ -3,6 +3,14 @@
 
     python real_go2/nav_sim.py            # 2 layouts x 4 starts x 4 headings -> results/real_q1/nav_sweep.json
                                           #   and nav_sim_paths.png (every path drawn)
+    python real_go2/nav_sim.py --map      # the lab's zone map: every zone -> every other zone, from cold start
+                                          #   -> results/real_q1/nav_map_sweep.json + nav_map_paths.png
+
+--map world: the walkable area of results/real_q1/zone_map.npz is free space, everything else is an obstacle
+for the simulated LiDAR. The camera is simulated with REAL classifier outputs: the validation session's
+probability vectors (resnet18/val_predictions.csv) replayed in time order for the zone the dog is really in,
+so the classifier's real confusions and their streaks are kept. The odometry frame is rotated and shifted
+at random (unknown to the navigator), as on the dog.
 
 Room 6 x 4 m; the target zone is x > 4.5. The robot follows the navigator's (vx, wz) commands exactly
 (no slip); its LiDAR free-space profile is ray-cast with a body-wide corridor (3 parallel rays 0.25 m apart);
@@ -23,6 +31,7 @@ import yaml
 TEST2 = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TEST2))
 from real_go2.goto_zone import ZoneNavigator, wrap  # noqa: E402
+from real_go2.zone_map import ZoneMap, apply, map_cfg, rot  # noqa: E402
 
 WALLS = [((0, 0), (6, 0)), ((6, 0), (6, 4)), ((6, 4), (0, 4)), ((0, 4), (0, 0))]
 
@@ -89,6 +98,166 @@ def run(classes, nav_cfg, obstacles, view_blockers, start=(1.0, 2.0, 0.0), targe
     return nav, x, y, closest
 
 
+class ProbStream:
+    """Classifier outputs for the simulated camera: per zone, real probability vectors in recording order.
+    While the dog stays in a zone the vectors are replayed in order (keeping streaks of mistakes); entering a
+    zone starts at a random place in that zone's sequence."""
+
+    def __init__(self, pools, rng):
+        self.pools, self.rng, self.z, self.i = pools, rng, None, 0
+
+    def __call__(self, z):
+        if z != self.z:
+            self.z, self.i = z, int(self.rng.integers(len(self.pools[z])))
+        self.i = (self.i + 1) % len(self.pools[z])
+        return self.pools[z][self.i]
+
+    @classmethod
+    def from_csv(cls, path, classes, rng):
+        import csv
+        rows = list(csv.DictReader(Path(path).open()))
+        pools = {z: np.array([[float(r["p_" + c]) for c in classes] for r in rows if int(r["true"]) == z])
+                 for z in range(len(classes))}
+        return cls(pools, rng)
+
+
+def map_free(zm, x, y, h, nb, look, step=0.1):
+    """Simulated LiDAR free distance in nb body directions: 3 parallel rays (0.25 m apart) per direction,
+    stopped by the first non-walkable cell."""
+    out = np.full(nb, float(look))
+    d = np.arange(step, look + 1e-9, step)
+    for i in range(nb):
+        a = h + i * 2 * math.pi / nb
+        c, s_ = math.cos(a), math.sin(a)
+        for o in (-0.25, 0.0, 0.25):
+            px, py = x - o * s_ + d * c, y + o * c + d * s_
+            ij = np.floor((np.stack([px, py], 1) - zm.lo) / zm.res).astype(int)
+            ok = (ij[:, 0] >= 0) & (ij[:, 1] >= 0) & (ij[:, 0] < zm.shape[0]) & (ij[:, 1] < zm.shape[1])
+            hit = ~ok
+            hit[ok] = ~zm.walk[ij[ok, 0], ij[ok, 1]]
+            if hit.any():
+                out[i] = min(out[i], float(d[int(np.argmax(hit))]))
+    return out
+
+
+def true_zone(zm, xy):
+    return int(np.argmax(zm.zone_probs(xy)))
+
+
+def run_map(zm, classes, nav_cfg, stream, start, target_k, odom_tf, steps=9000, dt=0.1, frame_hz=5.0, trace=None,
+            use_map=True):
+    """Closed loop on the zone map from a cold start (not localised). start: map (x, y, heading). odom_tf:
+    (rotation, shift) from the map frame to this run's odometry frame. Returns (navigator, final map xy,
+    seconds, true zone at the end, closest approach to a non-walkable cell)."""
+    nb, look = int(nav_cfg["heading_bins"]), float(nav_cfg["lookahead_m"])
+    th_o, t_o = odom_tf
+    nav = ZoneNavigator(classes, nav_cfg, have_lidar=True, zmap=zm if use_map else None)
+    x, y, h = start
+    t, next_frame, closest = 0.0, 0.0, 9.0
+
+    def odom(x, y, h):
+        p = apply(np.array([[x, y]]), th_o, t_o)[0]
+        return p, wrap(h + th_o)
+
+    nav.start(target_k, t, odom(x, y, h)[1])
+    for _ in range(steps):
+        p, ho = odom(x, y, h)
+        prob = None
+        if t >= next_frame:
+            next_frame += 1.0 / frame_hz
+            prob = stream(true_zone(zm, (x, y)))
+        free = map_free(zm, x, y, h, nb, look)
+        closest = min(closest, float(free.min()))
+        vx, wz = nav.update(t, ho, prob, free, pos=p)
+        if nav.state in ("arrived", "failed"):
+            break
+        nx_, ny_ = x + vx * math.cos(h) * dt, y + vx * math.sin(h) * dt
+        ij = zm.cell((nx_, ny_))
+        if zm.inside(ij) and zm.walk[ij]:          # the walkable edge is a wall
+            x, y = nx_, ny_
+        h, t = wrap(h + wz * dt), t + dt
+        if trace is not None:
+            trace.append((x, y))
+    return nav, (x, y), t, true_zone(zm, (x, y)), closest
+
+
+def map_sweep(cfg, starts_per_zone=3, seed=6010):
+    """Every zone -> every other zone, starts_per_zone random walkable starts each, random odometry frames."""
+    out_dir = TEST2 / cfg["results_dir"]
+    nav_cfg, classes = cfg["navigation"], cfg["classes"]
+    zm = ZoneMap.load(TEST2 / map_cfg(nav_cfg)["file"])
+    rng = np.random.default_rng(seed)
+    cells = np.argwhere(zm.walk & (zm.known >= 0.5))
+    zone_of = np.array([true_zone(zm, zm.centre(c)) for c in cells])
+    cases = []
+    for s in range(len(classes)):
+        for g in range(len(classes)):
+            if g != s:
+                for _ in range(starts_per_zone):
+                    sx, sy = zm.centre(cells[rng.choice(np.flatnonzero(zone_of == s))])
+                    cases.append((s, g, (float(sx), float(sy), float(rng.uniform(-math.pi, math.pi))),
+                                  (float(rng.uniform(-math.pi, math.pi)), rng.uniform(-5, 5, 2))))
+    result, paths = {}, []
+    for mode in ("zone_map", "classifier_only"):        # the same cases and camera sequence for both
+        stream = ProbStream.from_csv(out_dir / "resnet18/val_predictions.csv", classes, np.random.default_rng(seed))
+        rows = []
+        print(mode)
+        for s, g, start, tf in cases:
+            tr = [start[:2]]
+            nav, (x, y), secs, zend, closest = run_map(zm, classes, nav_cfg, stream, start, g, tf, trace=tr,
+                                                       use_map=mode == "zone_map")
+            ok = nav.state == "arrived" and zend == g
+            rows.append({"from": classes[s], "to": classes[g], "start": [round(v, 2) for v in start],
+                         "result": nav.state, "really_in": classes[zend], "correct": ok,
+                         "seconds": round(secs, 1), "legs": nav.legs, "explored": nav.explored,
+                         "closest_edge_m": round(closest, 2), "msg": nav.msg})
+            if mode == "zone_map":
+                paths.append((ok, nav.state, tr, classes[g]))
+            print(f"  {classes[s]:>9} -> {classes[g]:<9} {nav.state:8} really in {classes[zend]:<9} "
+                  f"{secs:5.0f} s  {nav.msg[:70]}")
+        result[mode] = {"summary": {
+            "runs": len(rows), "arrived": sum(r["result"] == "arrived" for r in rows),
+            "arrived_in_the_right_zone": sum(r["correct"] for r in rows),
+            "wrong_arrivals": sum(r["result"] == "arrived" and not r["correct"] for r in rows),
+            "median_seconds_when_correct": float(np.median([r["seconds"] for r in rows if r["correct"]]))
+            if any(r["correct"] for r in rows) else None}, "runs_detail": rows}
+    path = out_dir / "nav_map_sweep.json"
+    path.write_text(json.dumps({"navigation": nav_cfg, "seed": seed, "steps_limit_s": 900,
+                                "camera": "resnet18/val_predictions.csv replayed per zone (same for both modes)",
+                                **result}, indent=1))
+    print(json.dumps({m: r["summary"] for m, r in result.items()}, indent=1))
+    plot_map_paths(zm, classes, paths, path.with_name("nav_map_paths.png"))
+    print(f"-> {path.relative_to(TEST2)}, {path.with_name('nav_map_paths.png').relative_to(TEST2)}")
+
+
+def plot_map_paths(zm, classes, paths, path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    cols = ["#2a7de1", "#e8602c", "#1bb27f", "#f0a30a"]
+    fig, axes = plt.subplots(1, len(classes), figsize=(4.2 * len(classes), 5))
+    ext = [zm.lo[0], zm.lo[0] + zm.shape[0] * zm.res, zm.lo[1], zm.lo[1] + zm.shape[1] * zm.res]
+    k = zm.prob.argmax(2)
+    for ax, name in zip(axes, classes):
+        rgb = np.ones(zm.shape + (3,))
+        for z in range(len(classes)):
+            rgb[zm.walk & (k == z)] = 0.35 * np.array(matplotlib.colors.to_rgb(cols[z])) + 0.65
+        ax.imshow(rgb.transpose(1, 0, 2), origin="lower", extent=ext)
+        mine = [p for p in paths if p[3] == name]
+        for ok, state, tr, _ in mine:
+            a = np.array(tr)
+            ax.plot(a[:, 0], a[:, 1], color="#2e8b57" if ok else "#d1495b", lw=1)
+            ax.plot(a[0, 0], a[0, 1], "o", color="black", ms=3)
+            ax.plot(a[-1, 0], a[-1, 1], "x" if not ok else "s", color="black", ms=4)
+        ax.set_title(f"to {name}: correct {sum(p[0] for p in mine)}/{len(mine)}", fontsize=10)
+        ax.set_aspect("equal"), ax.set_xticks([]), ax.set_yticks([])
+    fig.suptitle("Zone-map navigation in simulation (real map, real classifier outputs); green = arrived in "
+                 "the right zone", fontsize=10)
+    fig.tight_layout()
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+
 LAYOUTS = {"low desk blocks the walk, not the view": (box(2.3, 2.7, 1.0, 3.0), False),
            "tall shelf hides the zone": (box(2.3, 2.7, 0.8, 3.2), True)}
 STARTS = [(1.0, 1.0), (1.0, 2.0), (1.0, 3.0), (0.6, 2.0)]
@@ -123,6 +292,9 @@ def plot(paths, path):
 
 def main():
     cfg = yaml.safe_load((TEST2 / "real_go2/real_config.yaml").read_text())
+    if "--map" in sys.argv[1:]:
+        map_sweep(cfg)
+        return
     out = {"navigation": cfg["navigation"], "layouts": {}}
     paths = {}
     for name, (obs, hides) in LAYOUTS.items():

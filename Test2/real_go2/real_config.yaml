@@ -48,7 +48,7 @@ navigation:                            # goto_zone.py: turn-and-look localisatio
     slow:   {approach_speed: 0.25, scan_rate: 0.5}
     medium: {approach_speed: 0.35, scan_rate: 0.6}
     fast:   {approach_speed: 0.45, scan_rate: 0.7}
-  leg_s: 4.0                           # s per leg before looking around again (2 s without LiDAR)
+  leg_s: 6.0                           # s per leg before looking around again (2 s without LiDAR)
   max_legs: 20                         # give up after this many legs
   early_stop_conf: 0.80                # stop a leg early when the target is predicted steadily...
   early_stop_s: 2.0                    # ...for this long (then a full turn confirms arrival)
@@ -68,11 +68,30 @@ navigation:                            # goto_zone.py: turn-and-look localisatio
   # the dog's pose (floor at about -0.31 m, below the corridor), with the dog's own body already removed.
   lidar_topic: rt/utlidar/cloud_deskewed
   lookahead_m: 2.5                    # free space is measured up to this far in every direction
-  want_free_m: 1.5                     # a direction counts as fully free with this much room
-  stop_obstacle_m: 0.50                # end the leg (and remember the direction as blocked) this close
-  slow_obstacle_m: 1.00                # closer than this: slow down and steer to the freer side
+  # LiDAR distances are measured from the dog's CENTRE; its nose is ~0.35 m ahead of that. With a fixed 0.50 m the
+  # dog stopped with ~15 cm to spare before LiDAR delay and braking, and touched things (lab, 13 Nov 2026).
+  # Now: stop at stop_obstacle_m + reaction_s x speed -> 0.78 m at 0.35 m/s (nose gap ~0.43 m before braking).
+  want_free_m: 1.6                     # a direction counts as fully free with this much room
+  stop_obstacle_m: 0.60                # end the leg (and remember the direction as blocked) this close, + speed term
+  slow_obstacle_m: 1.10                # closer than this (+ speed term): slow down and steer to the freer side
+  reaction_s: 0.5                      # both distances grow by speed x this (LiDAR delay + braking)
+  # walking corridor: Test 1's safety.corridor with these changes (Test 1's file is not edited)
+  corridor: {z_min: -0.20}             # see obstacles from ~11 cm above the floor (Test 1: -0.15, ~16 cm)
   avoid_turn_rate: 0.40                # rad/s while steering round an obstacle
   blocked_memory_legs: 3               # avoid a direction that blocked a leg for this many legs
   explore_legs: 10                     # target not in view: walk into the most open direction, at most this often
   edge_jump_m: 0.8                     # exploring prefers directions just past an obstacle's edge (free-space jump)
   hello_on_arrival: true               # wave when it gets there
+  # zone map (real_go2/zone_map.py): the recording sessions aligned into one map of the lab; the dog localises
+  # on it from odometry + the classifier and follows planned routes. Settings not listed use MAP_DEFAULTS there.
+  map:
+    file: results/real_q1/zone_map.npz # python real_go2/zone_map.py  (rebuild after recording new sessions)
+    evidence_weight: 0.3               # tuned on the validation session (zone_map.py --tune)
+    classifier_floor: 0.3
+    diffuse_s: 6.0
+    localized_conf: 0.5                # belief mass near the best guess to follow a route
+    arrive_prob: 0.6                   # arrival needs P(in target zone) from the map >= this ...
+    arrive_min_share: 0.2              # ... and this share of the look-around views from the camera
+    arrive_prob_unlocalized: 0.9       # not localised yet: arrive if the map is this sure of the zone (whole zone,
+                                       # position unsure) and the camera holds arrive_share of the views
+    core_prob: 0.8                     # route goal: cells where the target zone has at least this probability

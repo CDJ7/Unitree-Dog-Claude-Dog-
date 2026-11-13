@@ -37,6 +37,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default=str(CONFIG))
     ap.add_argument("--model", default="resnet18")
+    ap.add_argument("--split", choices=["test", "val"], default="test",
+                    help="val: only write <model>/val_predictions.csv (used to tune the zone-map localiser, "
+                         "real_go2/zone_map.py --tune); the test metrics are not touched")
     a = ap.parse_args()
     cfg = load_cfg(a.config)
     names = cfg["classes"]
@@ -44,6 +47,12 @@ def main():
     frames, split, cache, idx = build(cfg)
     model, ck = load_model(out / a.model / "best.pt", len(names))
     assert list(ck["classes"]) == list(names), f"model classes {ck['classes']} != config classes {names}"
+    if a.split == "val":
+        df = cnn_predictions(model, cache, idx["val"], frames, _Names(names)).reset_index(drop=True)
+        df.to_csv(out / a.model / "val_predictions.csv", index=False)
+        print(f"val session {split['val']}: {len(df)} frames, accuracy {(df.true == df.pred).mean():.3f} "
+              f"-> {(out / a.model / 'val_predictions.csv').relative_to(TEST2)}")
+        return
     df = cnn_predictions(model, cache, idx["test"], frames, _Names(names)).reset_index(drop=True)
     df.to_csv(out / a.model / "test_predictions.csv", index=False)
     y, p = df.true.to_numpy(), df.pred.to_numpy()
