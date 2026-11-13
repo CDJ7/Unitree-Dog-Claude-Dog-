@@ -140,8 +140,10 @@ def test_closed_loop_goes_round_a_desk_to_the_zone():
 
 
 def test_closed_loop_explores_when_the_zone_is_hidden():
-    """A tall shelf unit hides the zone from the start: it explores round it and arrives without collisions."""
-    shelf = nav_sim.box(2.3, 2.7, 0.8, 3.2)
+    """A tall shelf unit hides the zone from the start: it explores round it and arrives without collisions.
+    The gaps beside it are 1.0 m: since the larger LiDAR margins (13 Nov 2026, the dog touched things with the
+    old ones) a 0.8 m gap counts as too tight to pass."""
+    shelf = nav_sim.box(2.3, 2.7, 1.0, 3.0)
     nav, x, y, clear = nav_sim.run(CLASSES, NAV, shelf, shelf)
     assert nav.state == "arrived", f"ended {nav.state}: {nav.msg} at ({x:.2f}, {y:.2f})"
     assert nav.explored >= 1 and clear > 0.2, f"explored {nav.explored}, closest {clear:.2f} m"

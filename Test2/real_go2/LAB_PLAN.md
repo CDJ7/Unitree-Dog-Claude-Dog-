@@ -197,8 +197,9 @@ Press **R**, click the window and press **V** to record. Then press a zone numbe
 - **Repeat** A–D twice if the battery allows: that is about 16 requests.
 - **Cancelled requests:** a request you cancel with SPACE is logged as "cancelled" and is not counted as
   a success or a failure. Note why in your notes.
-- **Starting point:** start with the target zone in view. Finding a zone it can't see is the weak point;
-  it was 10/16 in simulation.
+- **Starting point:** with the zone map, drive through two or three zones by hand first (until the mini-map
+  says "map: here ..."); it then plans a route even to a zone it can't see. Without the map, finding a zone
+  it can't see is the weak point (3/16 in the small simulated room with the safer stop distances).
 
 Each run writes `results/real_q1/goto_<time>.json`. It lists every request with its result and reason
 (arrived, blocked, boxed in, not seen, out of legs), plus the MP4.

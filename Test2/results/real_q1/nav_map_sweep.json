@@ -1,0 +1,1308 @@
+{
+ "navigation": {
+  "scan_rate": 0.5,
+  "heading_bins": 24,
+  "seen_conf": 0.4,
+  "arrive_share": 0.5,
+  "approach_speed": 0.25,
+  "speed_presets": {
+   "slow": {
+    "approach_speed": 0.25,
+    "scan_rate": 0.5
+   },
+   "medium": {
+    "approach_speed": 0.35,
+    "scan_rate": 0.6
+   },
+   "fast": {
+    "approach_speed": 0.45,
+    "scan_rate": 0.7
+   }
+  },
+  "leg_s": 6.0,
+  "max_legs": 20,
+  "early_stop_conf": 0.8,
+  "early_stop_s": 2.0,
+  "lost_conf": 0.25,
+  "lost_s": 1.5,
+  "turn_gain": 1.5,
+  "turn_max_rate": 1.0,
+  "turn_min_rate": 0.25,
+  "turn_tolerance_rad": 0.1,
+  "turn_timeout_s": 12.0,
+  "lidar_topic": "rt/utlidar/cloud_deskewed",
+  "lookahead_m": 2.5,
+  "want_free_m": 1.6,
+  "stop_obstacle_m": 0.6,
+  "slow_obstacle_m": 1.1,
+  "reaction_s": 0.5,
+  "corridor": {
+   "z_min": -0.2
+  },
+  "avoid_turn_rate": 0.4,
+  "blocked_memory_legs": 3,
+  "explore_legs": 10,
+  "edge_jump_m": 0.8,
+  "hello_on_arrival": true,
+  "map": {
+   "file": "results/real_q1/zone_map.npz",
+   "evidence_weight": 0.3,
+   "classifier_floor": 0.3,
+   "diffuse_s": 6.0,
+   "localized_conf": 0.5,
+   "arrive_prob": 0.6,
+   "arrive_min_share": 0.2,
+   "arrive_prob_unlocalized": 0.9,
+   "core_prob": 0.8
+  }
+ },
+ "seed": 6010,
+ "steps_limit_s": 900,
+ "camera": "resnet18/val_predictions.csv replayed per zone (same for both modes)",
+ "zone_map": {
+  "summary": {
+   "runs": 36,
+   "arrived": 34,
+   "arrived_in_the_right_zone": 34,
+   "wrong_arrivals": 0,
+   "median_seconds_when_correct": 132.5
+  },
+  "runs_detail": [
+   {
+    "from": "lab_1",
+    "to": "lab_2",
+    "start": [
+     -1.49,
+     -0.85,
+     2.08
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 165.3,
+    "legs": 8,
+    "explored": 4,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at lab_2 (map 93%, camera 100% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "lab_2",
+    "start": [
+     -4.49,
+     -2.1,
+     0.77
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 273.8,
+    "legs": 11,
+    "explored": 9,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at lab_2 (map 87%, camera 92% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "lab_2",
+    "start": [
+     -7.99,
+     -1.6,
+     -2.1
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 150.7,
+    "legs": 6,
+    "explored": 3,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at lab_2 (map 89%, camera 97% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "open_area",
+    "start": [
+     -5.49,
+     -3.35,
+     -0.52
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 212.5,
+    "legs": 11,
+    "explored": 9,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at open_area (map 68%, camera 80% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "open_area",
+    "start": [
+     -3.49,
+     -3.1,
+     0.05
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 120.7,
+    "legs": 5,
+    "explored": 4,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at open_area (map 95%, camera 72% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "open_area",
+    "start": [
+     -4.99,
+     -1.6,
+     -3.11
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 194.5,
+    "legs": 10,
+    "explored": 4,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at open_area (map 90%, camera 59% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "shelves",
+    "start": [
+     -6.74,
+     0.15,
+     2.1
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 290.4,
+    "legs": 13,
+    "explored": 10,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at shelves (map 86%, camera 89% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "shelves",
+    "start": [
+     -2.49,
+     -1.85,
+     0.92
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 236.7,
+    "legs": 11,
+    "explored": 9,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at shelves (map 85%, camera 91% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "shelves",
+    "start": [
+     -5.49,
+     -0.35,
+     -1.91
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 55.0,
+    "legs": 2,
+    "explored": 2,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at shelves (map 81%, camera 98% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "lab_1",
+    "start": [
+     -1.49,
+     6.65,
+     -2.76
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 244.9,
+    "legs": 14,
+    "explored": 2,
+    "closest_edge_m": 0.4,
+    "msg": "ARRIVED at lab_1 (map 93%, camera 100% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "lab_1",
+    "start": [
+     -0.49,
+     6.9,
+     -1.24
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 250.7,
+    "legs": 15,
+    "explored": 3,
+    "closest_edge_m": 0.5,
+    "msg": "ARRIVED at lab_1 (map 95%, camera 81% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "lab_1",
+    "start": [
+     -1.99,
+     6.15,
+     -2.83
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 97.7,
+    "legs": 3,
+    "explored": 2,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at lab_1 (map 62%, camera 92% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "open_area",
+    "start": [
+     -4.49,
+     8.15,
+     -1.83
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 85.7,
+    "legs": 3,
+    "explored": 2,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at open_area (map 86%, camera 75% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "open_area",
+    "start": [
+     -0.74,
+     7.15,
+     -0.13
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 105.1,
+    "legs": 5,
+    "explored": 4,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at open_area (map 96%, camera 64% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "open_area",
+    "start": [
+     -4.49,
+     8.65,
+     2.93
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 75.7,
+    "legs": 3,
+    "explored": 2,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at open_area (map 90%, camera 63% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "shelves",
+    "start": [
+     -0.99,
+     5.65,
+     1.71
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 163.9,
+    "legs": 6,
+    "explored": 4,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at shelves (map 91%, camera 61% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "shelves",
+    "start": [
+     -2.74,
+     5.9,
+     0.94
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 75.1,
+    "legs": 3,
+    "explored": 2,
+    "closest_edge_m": 0.6,
+    "msg": "ARRIVED at shelves (map 83%, camera 97% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "shelves",
+    "start": [
+     -1.49,
+     7.9,
+     1.91
+    ],
+    "result": "failed",
+    "really_in": "lab_2",
+    "correct": false,
+    "seconds": 312.0,
+    "legs": 20,
+    "explored": 3,
+    "closest_edge_m": 0.1,
+    "msg": "gave up after 20 legs (here looks like lab_2)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_1",
+    "start": [
+     -2.99,
+     2.15,
+     1.65
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 158.3,
+    "legs": 6,
+    "explored": 5,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at lab_1 (map 92%, camera 92% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_1",
+    "start": [
+     -2.74,
+     4.65,
+     -2.28
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 74.1,
+    "legs": 3,
+    "explored": 3,
+    "closest_edge_m": 1.6,
+    "msg": "ARRIVED at lab_1 (map 94%, camera 71% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_1",
+    "start": [
+     -4.74,
+     4.65,
+     1.03
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 131.9,
+    "legs": 4,
+    "explored": 2,
+    "closest_edge_m": 1.0,
+    "msg": "ARRIVED at lab_1 (map 91%, camera 100% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_2",
+    "start": [
+     -2.24,
+     4.4,
+     -1.81
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 135.9,
+    "legs": 6,
+    "explored": 4,
+    "closest_edge_m": 0.6,
+    "msg": "ARRIVED at lab_2 (map 96%, camera 98% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_2",
+    "start": [
+     -4.49,
+     5.65,
+     0.57
+    ],
+    "result": "failed",
+    "really_in": "lab_1",
+    "correct": false,
+    "seconds": 387.8,
+    "legs": 20,
+    "explored": 16,
+    "closest_edge_m": 0.2,
+    "msg": "gave up after 20 legs (here looks like lab_1)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_2",
+    "start": [
+     -1.74,
+     5.15,
+     -2.22
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 155.3,
+    "legs": 6,
+    "explored": 3,
+    "closest_edge_m": 0.5,
+    "msg": "ARRIVED at lab_2 (map 91%, camera 100% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "shelves",
+    "start": [
+     -2.49,
+     2.9,
+     -1.86
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 133.1,
+    "legs": 6,
+    "explored": 5,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at shelves (map 88%, camera 97% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "shelves",
+    "start": [
+     -2.24,
+     3.65,
+     2.32
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 236.9,
+    "legs": 15,
+    "explored": 5,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at shelves (map 86%, camera 100% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "shelves",
+    "start": [
+     -2.49,
+     4.15,
+     -2.67
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 87.1,
+    "legs": 3,
+    "explored": 2,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at shelves (map 87%, camera 89% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_1",
+    "start": [
+     -6.49,
+     5.65,
+     -2.88
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 112.5,
+    "legs": 4,
+    "explored": 3,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at lab_1 (map 90%, camera 100% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_1",
+    "start": [
+     -6.24,
+     6.4,
+     -2.78
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 100.9,
+    "legs": 5,
+    "explored": 3,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at lab_1 (map 92%, camera 100% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_1",
+    "start": [
+     -6.74,
+     6.4,
+     -0.86
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 79.5,
+    "legs": 3,
+    "explored": 2,
+    "closest_edge_m": 0.4,
+    "msg": "ARRIVED at lab_1 (map 63%, camera 71% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_2",
+    "start": [
+     -7.24,
+     3.65,
+     -1.67
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 139.7,
+    "legs": 7,
+    "explored": 3,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at lab_2 (map 87%, camera 98% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_2",
+    "start": [
+     -7.49,
+     5.9,
+     -1.48
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 100.5,
+    "legs": 5,
+    "explored": 2,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at lab_2 (map 89%, camera 98% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_2",
+    "start": [
+     -6.49,
+     2.15,
+     -2.68
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 101.3,
+    "legs": 4,
+    "explored": 2,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at lab_2 (map 88%, camera 98% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "open_area",
+    "start": [
+     -5.99,
+     2.15,
+     -1.08
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 131.5,
+    "legs": 6,
+    "explored": 5,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at open_area (map 90%, camera 64% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "open_area",
+    "start": [
+     -6.24,
+     2.4,
+     -2.64
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 61.2,
+    "legs": 3,
+    "explored": 2,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at open_area (map 62%, camera 64% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "open_area",
+    "start": [
+     -7.24,
+     4.15,
+     2.5
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 260.1,
+    "legs": 17,
+    "explored": 4,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at open_area (map 86%, camera 77% of the views)"
+   }
+  ]
+ },
+ "classifier_only": {
+  "summary": {
+   "runs": 36,
+   "arrived": 26,
+   "arrived_in_the_right_zone": 20,
+   "wrong_arrivals": 6,
+   "median_seconds_when_correct": 138.0
+  },
+  "runs_detail": [
+   {
+    "from": "lab_1",
+    "to": "lab_2",
+    "start": [
+     -1.49,
+     -0.85,
+     2.08
+    ],
+    "result": "failed",
+    "really_in": "lab_1",
+    "correct": false,
+    "seconds": 284.6,
+    "legs": 14,
+    "explored": 10,
+    "closest_edge_m": 0.1,
+    "msg": "lab_2 not seen in any direction (best 0.02)"
+   },
+   {
+    "from": "lab_1",
+    "to": "lab_2",
+    "start": [
+     -4.49,
+     -2.1,
+     0.77
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": false,
+    "seconds": 163.7,
+    "legs": 8,
+    "explored": 7,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at lab_2 (56% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "lab_2",
+    "start": [
+     -7.99,
+     -1.6,
+     -2.1
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": false,
+    "seconds": 213.5,
+    "legs": 10,
+    "explored": 9,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at lab_2 (75% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "open_area",
+    "start": [
+     -5.49,
+     -3.35,
+     -0.52
+    ],
+    "result": "failed",
+    "really_in": "lab_1",
+    "correct": false,
+    "seconds": 253.9,
+    "legs": 13,
+    "explored": 10,
+    "closest_edge_m": 0.1,
+    "msg": "open_area not seen in any direction (best 0.01)"
+   },
+   {
+    "from": "lab_1",
+    "to": "open_area",
+    "start": [
+     -3.49,
+     -3.1,
+     0.05
+    ],
+    "result": "failed",
+    "really_in": "lab_1",
+    "correct": false,
+    "seconds": 276.6,
+    "legs": 14,
+    "explored": 10,
+    "closest_edge_m": 0.2,
+    "msg": "open_area not seen in any direction (best 0.02)"
+   },
+   {
+    "from": "lab_1",
+    "to": "open_area",
+    "start": [
+     -4.99,
+     -1.6,
+     -3.11
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 126.9,
+    "legs": 6,
+    "explored": 5,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at open_area (61% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "shelves",
+    "start": [
+     -6.74,
+     0.15,
+     2.1
+    ],
+    "result": "failed",
+    "really_in": "lab_1",
+    "correct": false,
+    "seconds": 269.1,
+    "legs": 15,
+    "explored": 10,
+    "closest_edge_m": 0.1,
+    "msg": "shelves not seen in any direction (best 0.03)"
+   },
+   {
+    "from": "lab_1",
+    "to": "shelves",
+    "start": [
+     -2.49,
+     -1.85,
+     0.92
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 138.5,
+    "legs": 7,
+    "explored": 5,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at shelves (88% of the views)"
+   },
+   {
+    "from": "lab_1",
+    "to": "shelves",
+    "start": [
+     -5.49,
+     -0.35,
+     -1.91
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 54.2,
+    "legs": 2,
+    "explored": 1,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at shelves (91% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "lab_1",
+    "start": [
+     -1.49,
+     6.65,
+     -2.76
+    ],
+    "result": "failed",
+    "really_in": "shelves",
+    "correct": false,
+    "seconds": 244.7,
+    "legs": 13,
+    "explored": 10,
+    "closest_edge_m": 0.1,
+    "msg": "lab_1 not seen in any direction (best 0.19)"
+   },
+   {
+    "from": "lab_2",
+    "to": "lab_1",
+    "start": [
+     -0.49,
+     6.9,
+     -1.24
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 145.7,
+    "legs": 7,
+    "explored": 6,
+    "closest_edge_m": 0.4,
+    "msg": "ARRIVED at lab_1 (100% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "lab_1",
+    "start": [
+     -1.99,
+     6.15,
+     -2.83
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 239.7,
+    "legs": 12,
+    "explored": 10,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at lab_1 (100% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "open_area",
+    "start": [
+     -4.49,
+     8.15,
+     -1.83
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 187.3,
+    "legs": 9,
+    "explored": 9,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at open_area (72% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "open_area",
+    "start": [
+     -0.74,
+     7.15,
+     -0.13
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 52.6,
+    "legs": 2,
+    "explored": 2,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at open_area (72% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "open_area",
+    "start": [
+     -4.49,
+     8.65,
+     2.93
+    ],
+    "result": "failed",
+    "really_in": "shelves",
+    "correct": false,
+    "seconds": 223.9,
+    "legs": 11,
+    "explored": 10,
+    "closest_edge_m": 0.1,
+    "msg": "open_area not seen in any direction (best 0.03)"
+   },
+   {
+    "from": "lab_2",
+    "to": "shelves",
+    "start": [
+     -0.99,
+     5.65,
+     1.71
+    ],
+    "result": "failed",
+    "really_in": "open_area",
+    "correct": false,
+    "seconds": 272.4,
+    "legs": 14,
+    "explored": 10,
+    "closest_edge_m": 0.1,
+    "msg": "shelves not seen in any direction (best 0.28)"
+   },
+   {
+    "from": "lab_2",
+    "to": "shelves",
+    "start": [
+     -2.74,
+     5.9,
+     0.94
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 85.5,
+    "legs": 4,
+    "explored": 3,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at shelves (98% of the views)"
+   },
+   {
+    "from": "lab_2",
+    "to": "shelves",
+    "start": [
+     -1.49,
+     7.9,
+     1.91
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 94.7,
+    "legs": 4,
+    "explored": 4,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at shelves (100% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_1",
+    "start": [
+     -2.99,
+     2.15,
+     1.65
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 129.9,
+    "legs": 6,
+    "explored": 5,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at lab_1 (100% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_1",
+    "start": [
+     -2.74,
+     4.65,
+     -2.28
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 89.3,
+    "legs": 4,
+    "explored": 3,
+    "closest_edge_m": 1.5,
+    "msg": "ARRIVED at lab_1 (92% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_1",
+    "start": [
+     -4.74,
+     4.65,
+     1.03
+    ],
+    "result": "failed",
+    "really_in": "open_area",
+    "correct": false,
+    "seconds": 263.1,
+    "legs": 13,
+    "explored": 10,
+    "closest_edge_m": 0.3,
+    "msg": "lab_1 not seen in any direction (best 0.06)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_2",
+    "start": [
+     -2.24,
+     4.4,
+     -1.81
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": false,
+    "seconds": 30.4,
+    "legs": 1,
+    "explored": 0,
+    "closest_edge_m": 2.3,
+    "msg": "ARRIVED at lab_2 (75% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_2",
+    "start": [
+     -4.49,
+     5.65,
+     0.57
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": false,
+    "seconds": 76.3,
+    "legs": 4,
+    "explored": 2,
+    "closest_edge_m": 2.0,
+    "msg": "ARRIVED at lab_2 (57% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "lab_2",
+    "start": [
+     -1.74,
+     5.15,
+     -2.22
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": false,
+    "seconds": 64.8,
+    "legs": 3,
+    "explored": 1,
+    "closest_edge_m": 2.4,
+    "msg": "ARRIVED at lab_2 (59% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "shelves",
+    "start": [
+     -2.49,
+     2.9,
+     -1.86
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 215.9,
+    "legs": 11,
+    "explored": 9,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at shelves (100% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "shelves",
+    "start": [
+     -2.24,
+     3.65,
+     2.32
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 226.9,
+    "legs": 12,
+    "explored": 6,
+    "closest_edge_m": 0.2,
+    "msg": "ARRIVED at shelves (98% of the views)"
+   },
+   {
+    "from": "open_area",
+    "to": "shelves",
+    "start": [
+     -2.49,
+     4.15,
+     -2.67
+    ],
+    "result": "arrived",
+    "really_in": "shelves",
+    "correct": true,
+    "seconds": 194.9,
+    "legs": 10,
+    "explored": 5,
+    "closest_edge_m": 0.4,
+    "msg": "ARRIVED at shelves (61% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_1",
+    "start": [
+     -6.49,
+     5.65,
+     -2.88
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 229.1,
+    "legs": 11,
+    "explored": 10,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at lab_1 (95% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_1",
+    "start": [
+     -6.24,
+     6.4,
+     -2.78
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 102.1,
+    "legs": 5,
+    "explored": 3,
+    "closest_edge_m": 0.4,
+    "msg": "ARRIVED at lab_1 (72% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_1",
+    "start": [
+     -6.74,
+     6.4,
+     -0.86
+    ],
+    "result": "arrived",
+    "really_in": "lab_1",
+    "correct": true,
+    "seconds": 119.5,
+    "legs": 6,
+    "explored": 4,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at lab_1 (100% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_2",
+    "start": [
+     -7.24,
+     3.65,
+     -1.67
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 152.5,
+    "legs": 8,
+    "explored": 2,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at lab_2 (92% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_2",
+    "start": [
+     -7.49,
+     5.9,
+     -1.48
+    ],
+    "result": "arrived",
+    "really_in": "lab_2",
+    "correct": true,
+    "seconds": 218.7,
+    "legs": 11,
+    "explored": 4,
+    "closest_edge_m": 0.1,
+    "msg": "ARRIVED at lab_2 (98% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "lab_2",
+    "start": [
+     -6.49,
+     2.15,
+     -2.68
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": false,
+    "seconds": 373.6,
+    "legs": 19,
+    "explored": 9,
+    "closest_edge_m": 0.4,
+    "msg": "ARRIVED at lab_2 (75% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "open_area",
+    "start": [
+     -5.99,
+     2.15,
+     -1.08
+    ],
+    "result": "failed",
+    "really_in": "shelves",
+    "correct": false,
+    "seconds": 259.5,
+    "legs": 13,
+    "explored": 10,
+    "closest_edge_m": 0.1,
+    "msg": "open_area not seen in any direction (best 0.02)"
+   },
+   {
+    "from": "shelves",
+    "to": "open_area",
+    "start": [
+     -6.24,
+     2.4,
+     -2.64
+    ],
+    "result": "arrived",
+    "really_in": "open_area",
+    "correct": true,
+    "seconds": 137.5,
+    "legs": 7,
+    "explored": 5,
+    "closest_edge_m": 0.3,
+    "msg": "ARRIVED at open_area (64% of the views)"
+   },
+   {
+    "from": "shelves",
+    "to": "open_area",
+    "start": [
+     -7.24,
+     4.15,
+     2.5
+    ],
+    "result": "failed",
+    "really_in": "lab_1",
+    "correct": false,
+    "seconds": 241.7,
+    "legs": 12,
+    "explored": 10,
+    "closest_edge_m": 0.1,
+    "msg": "open_area not seen in any direction (best 0.02)"
+   }
+  ]
+ }
+}

@@ -34,7 +34,8 @@ the zone everywhere:
 | `q1_supervised/train.py --config real_go2/real_config.yaml` | Retrain ResNet18 on the lab (same recipe as Q1) |
 | [`evaluate_real.py`](evaluate_real.py) | Accuracy on the held-out last session, per-zone scores, confusion matrix |
 | [`live_zone.py`](live_zone.py) | Live recognition on the dog's camera, with an on-screen panel, recorded to MP4 |
-| [`goto_zone.py`](goto_zone.py) | Pick a zone (keys 1–4); the dog looks around, turns and walks there |
+| [`goto_zone.py`](goto_zone.py) | Pick a zone (keys 1–4); the dog localises on the zone map and walks there |
+| [`zone_map.py`](zone_map.py) | Map of the lab from the recorded odometry + localiser + route planner (`--tune`, `--eval`) |
 | [`sources.py`](sources.py) | Connections: `sdk` (Ethernet), `webrtc` (Wi-Fi), `fake` (no robot) |
 
 Driving and safety reuse Test 1's teleop ([`go2_stream/teleop.py`](../../go2_stream/teleop.py)): speed
@@ -201,6 +202,8 @@ labelled walking per zone across all sessions.
 cd ~/Unitree-Dog-Claude-Dog-/Test2
 python q1_supervised/train.py --config real_go2/real_config.yaml   # ~15-30 min on a laptop CPU
 python real_go2/evaluate_real.py
+python real_go2/evaluate_real.py --split val     # validation predictions (to tune the localiser)
+python real_go2/zone_map.py                      # zone map for go-to-zone (rebuild after new sessions)
 ```
 Results go to `results/real_q1/`:
 - `metrics.json`: test accuracy, macro-F1, per-zone precision/recall/F1;
@@ -240,6 +243,12 @@ Driving is as in recording. The output, `results/real_q1/live_<time>.mp4`, `.csv
 the live accuracy.
 
 ## Part E — Go to zone (autonomous)
+**Video of a successful lab run (13 Nov 2026, zone map on):**
+[youtube.com/watch?v=lcDZeDCFg5E](https://www.youtube.com/watch?v=lcDZeDCFg5E). The screen recording is
+[`results/real_q1/goto_20261113_171129.mp4`](../results/real_q1/goto_20261113_171129.mp4), and its log is
+[`goto_20261113_171129.json`](../results/real_q1/goto_20261113_171129.json): all 6 requests that ran to the
+end arrived.
+
 ```bash
 python real_go2/goto_zone.py --source sdk --iface eth1 --lidar-check   # first: LiDAR only, no autonomy
 python real_go2/goto_zone.py --source sdk --iface eth1
@@ -265,9 +274,10 @@ that an empty floor reads "clear ahead" (see `LAB_PLAN.md` 1.4).
    - **explores** if the target isn't visible at all, for example hidden behind shelves. It walks toward
      open space, preferring to keep going the same way and to pass the edges of obstacles, where a hidden
      zone tends to come into view. It explores for at most 10 legs.
-   - **turns** to the chosen direction and **walks one leg** of up to 4 s at 0.25 m/s. While walking,
-     the LiDAR is checked every scan. If something is within **1.0 m** ahead, it slows to 40 % and steers
-     toward the freer side. If something is within **0.5 m**, it stops, marks that direction as blocked
+   - **turns** to the chosen direction and **walks one leg** of up to 6 s (10 s while exploring to
+     localise). While walking,
+     the LiDAR is checked every scan. If something is within **1.28 m** ahead (at medium speed), it slows to 40 % and steers
+     toward the freer side. If something is within **0.78 m** (at medium speed), it stops, marks that direction as blocked
      and looks around again. The leg also ends early when the target is recognised steadily, or when it
      fades from view.
    - **looks around again**, and repeats, for at most 20 legs. It gives up with "boxed in" when no
@@ -291,13 +301,52 @@ run from 4 starting points × 4 starting headings, and the result is saved in
 
 | Layout | Reached the zone | Closest approach to an obstacle (from the dog's centre) |
 |---|---|---|
-| Low desk blocks the walk, not the view | 16/16 | 0.26 m |
-| Tall shelf hides the zone from the start | 10/16 | 0.25 m |
+| Low desk blocks the walk, not the view | 16/16 | 0.25 m |
+| Tall shelf hides the zone from the start | 3/16 | 0.26 m |
 
-With a body half-width of about 0.16 m, the closest approach leaves about 10 cm to spare, and it hit
-nothing in any run. When the zone is hidden, 6 of 16 runs ran out of exploration legs before seeing it;
-the other 10 found it. On the real dog, start where the target zone is in view, or walk it part of the
+(The closest approach is in any direction, usually sideways while passing the obstacle.) The tall shelf
+leaves 0.8 m gaps to the walls. Since the larger stop distances below, a gap that narrow counts as too
+tight, so most of those runs no longer get round it (10/16 with the old 0.5 m stop distance). With 1.0 m gaps
+it arrives from every start tried (`tests/test_goto_zone.py`).
+
+**Stop distances (changed 13 Nov 2026, after the dog touched things in the lab).** The LiDAR measures
+from the dog's centre, and its nose is about 0.35 m ahead of that. The dog now stops at
+`stop_obstacle_m + reaction_s × speed` = 0.60 + 0.5 × 0.35 ≈ 0.78 m at medium speed, which leaves about
+0.4 m in front of the nose before braking, and slows down from 1.10 m + the same speed term. The walking
+corridor now starts 11 cm above the floor (Test 1's starts at 16 cm), so lower obstacles are seen too.
+
+Without the zone map, start where the target zone is in view, or walk it part of the
 way. `tests/test_goto_zone.py` checks the avoidance rules and both layouts.
+
+### E2. The zone map: localisation and planned routes
+The classifier alone mixes up zones (open_area is often taken for lab_2 or shelves), and from one spot
+it can't tell which way a zone is. The recordings also hold the dog's **odometry**, so
+`python real_go2/zone_map.py` aligns the 5 sessions into one map of the lab
+(`results/real_q1/zone_map.png`: lab_1 at one end, open_area in the middle, lab_2 and shelves beyond).
+`goto_zone.py` uses it automatically when it exists (Ethernet or Wi-Fi: both give odometry; `--no-map`
+turns it off):
+- **Localising.** All the time, also while you drive by hand, the camera's zone guesses are matched against
+  the map along the path the odometry measures. Single frames are often wrong, but a path through
+  several zones fits only one place on the map. The mini-map (top right of the camera view) shows the dog
+  and says **"map: here <zone>"** once it is sure, or **"localising – drive around"** until then.
+  **Tip:** before pressing 1–4, drive the dog by hand through two or three zones (about a minute). It
+  then starts the mission already localised and goes straight there.
+- **Routes.** Once localised, it plans the shortest path over ground walked while recording, to at least
+  0.75 m inside the target zone, and follows it (re-planning every 3 s), with the same LiDAR
+  slow/steer/stop. A blocked spot is avoided in the next plan.
+- **Arrival needs the map too.** It arrives only when it is localised **and** the map puts it in the
+  target zone (≥ 60 %), **and** the camera agrees in some of the views. If the camera says "here" but the
+  map disagrees, it keeps exploring instead of stopping in the wrong zone.
+- Not localised yet: the camera-only search above, with longer exploring legs, until it localises.
+
+**Checked offline on real data:**
+- `python real_go2/zone_map.py --eval`: the held-out test session (`run_004`), with its real classifier
+  outputs, on a map built from the other 4 sessions → `results/real_q1/localization_eval.json` / `.png`.
+- `python real_go2/nav_sim.py --map`: closed loop on the real map, every zone → every other zone from a
+  cold start. The camera is the validation session's real classifier outputs, replayed per zone →
+  `results/real_q1/nav_map_sweep.json` / `nav_map_paths.png`. The simulated camera doesn't depend on
+  direction, which makes the camera-only baseline weaker than on the real dog.
+- The localiser settings were chosen on the validation session (`--tune`), not the test session.
 
 After the trials, `python real_go2/summarize_real.py` gathers the dataset size, test metrics, live
 accuracy and every go-to-zone request into `results/real_q1/summary.md` for the report.

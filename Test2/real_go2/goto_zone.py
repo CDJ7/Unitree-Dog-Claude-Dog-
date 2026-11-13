@@ -5,6 +5,16 @@
     python real_go2/goto_zone.py --source sdk --iface eth1 --target shelves   # start straight away
     python real_go2/goto_zone.py --source sdk --iface eth1 --lidar-check      # no autonomy: check the LiDAR first
 
+With the zone map (results/real_q1/zone_map.npz from `python real_go2/zone_map.py`, on by default when it
+exists and the connection gives odometry):
+  * the localiser runs all the time (also while you drive by hand): odometry + every classifier output ->
+    where the dog is on the map. The mini-map (top right) says "map: here <zone>" once it is sure;
+  * localised -> ROUTE: follow the shortest walkable path (the ground covered while recording) to the middle
+    of the target zone, re-planning every few seconds, with the same LiDAR slow/steer/stop as a leg;
+  * ARRIVED needs the map belief (navigation.map.arrive_prob) as well as the camera, so a zone the camera
+    mistakes for the target is not accepted; if the camera says "here" but the map is unsure, it explores.
+  Not localised yet: the classifier-only search below, while the localiser gathers evidence on the way.
+
 How it finds a zone (camera classifier) and avoids obstacles on the way (LiDAR):
   LOOK      turn once on the spot, classifying every frame and storing the LiDAR free distance per heading
             (Test 1's body corridor, floor ignored). Out of one turn come:
@@ -24,7 +34,7 @@ Safety: the dog moves only through Test 1's teleop autonomy hook (go2_stream/tel
 requests lapse unless refreshed, are clamped to the teleop limits, and ANY manual key (SPACE, W/A/S/D/Q/E,
 ESC) cancels the mission at once. Walking needs LiDAR (Ethernet / --source sdk), as Test 1's missions do;
 over Wi-Fi it only runs with --allow-no-lidar, slower and with shorter legs.
-Keys (window): 1..N go to that zone, C cancel, V start/stop the MP4, ESC quit.
+Keys (window): 1..N go to that zone, C cancel, G speed, V start/stop the MP4, ESC quit.
 """
 from __future__ import annotations
 
@@ -46,6 +56,7 @@ TEST2 = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TEST2))
 from real_go2.live_zone import COLORS, PANEL_W, VIEW_H, VIEW_W, Classifier, put_text  # noqa: E402
 from real_go2.sources import GO2_STREAM, add_source_args, cycle_speed, open_link, start_teleop  # noqa: E402
+from real_go2.zone_map import ZoneLocalizer, ZoneMap, lookahead_point, map_cfg  # noqa: E402
 
 log = logging.getLogger("goto_zone")
 
@@ -106,8 +117,12 @@ class ZoneNavigator:
       * while walking, an obstacle within slow_obstacle_m slows the dog and steers it to the freer side;
         within stop_obstacle_m the leg ends, that direction is remembered as blocked, and it plans again."""
 
-    def __init__(self, classes, nav, have_lidar):
+    def __init__(self, classes, nav, have_lidar, zmap=None):
         self.classes, self.nav, self.have_lidar = list(classes), dict(nav), have_lidar
+        # zone map (real_go2/zone_map.py): localisation from odometry + classifier, routes, map-checked arrival
+        self.mcfg, self.zmap = map_cfg(nav), zmap
+        self.loc = ZoneLocalizer(zmap, self.mcfg) if zmap is not None else None
+        self.path, self.map_p, self._route_t0, self._replan_t = None, None, 0.0, 0.0
         if not have_lidar:
             self.nav["approach_speed"] = min(self.nav["approach_speed"], 0.15)
             self.nav["leg_s"] = min(self.nav["leg_s"], 2.0)
@@ -147,6 +162,9 @@ class ZoneNavigator:
         self.target, self.legs, self.blocked = int(k), 0, {}
         self.explored, self.exploring, self._last_leg_heading = 0, False, None
         self.detour_side, self._explore_heading = 0, None
+        self.path = None
+        if self.zmap is not None:
+            self.zmap.clear_blocks()
         self.msg = f"going to {self.classes[k]}"
         self._look(now, heading)
 
@@ -156,11 +174,22 @@ class ZoneNavigator:
 
     @property
     def active(self):
-        return self.state in ("look", "turn", "walk")
+        return self.state in ("look", "turn", "walk", "route")
+
+    @property
+    def map_status(self):
+        """(localised?, confidence, zone index the belief favours, its probability) or None without a map."""
+        if self.loc is None or self.loc.p0 is None:
+            return None
+        e, zb = self.loc.estimate(), self.loc.zone_belief()
+        return self.loc.localized, e["conf"], int(zb.argmax()), float(zb.max())
 
     # ------------------------------------------------------------------ states
     def _look(self, now, heading):
         self.state, self.scan, self._t0, self._turn_t0 = "look", [], now, None
+        self._belief_before_look = (float(self.loc.zone_belief()[self.target])
+                                    if self.loc is not None and self.loc.p0 is not None and self.target is not None
+                                    else 0.0)
         self._world_free = np.full(self.nb, np.nan)
         self.avoiding = 0
         self._last_free = (None, 0.0)
@@ -183,7 +212,23 @@ class ZoneNavigator:
         p = (np.roll(filled, 1) + filled + np.roll(filled, -1)) / 3            # circular, +-1 bin
         self.bins = p
         tb = int(np.argmax(p))                                                  # where the target looks likeliest
-        if self.share >= nav["arrive_share"]:
+        camera_here = self.share >= nav["arrive_share"]
+        doubt = False                                                           # camera says "here", map disagrees
+        if self.loc is not None and self.loc.p0 is not None:
+            m = self.mcfg
+            self.map_p = float(self.loc.zone_belief()[k])
+            # zone certain, spot not yet: the belief was already that sure BEFORE this look-around (so a camera
+            # that is wrong for one whole turn cannot talk the map into it on its own)
+            sure_zone = (camera_here and self.map_p >= m["arrive_prob_unlocalized"]
+                         and self._belief_before_look >= m["arrive_prob_unlocalized"])
+            if sure_zone or (self.loc.localized and self.map_p >= m["arrive_prob"]
+                             and self.share >= m["arrive_min_share"]):
+                self.state = "arrived"
+                self.msg = (f"ARRIVED at {self.classes[k]} (map {self.map_p:.0%}, camera {self.share:.0%} of the "
+                            f"views)")
+                return
+            doubt = camera_here
+        elif camera_here:
             self.state = "arrived"
             self.msg = f"ARRIVED at {self.classes[k]} ({self.share:.0%} of the views)"
             return
@@ -191,9 +236,18 @@ class ZoneNavigator:
             self.state = "failed"
             self.msg = f"gave up after {self.legs} legs (here looks like {self.classes[self.where]})"
             return
+        if self.loc is not None and self.loc.localized and self._start_route(now):
+            return
         self.exploring = False
-        if p[tb] < nav["seen_conf"]:
-            if not (self.have_lidar and self.explored < nav["explore_legs"]):
+        if doubt and not self.have_lidar:
+            self.state = "failed"
+            self.msg = (f"camera says {self.classes[k]} ({self.share:.0%}) but the map is unsure "
+                        f"({self.map_p:.0%}); drive around a bit so it can localise")
+            return
+        if p[tb] < nav["seen_conf"] or doubt:
+            # with the zone map, exploring is how the dog localises: allowed until max_legs
+            budget = nav["explore_legs"] if self.loc is None else nav["max_legs"]
+            if not (self.have_lidar and self.explored < budget):
                 self.state = "failed"
                 self.msg = f"{self.classes[k]} not seen in any direction (best {p[tb]:.2f})"
                 return
@@ -223,8 +277,10 @@ class ZoneNavigator:
             self.exploring, self.explored, self.detour, self.score = True, self.explored + 1, False, score
             self.best_heading = self._explore_heading = self.heading_of(best)
             self.state = "turn"
-            self.msg = (f"{self.classes[k]} not in view (best {p[tb]:.2f}); exploring the most open way "
-                        f"({self.free[best]:.1f} m free, try {self.explored}/{nav['explore_legs']})")
+            why = (f"camera says {self.classes[k]} but the map is not sure yet ({self.map_p:.0%})" if doubt
+                   else f"{self.classes[k]} not in view (best {p[tb]:.2f})")
+            self.msg = (f"{why}; exploring the most open way ({self.free[best]:.1f} m free, try "
+                        f"{self.explored}/{budget})")
             return
         if self.have_lidar:
             self.free = self._world_free.copy()
@@ -263,10 +319,96 @@ class ZoneNavigator:
         self.msg = (f"here looks like {self.classes[self.where]}; heading {math.degrees(wrap(self.best_heading)):+.0f} "
                     f"deg towards {self.classes[k]} ({way}{free_txt})")
 
-    def update(self, now, heading, prob=None, free=None):
+    def _start_route(self, now):
+        """Localised on the zone map: plan a walkable route to the core of the target zone. False if none."""
+        e = self.loc.estimate()
+        path = self.zmap.plan(e["xy"], self.target, self.mcfg["core_prob"])
+        if not path or len(path) < 2:
+            return False
+        self.path, self._route_t0, self._replan_t = path, now, now
+        self.state, self.legs, self._last_free = "route", self.legs + 1, (None, 0.0)
+        self.detour = self.exploring = False
+        self.msg = (f"map: here is {self.classes[self.zmap.zone_at(e['xy'])]}; route to {self.classes[self.target]}"
+                    f" {self._path_left(e['xy']):.1f} m (leg {self.legs})")
+        return True
+
+    def _path_left(self, xy):
+        return lookahead_point(self.path, xy, 0.0)[1] if self.path else 0.0
+
+    def _avoid(self, now, heading, free, vx, wz):
+        """LiDAR while walking: (vx, wz, reason to end the leg or None). Within slow_obstacle_m ahead: slow down and
+        steer to the freer side; within stop_obstacle_m: stop and remember the direction as blocked."""
+        nav = self.nav
+        self.avoiding = 0
+        if free is not None:
+            self._last_free = (free, now)
+        elif self._last_free[0] is not None and now - self._last_free[1] <= 0.5:
+            free = self._last_free[0]                                         # hold the last scan between scans
+        if not (self.have_lidar and free is not None):
+            return vx, wz, None
+        free = np.asarray(free, float)
+        if not np.any(free > 0):
+            return 0.0, 0.0, "no LiDAR data"
+        front = float(free[0])
+        react = nav.get("reaction_s", 0.0) * max(vx, 0.0)                    # faster -> stop and slow earlier
+        if front <= nav["stop_obstacle_m"] + react:
+            self.blocked[self.bin_of(heading)] = self.legs
+            return 0.0, 0.0, f"blocked {front:.2f} m ahead"
+        if front <= nav["slow_obstacle_m"] + react:                            # steer round it, slowly
+            left, right = min(free[1], free[2]), min(free[-1], free[-2])
+            self.avoiding = 1 if left >= right else -1
+            return nav["approach_speed"] * 0.4, self.avoiding * nav["avoid_turn_rate"], None
+        return vx, wz, None
+
+    def _route_step(self, now, heading, free):
+        nav, m, k = self.nav, self.mcfg, self.target
+        e = self.loc.estimate()
+        end, vx, wz = None, 0.0, 0.0
+        if e is None or e["conf"] < m["lost_conf"]:
+            end = f"map position uncertain ({0 if e is None else e['conf']:.0%})"
+        else:
+            if now - self._replan_t >= m["replan_s"]:                          # the estimate keeps improving
+                self._replan_t = now
+                p = self.zmap.plan(e["xy"], k, m["core_prob"])
+                if p:
+                    self.path = p
+            pt, left = lookahead_point(self.path, e["xy"], m["lookahead_m"])
+            if left < 0.4 and np.hypot(*(pt - e["xy"])) < 0.6:
+                end = f"reached the planned spot in {self.classes[k]}"
+            elif now - self._route_t0 >= m["route_max_s"]:
+                end = "route leg time limit"
+            else:
+                want = self.loc.to_odom_heading(math.atan2(pt[1] - e["xy"][1], pt[0] - e["xy"][0]))
+                self.best_heading = want
+                err = wrap(want - heading)
+                if abs(err) > math.radians(m["turn_in_place_deg"]):              # far off: stop and turn first
+                    rate = min(abs(nav.get("turn_gain", 1.5) * err), nav.get("turn_max_rate", nav["scan_rate"]))
+                    wz = math.copysign(max(rate, nav.get("turn_min_rate", 0.25)), err)
+                else:
+                    vx, wz = nav["approach_speed"], float(np.clip(1.2 * err, -0.6, 0.6))
+                    vx, wz, end = self._avoid(now, heading, free, vx, wz)
+                    if end and end.startswith("blocked"):                       # plan round it next time
+                        self.zmap.block(e["xy"] + 0.6 * np.array([math.cos(e["heading"]), math.sin(e["heading"])]))
+                self.msg = (f"route to {self.classes[k]}: {left:.1f} m to go (map {e['conf']:.0%} sure)")
+        if end is not None:
+            self.msg = f"{end}; looking around"
+            self._look(now, heading)
+            return 0.0, 0.0
+        return vx, wz
+
+    def update(self, now, heading, prob=None, free=None, pos=None):
         """One control step. prob: latest classifier output (None if no new frame). free: latest LiDAR free-space
-        profile in the body frame (free_profile; None if no new scan; all zeros = no LiDAR data). Returns (vx, wz)."""
+        profile in the body frame (free_profile; None if no new scan; all zeros = no LiDAR data). pos: odometry
+        (x, y) for the zone map's localiser (it runs in every state, also while driving by hand).
+        Returns (vx, wz)."""
         nav, k = self.nav, self.target
+        if self.loc is not None and pos is not None:
+            if prob is not None:
+                self.loc.update(pos[:2], heading, prob, now)
+            else:
+                self.loc.move(pos[:2], heading)
+        if self.state == "route":
+            return self._route_step(now, heading, free)
         if self.state == "look":
             if prob is not None:
                 self.scan.append((heading, np.asarray(prob, float)))
@@ -302,29 +444,17 @@ class ZoneNavigator:
                 self._recent.append((now, float(prob[k]), int(np.argmax(prob)) == k))
             while self._recent and now - self._recent[0][0] > max(nav["early_stop_s"], nav["lost_s"]):
                 self._recent.popleft()
-            end, vx = None, nav["approach_speed"]
             wz = float(np.clip(0.8 * wrap(self.best_heading - heading), -0.3, 0.3))
-            self.avoiding = 0
-            if free is not None:
-                self._last_free = (free, now)
-            elif self._last_free[0] is not None and now - self._last_free[1] <= 0.5:
-                free = self._last_free[0]                                     # hold the last scan between scans
-            if self.have_lidar and free is not None:
-                free = np.asarray(free, float)
-                if not np.any(free > 0):
-                    end = "no LiDAR data"
-                else:
-                    front = float(free[0])
-                    if front <= nav["stop_obstacle_m"]:
-                        self.blocked[self.bin_of(heading)] = self.legs
-                        end = f"blocked {front:.2f} m ahead"
-                    elif front <= nav["slow_obstacle_m"]:                       # steer round it, slowly
-                        left, right = min(free[1], free[2]), min(free[-1], free[-2])
-                        self.avoiding = 1 if left >= right else -1
-                        wz = self.avoiding * nav["avoid_turn_rate"]
-                        vx = nav["approach_speed"] * 0.4
+            vx, wz, end = self._avoid(now, heading, free, nav["approach_speed"], wz)
+            if (self.loc is not None and end is None and now - self._replan_t >= 1.0 and self.loc.localized):
+                self._replan_t = now
+                if self._start_route(now):                                     # localised mid-leg: switch to the map
+                    return 0.0, 0.0
             span = now - self._recent[0][0] if self._recent else 0.0
-            if end is None and not self.detour and span >= nav["early_stop_s"] * 0.9:
+            # with the map, the camera alone does not cut a leg short (it stopped legs after 2 s in a loop on the
+            # real dog): only when the map also puts the dog in the target zone
+            camera_may_stop = self.loc is None or float(self.loc.zone_belief()[k]) >= self.mcfg["arrive_prob"]
+            if end is None and not self.detour and camera_may_stop and span >= nav["early_stop_s"] * 0.9:
                 w = [r for r in self._recent if now - r[0] <= nav["early_stop_s"]]
                 if all(r[2] for r in w) and np.mean([r[1] for r in w]) >= nav["early_stop_conf"]:
                     end = f"{self.classes[k]} recognised steadily"
@@ -332,7 +462,10 @@ class ZoneNavigator:
                 w = [r for r in self._recent if now - r[0] <= nav["lost_s"]]
                 if max(r[1] for r in w) < nav["lost_conf"]:
                     end = f"lost sight of {self.classes[k]}"
-            if end is None and now - self._t0 >= nav["leg_s"]:
+            leg_s = nav["leg_s"]
+            if self.exploring and self.loc is not None and not self.loc.localized:
+                leg_s = self.mcfg["explore_leg_s"]                              # not localised: cover more ground
+            if end is None and now - self._t0 >= leg_s:
                 end = "leg done"
             if end is not None:
                 self.msg = f"{end}; looking around"
@@ -358,6 +491,50 @@ class Heading:
             self.h = wrap(self.h + wz_cmd * (now - self.t))
         self.t = now
         return self.h
+
+
+_MAP_BASE = {}
+
+
+def map_overlay(view, nav, classes, size=190):
+    """Top-right of the camera view: the zone map (colour = zone, dark = never walked), the dog's estimated
+    position and heading (white when localised, grey while unsure), the planned route, and the belief."""
+    zm = nav.zmap
+    if zm is None:
+        return
+    nx, ny = zm.shape
+    s = size / max(nx, ny)
+    if id(zm) not in _MAP_BASE:
+        img = np.full((ny, nx, 3), 40, np.uint8)
+        k = zm.prob.argmax(2)
+        for z in range(len(classes)):
+            m = (zm.walk & (k == z)).T[::-1]
+            img[m] = (0.55 * np.array(COLORS[z % len(COLORS)]) + 0.45 * 90).astype(np.uint8)
+        _MAP_BASE[id(zm)] = cv2.resize(img, (int(nx * s), int(ny * s)), interpolation=cv2.INTER_NEAREST)
+    img = _MAP_BASE[id(zm)].copy()
+    h = img.shape[0]
+
+    def px(xy):
+        return int((xy[0] - zm.lo[0]) / zm.res * s), int(h - (xy[1] - zm.lo[1]) / zm.res * s)
+
+    if nav.path is not None and nav.state == "route":
+        cv2.polylines(img, [np.array([px(q) for q in nav.path], np.int32)], False, (255, 255, 255), 1)
+    st = nav.map_status
+    if st is not None:
+        ok, conf, zb, zp = st
+        e = nav.loc.estimate()
+        c = px(e["xy"])
+        col = (255, 255, 255) if ok else (150, 150, 150)
+        cv2.circle(img, c, 4, col, -1)
+        cv2.line(img, c, (int(c[0] + 10 * math.cos(e["heading"])), int(c[1] - 10 * math.sin(e["heading"]))), col, 2)
+        txt = (f"map: here {classes[zb]} {zp:.0%} (sure {conf:.0%})" if ok else
+               f"map: localising {conf:.0%} - drive around")
+    else:
+        txt = "map: waiting for odometry"
+    x0 = view.shape[1] - img.shape[1] - 8
+    view[8:8 + h, x0:x0 + img.shape[1]] = img
+    cv2.rectangle(view, (x0 - 1, 7), (x0 + img.shape[1], 8 + h), (200, 200, 200), 1)
+    put_text(view, txt, (max(x0 - 120, 4), 8 + h + 18), 0.45)
 
 
 def nav_panel(nav, classes, prob, fps, recording):
@@ -453,7 +630,8 @@ class LidarProfile:
     def __init__(self, link, go2cfg, nav, max_age_s=1.0):
         import lidar as lidar_mod
         bcfg = yaml.safe_load((Path(lidar_mod.__file__).parent / "config/behaviors.yaml").read_text())
-        self.corridor, self.nav, self.max_age_s = bcfg["safety"]["corridor"], nav, max_age_s
+        self.corridor = dict(bcfg["safety"]["corridor"], **(nav.get("corridor") or {}))
+        self.nav, self.max_age_s = nav, max_age_s
         self.lidar_mod, self.state = lidar_mod, link.state
         lcfg = dict(go2cfg["lidar"])
         lcfg["topic"] = nav.get("lidar_topic", lcfg["topic"])    # Test 1's config file itself is not changed
@@ -523,6 +701,8 @@ def main():
     ap.add_argument("--model", help="checkpoint (default: <results_dir>/resnet18/best.pt)")
     ap.add_argument("--target", help="zone to go to at start (name or 1-based number)")
     ap.add_argument("--allow-no-lidar", action="store_true", help="Wi-Fi / fake: walk without the obstacle check")
+    ap.add_argument("--map", help="zone map (default: navigation.map.file, made by real_go2/zone_map.py)")
+    ap.add_argument("--no-map", action="store_true", help="classifier-only navigation (no localisation / routes)")
     ap.add_argument("--headless", action="store_true")
     ap.add_argument("--lidar-check", action="store_true",
                     help="no autonomy: show the live LiDAR free space and whether the navigator would stop/slow "
@@ -540,13 +720,30 @@ def main():
     a.no_control = False
     tele = start_teleop(link, go2cfg, a, keyboard=not a.headless)
     profile, pose_fn = make_safety(link, go2cfg, cfg["navigation"], a.allow_no_lidar)
-    nav = ZoneNavigator(classes, cfg["navigation"], have_lidar=profile is not None)
+    zmap = None
+    if not a.no_map:
+        mpath = Path(a.map) if a.map else TEST2 / map_cfg(cfg["navigation"])["file"]
+        if pose_fn is None:
+            log.warning("No odometry on this connection: zone map off (classifier-only navigation).")
+        elif not mpath.exists():
+            log.warning("No zone map at %s: classifier-only navigation. Build it with  python real_go2/zone_map.py",
+                        mpath)
+        else:
+            zmap = ZoneMap.load(mpath)
+            if zmap.classes != list(classes):
+                log.warning("Zone map classes %s != model classes %s: map off.", zmap.classes, classes)
+                zmap = None
+            else:
+                log.info("Zone map %s: localising from odometry + camera. Drive around for a minute (different "
+                         "zones) until the map says 'here ...', or let the missions explore.", mpath.name)
+    nav = ZoneNavigator(classes, cfg["navigation"], have_lidar=profile is not None, zmap=zmap)
     apply_nav_speed(nav, cfg["navigation"], tele.speed_name)
     heading = Heading(pose_fn)
     tele.on_manual_input = lambda key: nav.cancel(f"cancelled by key '{key}'")
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     mp4 = out / f"goto_{stamp}.mp4"
     events, missions = [], []          # missions: one entry per zone request (target, result, reason, legs, time)
+    map_trace, next_trace = [], 0.0    # zone map belief every 0.5 s: t, odometry x y yaw, map x y, sure, zone, P
     writer, recording = None, a.headless
     prob, wz, last_seq, last_state = np.ones(len(classes)) / len(classes), 0.0, -1, "idle"
     t0 = time.monotonic()
@@ -595,7 +792,15 @@ def main():
                     break
                 continue
             free = profile() if (profile is not None and nav.active) else None
-            vx, wz = nav.update(now, h, new, free)
+            pose = pose_fn() if (pose_fn is not None and zmap is not None) else None
+            vx, wz = nav.update(now, h, new, free, pos=None if pose is None else pose[:2])
+            if pose is not None and now >= next_trace and nav.map_status is not None:
+                next_trace = now + 0.5
+                ok, conf, zb, zp = nav.map_status
+                e = nav.loc.estimate()
+                map_trace.append([round(now - t0, 2), *(round(float(v), 3) for v in pose),
+                                  round(float(e["xy"][0]), 2), round(float(e["xy"][1]), 2), round(conf, 3),
+                                  classes[zb], round(zp, 3)])
             if nav.active:
                 tele.set_autonomy(vx, 0.0, wz)
             else:
@@ -607,12 +812,16 @@ def main():
                 if nav.state in ("arrived", "failed", "idle") and missions and missions[-1]["result"] is None:
                     missions[-1].update(result="cancelled" if nav.state == "idle" else nav.state, reason=nav.msg, legs=nav.legs,
                                         explored=getattr(nav, "explored", 0),
+                                        map=None if nav.map_status is None else
+                                        {"localised": bool(nav.map_status[0]), "sure": round(nav.map_status[1], 3),
+                                         "zone": classes[nav.map_status[2]], "p": round(nav.map_status[3], 3)},
                                         seconds=round(now - t0 - missions[-1]["t"], 1))
                 if nav.state == "arrived" and cfg["navigation"].get("hello_on_arrival"):
                     tele.request_action("hello")
                 last_state = nav.state
             view = np.zeros((VIEW_H, VIEW_W, 3), np.uint8) if img is None else cv2.resize(img, (VIEW_W, VIEW_H))
             put_text(view, f"speed {tele.speed_name.upper()} (G)", (12, VIEW_H - 14), 0.5)
+            map_overlay(view, nav, classes)
             comp = np.hstack([view, nav_panel(nav, classes, prob, link.fps(), recording)])
             if recording:
                 if writer is None:
@@ -657,7 +866,9 @@ def main():
         (out / f"goto_{stamp}.json").write_text(json.dumps(
             {"classes": classes, "target": classes[nav.target] if nav.target is not None else None,
              "final_state": nav.state, "legs": nav.legs, "source": link.name, "lidar": profile is not None,
-             "video": mp4.name if writer is not None else None, "missions": missions, "events": events},
+             "video": mp4.name if writer is not None else None, "zone_map": zmap is not None, "missions": missions,
+             "events": events, "map_trace_columns": ["t", "odom_x", "odom_y", "odom_yaw", "map_x", "map_y", "sure",
+                                                     "zone", "p"], "map_trace": map_trace},
             indent=1))
         print(f"{nav.state}: {nav.msg}")
 
