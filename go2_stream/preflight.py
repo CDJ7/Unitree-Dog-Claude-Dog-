@@ -214,8 +214,9 @@ def check_lidar(cfg):
         return report("PASS", f"data on {topic}", f"arrived after sending 'ON' to {cfg['lidar']['switch_topic']} "
                                                 f"({c.first.width * c.first.height} points)")
     return report("FAIL", f"data on {topic}", f"nothing within {WAIT_S:.0f} s even after the ON switch",
-                  "LiDAR cover clean / not blocked? Dog fully booted? Try the Unitree app's LiDAR switch\n"
-                  "or lidar.topic: rt/utlidar/cloud_deskewed in config.yaml")
+                  "LiDAR cover clean / not blocked? Dog fully booted? Try the Unitree app's LiDAR switch.\n"
+                  "Use lidar.topic: rt/utlidar/cloud_deskewed (odom frame); rt/utlidar/cloud is in the upside-down\n"
+                  "sensor frame and makes the floor look like an obstacle")
 
 
 def main():
@@ -225,8 +226,11 @@ def main():
     ap.add_argument("--no-dds", action="store_true", help="network + software checks only")
     args = ap.parse_args()
     cfg = yaml.safe_load(open(args.config))
-    iface = args.iface or cfg["network"]["iface"]
-    print(f"Go2 preflight  iface={iface}  robot={ROBOT_IP}\n")
+    from netutil import resolve_iface
+    asked = args.iface or cfg["network"]["iface"]
+    iface = resolve_iface(asked)
+    print(f"Go2 preflight  iface={iface}  robot={ROBOT_IP}" + (f"  (asked for {asked}: not on 192.168.123.x)"
+                                                              if iface != asked else "") + "\n")
 
     net_ok = check_interface(iface)
     ping_ok = check_ping() if net_ok else report("SKIP", f"ping {ROBOT_IP}", "needs the interface/address first")
@@ -237,7 +241,8 @@ def main():
         report("SKIP", "DDS data checks", "--no-dds")
     elif not (net_ok and ping_ok and sw_ok):
         why = "fix the FAILs above first"
-        for t in ("data on rt/lowstate", "data on rt/sportmodestate", "front camera frame", "data on rt/utlidar/cloud"):
+        for t in ("data on rt/lowstate", "data on rt/sportmodestate", "front camera frame",
+                  f"data on {cfg['lidar']['topic']}"):
             report("SKIP", t, why)
     else:
         from unitree_sdk2py.core.channel import ChannelFactoryInitialize

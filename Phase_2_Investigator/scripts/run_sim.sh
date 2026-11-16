@@ -11,6 +11,8 @@
 #   ./scripts/run_sim.sh --scenario 3 --mode render      # overview sheet of a scenario
 #   ./scripts/run_sim.sh --random 7 --mode explore       # a seeded random scenario
 #   ./scripts/run_sim.sh --mode check                    # headless A1 acceptance check
+#   ./scripts/run_sim.sh --scenario 1 --controller learned   # any mode with the learned Go2 RL walking policy
+#                                                            # (Test 2's choice; default: scripted trot)
 #
 # Modes: teleop | teleop-simple | sensors | explore | inspect | record | playback | dataset | render | check
 # Other options (--scenario, --random, --env, --spawn X Y YAW, --viewer, --max-time ...) go to the script.
@@ -26,7 +28,9 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --mode) MODE="$2"; shift 2 ;;
     --mode=*) MODE="${1#*=}"; shift ;;
-    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
+    --controller) export GO2_CONTROLLER="$2"; shift 2 ;;
+    --controller=*) export GO2_CONTROLLER="${1#*=}"; shift ;;
+    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
     *) ARGS+=("$1"); shift ;;
   esac
 done

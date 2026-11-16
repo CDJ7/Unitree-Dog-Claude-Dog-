@@ -12,6 +12,9 @@ results_dir: results/real_q1
 image_hw: [168, 224]                   # network input, same as the simulated Q1
 crop: center43                         # 16:9 Go2 frames -> centred 4:3 window -> 320 x 240 (as the sim camera)
 record_hz: 5                           # saved frames per second, as in Q2
+survey:                                # record_real.py T key: one slow full turn on the spot, recorded
+  turn_rate: 0.35                      # rad/s -> ~18 s per turn, ~90 frames (one every ~4 deg). Not below ~0.25: the
+                                       # Go2 barely turns on the spot at small rates
 
 split:
   mode: by_order                       # recording sessions in order: last -> test, second-to-last -> val, rest -> train
@@ -75,13 +78,29 @@ navigation:                            # goto_zone.py: turn-and-look localisatio
   stop_obstacle_m: 0.60                # end the leg (and remember the direction as blocked) this close, + speed term
   slow_obstacle_m: 1.10                # closer than this (+ speed term): slow down and steer to the freer side
   reaction_s: 0.5                      # both distances grow by speed x this (LiDAR delay + braking)
-  # walking corridor: Test 1's safety.corridor with these changes (Test 1's file is not edited)
-  corridor: {z_min: -0.20}             # see obstacles from ~11 cm above the floor (Test 1: -0.15, ~16 cm)
+  # walking corridor: Test 1's safety.corridor with these changes. Test 1's file now has the same z_min (synced
+  # 16 Nov 2026); the override stays so go-to-zone does not depend on it.
+  corridor: {z_min: -0.20}             # see obstacles from ~11 cm above the floor (Test 1 was -0.15, ~16 cm)
   avoid_turn_rate: 0.40                # rad/s while steering round an obstacle
   blocked_memory_legs: 3               # avoid a direction that blocked a leg for this many legs
   explore_legs: 10                     # target not in view: walk into the most open direction, at most this often
   edge_jump_m: 0.8                     # exploring prefers directions just past an obstacle's edge (free-space jump)
   hello_on_arrival: true               # wave when it gets there
+  # obstacle memory (real_go2/obstacle_memory.py): obstacles are remembered in the odometry frame, so an object
+  # the dog stopped in front of is not forgotten when it drops out of the LiDAR's view (blind zone, too low,
+  # behind while turning). Every LiDAR decision uses min(live, remembered). Needs odometry (Ethernet).
+  # Closed-loop check: python real_go2/nav_sim.py --blind  (memory off vs on with a blind-zone LiDAR)
+  turn_clearance_m: 0.45               # remembered obstacle closer than this: step away before turning on the spot
+                                       # (the Go2's rear corners swing out ~0.39 m from its centre)
+  backoff_m: 0.25                      # step straight away from the nearest remembered obstacle (forward/back and
+                                       # sideways) for up to ~2x this, only if the memory says there is room
+  backoff_speed: 0.15                  # m/s
+  memory:
+    enabled: true
+    blind_m: 0.45                      # don't trust the LiDAR to see an object closer than this (from the centre)
+    fov_deg: 180.0                     # the sector ahead where the LiDAR reliably sees low objects
+    forget_s: 120.0                    # unseen cells fade after this long
+                                       # (goto_zone.py --objects also labels remembered obstacles with Test 1's YOLO)
   # zone map (real_go2/zone_map.py): the recording sessions aligned into one map of the lab; the dog localises
   # on it from odometry + the classifier and follows planned routes. Settings not listed use MAP_DEFAULTS there.
   map:

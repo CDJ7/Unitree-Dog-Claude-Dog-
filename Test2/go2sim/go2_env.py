@@ -61,7 +61,7 @@ class CrimeSceneGo2:
         c = self.ctrl = self.sim.controller
         self.controller_name = controller
         self.sim.settle(settle_s)
-        if controller == "learned":
+        if controller == "learned" and not c.policy_status.get("loaded"):   # SimSession may have loaded it already
             if not c.command({"type": "policy", "action": "load"}) or not c.policy_status["loaded"]:
                 raise RuntimeError(f"learned policy failed to load: {c.policy_status}")
             self.sim.step(1.0)                       # blend into the policy's stance

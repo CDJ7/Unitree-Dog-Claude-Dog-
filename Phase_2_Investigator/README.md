@@ -11,12 +11,24 @@ evidence ([docs/stage_a_checklist.md](docs/stage_a_checklist.md)). Waiting for c
 Stage B (analysis + GUI). The BPA maths and mechanism classifier built earlier stay untouched until then.
 Plan: [docs/plan.md](docs/plan.md).
 
+**Update (16 Nov 2026): the newest crime-scene-dog work is in [`../Test2/`](../Test2/README.md)**, which builds on
+this simulator unchanged (it imports `open_scenario` / `SimSession`):
+- zone recognition from the camera (Q1), in simulation and on the real Go2 in the lab;
+- a 17,123-frame dataset (36 runs, 6 scenes) recorded in these scenarios (Q2, `Test2/results/q2/dataset_stats.json`);
+- a PPO "search the crime scene" policy (Q3);
+- "go to zone" autonomy on the real dog with LiDAR obstacle avoidance, a zone map, and an obstacle memory.
+
+Taken back into this folder:
+- `--controller learned` (any mode of `scripts/run_sim.sh`, or `SimSession(controller="learned")`) walks with the
+  simulator's pretrained Go2 RL policy instead of the scripted trot. Test 2 measured it tracking commands much
+  better (0.43 vs 0.31 m/s for a 0.4 m/s command).
+- `main` now contains this whole simulation (the `phase2-csi` branch was merged): no branch checkout needed.
+
 ## Setup (Windows + WSL2 Ubuntu 22.04, or native Ubuntu 22.04)
 
 ```bash
 git clone https://github.com/CDJ7/Unitree-Dog-Claude-Dog-.git ~/Unitree-Dog-Claude-Dog-   # under ~, NOT /mnt/c
-cd ~/Unitree-Dog-Claude-Dog- && git checkout phase2-csi
-cd Phase_2_Investigator
+cd ~/Unitree-Dog-Claude-Dog-/Phase_2_Investigator      # main has everything (phase2-csi is merged)
 python3 -m venv ~/go2venv && source ~/go2venv/bin/activate   # or reuse an existing Python 3.10+ venv
 ./scripts/setup.sh --check     # read-only: WSL2, GPU, WSLg, Python, rendering
 ./scripts/setup.sh             # simulator submodule (~520 MB, shallow) + Python packages

@@ -5,6 +5,15 @@
                                           #   and nav_sim_paths.png (every path drawn)
     python real_go2/nav_sim.py --map      # the lab's zone map: every zone -> every other zone, from cold start
                                           #   -> results/real_q1/nav_map_sweep.json + nav_map_paths.png
+    python real_go2/nav_sim.py --blind    # LiDAR with a near blind zone + forward-only view, low boxes in the
+                                          #   way: obstacle memory off vs on -> results/real_q1/nav_blind_sweep.json
+                                          #   + nav_blind_paths.png
+
+--blind world: the failure seen in the lab. The simulated LiDAR returns POINTS (not distances), only inside
++-fov/2 of straight ahead and only farther than blind_m from the dog's centre, so an object the dog has walked up
+to drops out of view after it stops and turns. The points go through the same free_profile as the real LiDAR and
+into the ObstacleMemory. The dog cannot pass through obstacles: a step that would bring its centre within
+BODY_R of one is refused and counted as a bump (on the real dog: a touch).
 
 --map world: the walkable area of results/real_q1/zone_map.npz is free space, everything else is an obstacle
 for the simulated LiDAR. The camera is simulated with REAL classifier outputs: the validation session's
@@ -32,6 +41,8 @@ TEST2 = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TEST2))
 from real_go2.goto_zone import ZoneNavigator, wrap  # noqa: E402
 from real_go2.zone_map import ZoneMap, apply, map_cfg, rot  # noqa: E402
+from real_go2.obstacle_memory import ObstacleMemory, mem_cfg  # noqa: E402
+from real_go2.goto_zone import free_profile  # noqa: E402
 
 WALLS = [((0, 0), (6, 0)), ((6, 0), (6, 4)), ((6, 4), (0, 4)), ((0, 4), (0, 0))]
 
@@ -258,6 +269,154 @@ def plot_map_paths(zm, classes, paths, path):
     plt.close(fig)
 
 
+# the Go2's footprint (body frame): ~0.70 m long, ~0.31 m wide, centre in the middle; outline sample points
+BODY_HALF_L, BODY_HALF_W = 0.35, 0.16
+_BX, _BY = np.meshgrid(np.linspace(-BODY_HALF_L, BODY_HALF_L, 8), np.linspace(-BODY_HALF_W, BODY_HALF_W, 3))
+BODY_PTS = np.column_stack([_BX.ravel(), _BY.ravel()])
+BLIND_LIDAR = {"blind_m": 0.75, "fov_deg": 180.0, "rays": 181, "max_m": 4.0}
+# Test 1's safety.corridor with real_config's z_min change
+SIM_CORRIDOR = {"x_min": 0.05, "x_max": 1.3, "half_width_m": 0.3, "z_min": -0.20, "z_max": 0.45, "min_points": 3}
+BLIND_LAYOUTS = {
+    "low box in the way": box(2.6, 3.0, 1.6, 2.4),
+    "two low boxes": box(2.4, 2.8, 1.4, 2.1) + box(3.4, 3.8, 2.0, 2.8),
+}
+
+
+def lidar_points(x, y, h, segs, lidar=BLIND_LIDAR):
+    """Simulated LiDAR points (body frame, z = 0.1 m) from rays inside +-fov/2, dropping returns closer than
+    blind_m (the near blind zone / body filter) and farther than max_m."""
+    half = math.radians(lidar["fov_deg"]) / 2
+    pts = []
+    for a in np.linspace(-half, half, lidar["rays"]):
+        d = raycast(x, y, h + a, segs, lidar["max_m"] + 0.1)
+        if lidar["blind_m"] <= d <= lidar["max_m"]:
+            pts.append((d * math.cos(a), d * math.sin(a), 0.1))
+    return np.array(pts).reshape(-1, 3)
+
+
+def seg_dist(x, y, segs):
+    best = 9.0
+    for (x1, y1), (x2, y2) in segs:
+        ex, ey = x2 - x1, y2 - y1
+        t = max(0.0, min(1.0, ((x - x1) * ex + (y - y1) * ey) / max(ex * ex + ey * ey, 1e-12)))
+        best = min(best, math.hypot(x - x1 - t * ex, y - y1 - t * ey))
+    return best
+
+
+def body_clear(x, y, h, segs, margin=0.02):
+    """True if the dog's rectangular footprint at (x, y, h) keeps margin from every obstacle segment."""
+    c, s_ = math.cos(h), math.sin(h)
+    for bx, by in BODY_PTS:
+        if seg_dist(x + c * bx - s_ * by, y + s_ * bx + c * by, segs) < margin:
+            return False
+    return True
+
+
+def run_blind(classes, nav_cfg, obstacles, start, use_memory, target=(5.2, 2.0), zone_x=4.5, steps=9000,
+              dt=0.1, trace=None):
+    """Closed loop with the blind-zone LiDAR. Returns (navigator, x, y, closest approach, bumps)."""
+    n = len(classes)
+    target_k, other_k = classes.index("shelves"), classes.index("open_area")
+    nb, look = int(nav_cfg["heading_bins"]), float(nav_cfg["lookahead_m"])
+    segs = WALLS + list(obstacles)
+    x, y, h = start
+    tx, ty = target
+    nav = ZoneNavigator(classes, nav_cfg, have_lidar=True)
+    mem = ObstacleMemory(mem_cfg(nav_cfg)) if use_memory else None
+    t, closest, bumps, touching = 0.0, 9.0, 0, False
+    nav.start(target_k, t, h)
+    for _ in range(steps):
+        if x > zone_x:
+            prob = prob_for(target_k, 0.85, n)
+        else:
+            bearing = math.atan2(ty - y, tx - x)
+            prob = prob_for(target_k, 0.9, n) if abs(wrap(h - bearing)) < 0.45 else prob_for(other_k, 0.8, n)
+        pts = lidar_points(x, y, h, segs)
+        free = free_profile(pts, nb, SIM_CORRIDOR, look)
+        mem_free = None
+        if mem is not None:
+            mem.update_lidar(pts, (x, y, h), t)
+            mem_free = mem.free_profile((x, y, h), nb, SIM_CORRIDOR, look)
+        vx, wz = nav.update(t, h, prob, free, mem_free=mem_free)
+        if nav.state in ("arrived", "failed"):
+            break
+        vy = nav.cmd_vy                            # the back-off strafes
+        nx_ = x + (vx * math.cos(h) - vy * math.sin(h)) * dt
+        ny_ = y + (vx * math.sin(h) + vy * math.cos(h)) * dt
+        nh = wrap(h + wz * dt)
+        if body_clear(nx_, ny_, nh, segs):
+            x, y, h, touching = nx_, ny_, nh, False
+        elif not touching:                         # one bump per contact, not per blocked step
+            bumps, touching = bumps + 1, True
+        t += dt
+        closest = min(closest, seg_dist(x, y, segs))
+        if trace is not None:
+            trace.append((x, y))
+    return nav, x, y, closest, bumps
+
+
+BLIND_STARTS = [(1.0, 2.0, 0.0), (1.0, 1.5, 0.3), (1.0, 2.5, -0.3), (0.8, 1.0, 0.6), (0.8, 3.0, -0.6),
+                (1.5, 2.0, math.pi / 2), (1.5, 2.0, -math.pi / 2), (1.2, 2.0, math.pi)]
+
+
+def blind_sweep(cfg):
+    """Memory off vs on, every blind layout x BLIND_STARTS -> nav_blind_sweep.json + nav_blind_paths.png."""
+    out = {"navigation": cfg["navigation"], "lidar": BLIND_LIDAR,
+           "body_m": {"length": 2 * BODY_HALF_L, "width": 2 * BODY_HALF_W}, "modes": {}}
+    paths = {}
+    for mode in ("no_memory", "memory"):
+        rows = []
+        for name, obs in BLIND_LAYOUTS.items():
+            for st in BLIND_STARTS:
+                tr = [st[:2]]
+                nav, x, y, c, bumps = run_blind(cfg["classes"], cfg["navigation"], obs, st, mode == "memory",
+                                                trace=tr)
+                paths.setdefault((mode, name), []).append((nav.state == "arrived" and bumps == 0, tr))
+                rows.append({"layout": name, "start": [st[0], st[1], round(math.degrees(st[2]))],
+                             "result": nav.state, "bumps": bumps, "closest_m": round(c, 3), "legs": nav.legs,
+                             "msg": nav.msg})
+        s = {"runs": len(rows), "arrived": sum(r["result"] == "arrived" for r in rows),
+             "runs_with_a_bump": sum(r["bumps"] > 0 for r in rows), "bumps": sum(r["bumps"] for r in rows),
+             "arrived_without_bump": sum(r["result"] == "arrived" and r["bumps"] == 0 for r in rows),
+             "closest_m": min(r["closest_m"] for r in rows)}
+        out["modes"][mode] = {"summary": s, "runs_detail": rows}
+        print(f"{mode:>9}: {s}")
+    path = TEST2 / cfg["results_dir"] / "nav_blind_sweep.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(out, indent=1))
+    plot_blind(paths, path.with_name("nav_blind_paths.png"))
+    print(f"-> {path.relative_to(TEST2)}, {path.with_name('nav_blind_paths.png').relative_to(TEST2)}")
+    return out
+
+
+def plot_blind(paths, path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    names = list(BLIND_LAYOUTS)
+    fig, axes = plt.subplots(2, len(names), figsize=(6 * len(names), 8.4))
+    for r, mode in enumerate(("no_memory", "memory")):
+        for c, name in enumerate(names):
+            ax = axes[r, c]
+            ax.add_patch(plt.Rectangle((4.5, 0), 1.5, 4, color="#f2c14e", alpha=0.35, lw=0))
+            for seg in BLIND_LAYOUTS[name]:
+                (x1, y1), (x2, y2) = seg
+                ax.plot([x1, x2], [y1, y2], color="#333333", lw=2.5)
+            runs = paths[(mode, name)]
+            for ok, tr in runs:
+                a = np.array(tr)
+                ax.plot(a[:, 0], a[:, 1], color="#2e8b57" if ok else "#d1495b", lw=1.1, alpha=0.8)
+                ax.plot(a[0, 0], a[0, 1], "o", color="black", ms=3)
+            ax.set_title(f"{'memory ON' if mode == 'memory' else 'memory OFF'} - {name}: "
+                         f"{sum(o for o, _ in runs)}/{len(runs)} clean arrivals", fontsize=10)
+            ax.set_xlim(0, 6), ax.set_ylim(0, 4), ax.set_aspect("equal")
+    fig.suptitle("Blind-zone LiDAR (nothing seen closer than 0.75 m or behind): green = arrived with no bump",
+                 fontsize=10)
+    fig.tight_layout()
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+
 LAYOUTS = {"low desk blocks the walk, not the view": (box(2.3, 2.7, 1.0, 3.0), False),
            "tall shelf hides the zone": (box(2.3, 2.7, 0.8, 3.2), True)}
 STARTS = [(1.0, 1.0), (1.0, 2.0), (1.0, 3.0), (0.6, 2.0)]
@@ -294,6 +453,9 @@ def main():
     cfg = yaml.safe_load((TEST2 / "real_go2/real_config.yaml").read_text())
     if "--map" in sys.argv[1:]:
         map_sweep(cfg)
+        return
+    if "--blind" in sys.argv[1:]:
+        blind_sweep(cfg)
         return
     out = {"navigation": cfg["navigation"], "layouts": {}}
     paths = {}

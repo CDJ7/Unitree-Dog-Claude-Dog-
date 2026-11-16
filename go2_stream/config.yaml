@@ -19,7 +19,11 @@ camera:
       ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
 
 lidar:
-  topic: rt/utlidar/cloud     # sensor_msgs/PointCloud2 (sensor_msgs.msg.dds_.PointCloud2_)
+  # sensor_msgs/PointCloud2 (sensor_msgs.msg.dds_.PointCloud2_). Use cloud_deskewed: it is in the odom frame (with
+  # the dog's own body removed) and perception.pipeline.cloud_to_body turns it into the body frame with the dog's
+  # pose. rt/utlidar/cloud is in the LiDAR's OWN frame, which is mounted upside down (z points down): the floor
+  # then looked like an obstacle 0.05 m away in every direction (Test 2 lab, 12 Nov 2026).
+  topic: rt/utlidar/cloud_deskewed
   switch_topic: rt/utlidar/switch
   switch_on_start: true       # publish "ON" to the switch topic at startup
   viewer: open3d              # "open3d" (falls back to "topdown" automatically) or "topdown"

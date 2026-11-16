@@ -28,8 +28,11 @@ ENG 6010 Test 2: a Unitree Go2 project.
   - `run_detection.py ... --mission-dry-run` (prints only).
 - `goto_zone.py --lidar-check` sends no autonomous motion, but it starts teleop. Let the user run it.
 - **Do not edit Test 1 files** (`../go2_stream/`, including `config/behaviors.yaml`) unless the user
-  explicitly says to. Propose the change instead.
-- After any code change, run `python -m pytest -q tests` (23 tests, no robot needed).
+  explicitly says to. Propose the change instead. (On 16 Nov 2026 the user asked for Test 2's lab fixes to be
+  synced into go2_stream: LiDAR topic, corridor, stop distance, interface auto-detect. Anything further still needs
+  their say-so.)
+- After any code change, run `python -m pytest -q tests` (no robot needed), and `cd ../go2_stream && python -m
+  pytest -q tests` if a Test 1 file changed.
 
 ## Results and honesty
 - Every number in the report must come from a file in `results/` written by the scripts. Never invent or
@@ -45,6 +48,12 @@ ENG 6010 Test 2: a Unitree Go2 project.
   `perception.pipeline.cloud_to_body`, then `free_profile`, with the corridor from
   `../go2_stream/config/behaviors.yaml` `safety.corridor`.
 - The navigator thresholds are in `real_go2/real_config.yaml` under `navigation:`.
+- Obstacle memory (`real_go2/obstacle_memory.py`, `navigation.memory`): obstacles are kept in the odometry frame
+  so a close object is not forgotten after the dog turns; `goto_zone.py --no-memory` turns it off for comparison,
+  `--objects` adds YOLO labels. Sim check: `python real_go2/nav_sim.py --blind`.
+- More localisation data: `real_go2/coverage.py` says where/which way the recordings are thin and writes a
+  recording plan (`results/real_q1/recording_plan.md`); the **T** key in `record_real.py` does a recorded survey
+  turn on the spot (it moves the dog: the user runs it).
 - Teleop (Test 1, `go2_stream/teleop.py`):
   - autonomy commands lapse after 0.3 s;
   - any manual key cancels autonomy;

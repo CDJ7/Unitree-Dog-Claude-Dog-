@@ -37,6 +37,11 @@ the zone everywhere:
 | [`goto_zone.py`](goto_zone.py) | Pick a zone (keys 1–4); the dog localises on the zone map and walks there |
 | [`zone_map.py`](zone_map.py) | Map of the lab from the recorded odometry + localiser + route planner (`--tune`, `--eval`) |
 | [`sources.py`](sources.py) | Connections: `sdk` (Ethernet), `webrtc` (Wi-Fi), `fake` (no robot) |
+| [`obstacle_memory.py`](obstacle_memory.py) | Remembers nearby obstacles (LiDAR, optional YOLO labels) after they leave the view (Part F) |
+| [`coverage.py`](coverage.py) | Where the training pictures are thin (position x viewing direction) → recording plan (Part G) |
+
+> **Next (16 Nov 2026): [`LAB_PLAN_2.md`](LAB_PLAN_2.md)** measures the obstacle memory on the dog, records survey
+> data for a better localiser, and runs go-to-zone A/B trials.
 
 Driving and safety reuse Test 1's teleop ([`go2_stream/teleop.py`](../../go2_stream/teleop.py)): speed
 limits, a watchdog, and manual override of anything autonomous.
@@ -359,6 +364,70 @@ an exact spot. It works best when the zones look clearly different and the targe
 the dog starts. Expect lab_1 / lab_2 mix-ups if they look alike. The JSON log shows exactly why it
 stopped (arrived, blocked, boxed in, not seen, out of legs), so you can report successes and failures
 honestly. Try each zone from a few starting points.
+
+## Part F — Obstacle memory: don't forget what is right next to you
+
+**The problem (lab, Nov 2026).** The dog stops about 0.5 m from an object and turns on the spot to look around.
+At that distance the object can drop out of the LiDAR's view:
+- too close: the sensor's blind zone, or the dog's own body filter in `cloud_deskewed`;
+- too low;
+- behind the sensor during the turn.
+
+No points reads as "free", so after the turn the object is gone as far as the navigator knows, and the dog can
+walk back into it.
+
+**The fix:** [`obstacle_memory.py`](obstacle_memory.py), on by default whenever there is odometry (Ethernet).
+- **Remembered in the room's frame.** Every LiDAR scan's obstacle points are stored in the odometry frame, so
+  they stay in the right place while the dog turns.
+- **Forgotten only when seen through.** A remembered spot is dropped only when the LiDAR sees **through** it: a
+  return farther away in the same direction, no higher than where the obstacle was. It is never dropped just
+  because it is out of view or in the blind zone. Unseen spots fade after `memory.forget_s` (120 s).
+- **Remembered obstacles count.** Every decision (stop, slow down, steer, choose a direction after a
+  look-around) uses the nearer of the live LiDAR and the memory. The panel says `blocked 0.55 m ahead
+  (remembered)` when the memory made the call.
+- **Step away before turning.** Before turning on the spot, if something remembered is within
+  `turn_clearance_m` (0.45 m; the Go2's corners swing out about 0.39 m), the dog first **steps straight away from
+  it**, sideways if needed (state `BACKOFF`).
+- **`--objects`** also runs Test 1's YOLO with LiDAR fusion about twice a second. Remembered obstacles then get
+  names: the camera view shows `remembered: chair 0.62 m behind-left`. A detected object blocks the way even if
+  the LiDAR never saw it.
+
+```bash
+python real_go2/nav_sim.py --blind      # simulation: blind-zone LiDAR, memory off vs on
+python real_go2/goto_zone.py --source sdk --iface eth1 --lidar-check --model results/real_q1/resnet18/best.pt
+                                        # by hand: drive up to a box, turn away, the memory keeps it
+python real_go2/goto_zone.py --source sdk --iface eth1 --no-memory   # the old behaviour, for comparison
+```
+
+**Simulation result** (`results/real_q1/nav_blind_sweep.json`, `nav_blind_paths.png`). The simulated LiDAR
+sees nothing closer than 0.75 m and nothing behind the dog. The dog has a 0.70 x 0.32 m body. Two layouts with
+low boxes between the dog and the target zone, 8 starts each:
+
+| | Arrived | Runs with a bump | Bumps |
+|---|---|---|---|
+| memory off | 8/16 | 8 | 30 |
+| memory on | 16/16 | 0 | 0 |
+
+This is a 2-D test of the decision logic. The real numbers come from [`LAB_PLAN_2.md`](LAB_PLAN_2.md),
+sessions 1, 2 and 5.
+
+## Part G — More pictures, from every direction: coverage and survey turns
+
+The localiser is only as good as its training pictures. Driving tours mostly look **along** the route, so a spot
+seen from an unusual direction is easily taken for another zone. The held-out session confused open_area with
+lab_2 83 times out of 465.
+
+1. `python real_go2/coverage.py` puts every recorded frame on the zone map with the direction it faced. It
+   counts frames per 0.5 m cell and per 45° direction, then writes:
+   - `results/real_q1/coverage.png`: the map, numbered survey spots, and how many directions each cell was
+     seen from;
+   - `recording_plan.md`: the spots, the directions they are missing, and the zones the classifier confuses;
+   - `coverage.json`.
+2. In `record_real.py`, drive to a spot, press the zone number, then press **T**. The dog does one slow,
+   recorded turn on the spot (`survey.turn_rate`, about 18 s, ~90 frames). Any driving key or SPACE stops it.
+   The spot is logged in `metadata.json` under `"surveys"`.
+3. Rebuild the map, retrain, evaluate, and run `coverage.py` again to see the gaps close
+   (`LAB_PLAN_2.md`, session 4).
 
 ## Filming checklist
 1. A phone films the dog. Run `live_zone.py` and `goto_zone.py` with **V** to record the screen view.

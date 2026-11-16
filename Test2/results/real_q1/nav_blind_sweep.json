@@ -1,0 +1,520 @@
+{
+ "navigation": {
+  "scan_rate": 0.5,
+  "heading_bins": 24,
+  "seen_conf": 0.4,
+  "arrive_share": 0.5,
+  "approach_speed": 0.25,
+  "speed_presets": {
+   "slow": {
+    "approach_speed": 0.25,
+    "scan_rate": 0.5
+   },
+   "medium": {
+    "approach_speed": 0.35,
+    "scan_rate": 0.6
+   },
+   "fast": {
+    "approach_speed": 0.45,
+    "scan_rate": 0.7
+   }
+  },
+  "leg_s": 6.0,
+  "max_legs": 20,
+  "early_stop_conf": 0.8,
+  "early_stop_s": 2.0,
+  "lost_conf": 0.25,
+  "lost_s": 1.5,
+  "turn_gain": 1.5,
+  "turn_max_rate": 1.0,
+  "turn_min_rate": 0.25,
+  "turn_tolerance_rad": 0.1,
+  "turn_timeout_s": 12.0,
+  "lidar_topic": "rt/utlidar/cloud_deskewed",
+  "lookahead_m": 2.5,
+  "want_free_m": 1.6,
+  "stop_obstacle_m": 0.6,
+  "slow_obstacle_m": 1.1,
+  "reaction_s": 0.5,
+  "corridor": {
+   "z_min": -0.2
+  },
+  "avoid_turn_rate": 0.4,
+  "blocked_memory_legs": 3,
+  "explore_legs": 10,
+  "edge_jump_m": 0.8,
+  "hello_on_arrival": true,
+  "turn_clearance_m": 0.45,
+  "backoff_m": 0.25,
+  "backoff_speed": 0.15,
+  "memory": {
+   "enabled": true,
+   "blind_m": 0.45,
+   "fov_deg": 180.0,
+   "forget_s": 120.0
+  },
+  "map": {
+   "file": "results/real_q1/zone_map.npz",
+   "evidence_weight": 0.3,
+   "classifier_floor": 0.3,
+   "diffuse_s": 6.0,
+   "localized_conf": 0.5,
+   "arrive_prob": 0.6,
+   "arrive_min_share": 0.2,
+   "arrive_prob_unlocalized": 0.9,
+   "core_prob": 0.8
+  }
+ },
+ "lidar": {
+  "blind_m": 0.75,
+  "fov_deg": 180.0,
+  "rays": 181,
+  "max_m": 4.0
+ },
+ "body_m": {
+  "length": 0.7,
+  "width": 0.32
+ },
+ "modes": {
+  "no_memory": {
+   "summary": {
+    "runs": 16,
+    "arrived": 8,
+    "runs_with_a_bump": 8,
+    "bumps": 30,
+    "arrived_without_bump": 8,
+    "closest_m": 0.232
+   },
+   "runs_detail": [
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.0,
+      2.0,
+      0
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.261,
+     "legs": 7,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.0,
+      1.5,
+      17
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.355,
+     "legs": 6,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.0,
+      2.5,
+      -17
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.34,
+     "legs": 6,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      0.8,
+      1.0,
+      34
+     ],
+     "result": "look",
+     "bumps": 1,
+     "closest_m": 0.398,
+     "legs": 4,
+     "msg": "shelves recognised steadily; looking around"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      0.8,
+      3.0,
+      -34
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.595,
+     "legs": 7,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.5,
+      2.0,
+      90
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.323,
+     "legs": 7,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.5,
+      2.0,
+      -90
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.239,
+     "legs": 6,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.2,
+      2.0,
+      180
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.327,
+     "legs": 7,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.0,
+      2.0,
+      0
+     ],
+     "result": "look",
+     "bumps": 2,
+     "closest_m": 0.265,
+     "legs": 4,
+     "msg": "leg done; looking around"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.0,
+      1.5,
+      17
+     ],
+     "result": "look",
+     "bumps": 2,
+     "closest_m": 0.266,
+     "legs": 5,
+     "msg": "shelves recognised steadily; looking around"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.0,
+      2.5,
+      -17
+     ],
+     "result": "look",
+     "bumps": 1,
+     "closest_m": 0.373,
+     "legs": 3,
+     "msg": "shelves recognised steadily; looking around"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      0.8,
+      1.0,
+      34
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.232,
+     "legs": 9,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      0.8,
+      3.0,
+      -34
+     ],
+     "result": "look",
+     "bumps": 1,
+     "closest_m": 0.388,
+     "legs": 7,
+     "msg": "lost sight of shelves; looking around"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.5,
+      2.0,
+      90
+     ],
+     "result": "failed",
+     "bumps": 19,
+     "closest_m": 0.39,
+     "legs": 20,
+     "msg": "gave up after 20 legs (here looks like open_area)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.5,
+      2.0,
+      -90
+     ],
+     "result": "look",
+     "bumps": 2,
+     "closest_m": 0.335,
+     "legs": 2,
+     "msg": "shelves recognised steadily; looking around"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.2,
+      2.0,
+      180
+     ],
+     "result": "look",
+     "bumps": 2,
+     "closest_m": 0.378,
+     "legs": 3,
+     "msg": "shelves recognised steadily; looking around"
+    }
+   ]
+  },
+  "memory": {
+   "summary": {
+    "runs": 16,
+    "arrived": 16,
+    "runs_with_a_bump": 0,
+    "bumps": 0,
+    "arrived_without_bump": 16,
+    "closest_m": 0.311
+   },
+   "runs_detail": [
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.0,
+      2.0,
+      0
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.526,
+     "legs": 9,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.0,
+      1.5,
+      17
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.351,
+     "legs": 7,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.0,
+      2.5,
+      -17
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.348,
+     "legs": 6,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      0.8,
+      1.0,
+      34
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.443,
+     "legs": 9,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      0.8,
+      3.0,
+      -34
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.41,
+     "legs": 9,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.5,
+      2.0,
+      90
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.388,
+     "legs": 8,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.5,
+      2.0,
+      -90
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.404,
+     "legs": 8,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "low box in the way",
+     "start": [
+      1.2,
+      2.0,
+      180
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.344,
+     "legs": 8,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.0,
+      2.0,
+      0
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.393,
+     "legs": 9,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.0,
+      1.5,
+      17
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.355,
+     "legs": 11,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.0,
+      2.5,
+      -17
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.387,
+     "legs": 7,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      0.8,
+      1.0,
+      34
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.424,
+     "legs": 10,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      0.8,
+      3.0,
+      -34
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.33,
+     "legs": 8,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.5,
+      2.0,
+      90
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.317,
+     "legs": 5,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.5,
+      2.0,
+      -90
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.335,
+     "legs": 14,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    },
+    {
+     "layout": "two low boxes",
+     "start": [
+      1.2,
+      2.0,
+      180
+     ],
+     "result": "arrived",
+     "bumps": 0,
+     "closest_m": 0.311,
+     "legs": 5,
+     "msg": "ARRIVED at shelves (100% of the views)"
+    }
+   ]
+  }
+ }
+}

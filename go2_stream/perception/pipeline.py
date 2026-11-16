@@ -36,6 +36,12 @@ def cloud_to_body(cloud_msg, sport_state, mode, lidar_mod):
         return None, "empty point cloud"
     frame_id = str(getattr(cloud_msg.header, "frame_id", ""))
     is_odom = mode == "odom" or (mode == "auto" and "odom" in frame_id.lower())
+    if mode == "auto" and not is_odom and "lidar" in frame_id.lower():
+        # rt/utlidar/cloud ('utlidar_lidar'): the sensor's own frame, mounted upside down on the Go2. Used as if it
+        # were the body frame, the floor sits inside the walking corridor (Test 2 lab, 12 Nov 2026). No data beats
+        # wrong data: subscribe to rt/utlidar/cloud_deskewed instead (config.yaml lidar.topic).
+        return None, (f"cloud frame '{frame_id}' is the LiDAR's own (upside-down) frame: use "
+                      "lidar.topic: rt/utlidar/cloud_deskewed")
     if is_odom:
         if sport_state is None:
             return None, "cloud is in odom frame but no sportmodestate pose yet"

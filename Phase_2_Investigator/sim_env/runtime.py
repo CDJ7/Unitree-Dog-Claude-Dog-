@@ -77,7 +77,14 @@ class SimSession:
     """
 
     def __init__(self, environment=DEFAULT_ENVIRONMENT, scene_patch=None, spawn=None,
-                 cmd_timeout=0.5, fix_depth_misses=True):
+                 cmd_timeout=0.5, fix_depth_misses=True, controller=None):
+        # controller: "scripted" (the simulator's analytic trot, the default) or "learned" (the simulator's
+        # pretrained "MoE Rough" Go2 RL policy, ONNX). Test 2 measured the learned policy tracking commands much
+        # better (vx 0.4 -> 0.43 m/s vs 0.31 m/s scripted, see Test2/PLAN.md) and uses it for all its data.
+        # None -> environment variable GO2_CONTROLLER (set by scripts/run_sim.sh --controller), else "scripted".
+        self.controller_name = (controller or os.environ.get("GO2_CONTROLLER") or "scripted").lower()
+        if self.controller_name not in ("scripted", "learned"):
+            raise ValueError(f"controller must be 'scripted' or 'learned', not {self.controller_name!r}")
         Builder, Controller, Sensors, limits, self._pinhole_directions = _import_simulator()
         self.gait_limits = np.array(limits, dtype=float)    # 0.4 m/s, 0.15 m/s, 0.5 rad/s
         self.builder = Builder(overlay_root(SIM_ROOT))
@@ -172,8 +179,14 @@ class SimSession:
             mujoco.mj_step(self.model, self.data)
 
     def settle(self, seconds=1.5):
-        """Let the Go2 stand up and come to rest after loading."""
+        """Let the Go2 stand up and come to rest after loading. With controller="learned" the policy is switched
+        on after the first settle (it needs the standing pose) and given 1 s to blend in."""
         self.step(seconds)
+        if self.controller_name == "learned" and not self.controller.policy_status.get("loaded"):
+            if not self.controller.command({"type": "policy", "action": "load"}) or \
+                    not self.controller.policy_status.get("loaded"):
+                raise RuntimeError(f"learned Go2 policy failed to load: {self.controller.policy_status}")
+            self.step(1.0)
 
     @property
     def time(self):

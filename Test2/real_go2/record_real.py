@@ -9,6 +9,10 @@ Driving (Test 1 teleop, keys work anywhere): R stand up, W/S forward/back, A/D s
 SPACE stop, F lie down, ESC quit. Labelling (click the recorder window first):
   1..N  "the dog is now in zone k" (names from real_config.yaml `classes`), 0 = no zone (frames not saved)
   P     pause / resume saving
+  T     SURVEY TURN: the dog turns once on the spot, slowly (survey.turn_rate), recording all the way round, so
+        this spot is seen from every direction ("study the room"). Needs a zone set and the dog standing.
+        Any driving key or SPACE stops it at once. The spots go into metadata.json "surveys"; where to do them:
+        results/real_q1/recording_plan.md from `python real_go2/coverage.py`.
 Each session becomes data_real/run_XXX/{images/, states.csv, metadata.json}, the same layout as the
 simulated Q2 runs, so q1_supervised/train.py trains on it unchanged. Rows are written as they come in, so
 a crash or disconnect keeps everything recorded so far.
@@ -19,6 +23,7 @@ import argparse
 import csv
 import json
 import logging
+import math
 import sys
 import time
 from datetime import datetime
@@ -41,6 +46,41 @@ def next_run_dir(root):
     while (root / f"run_{k:03d}").exists():
         k += 1
     return root / f"run_{k:03d}"
+
+
+class SurveyTurn:
+    """One slow full turn on the spot (T key). The turn is measured with the dog's IMU yaw when the link has it,
+    else by integrating the commanded rate. step() returns the turn rate to request, or None when done."""
+
+    def __init__(self, rate=0.35):
+        self.rate, self.active, self.turned, self.spot = float(rate), False, 0.0, None
+        self._last = (None, math.nan)
+
+    def start(self, now, pose, zone_name):
+        x, y, yaw = pose
+        self.active, self.turned, self._last = True, 0.0, (now, yaw)
+        self.spot = {"t_start": None, "zone": zone_name, "x": None if math.isnan(x) else round(x, 3),
+                     "y": None if math.isnan(y) else round(y, 3), "completed": False}
+
+    def step(self, now, yaw):
+        t0, y0 = self._last
+        if not (math.isnan(yaw) or math.isnan(y0)):
+            d = (yaw - y0 + math.pi) % (2 * math.pi) - math.pi
+            self.turned += abs(d)
+        else:
+            self.turned += self.rate * (now - t0)
+        self._last = (now, yaw)
+        if self.turned >= 2 * math.pi:
+            self.active = False
+            self.spot["completed"] = True
+            return None
+        return self.rate
+
+    def cancel(self):
+        if self.active:
+            self.active = False
+            return True
+        return False
 
 
 def put_text(img, text, org, scale=0.6, color=(255, 255, 255), thick=1):
@@ -74,6 +114,16 @@ def main():
     wr.writerow(COLS)
     counts = np.zeros(len(classes), int)
     zone, recording = -1, True
+    survey = SurveyTurn((cfg.get("survey") or {}).get("turn_rate", 0.35))
+    meta["surveys"] = []
+    if tele is not None:
+        def _manual(key):                                       # any driving key / SPACE stops a survey turn
+            if survey.cancel():
+                tele.clear_autonomy()
+                survey.spot["cancelled_by"] = str(key)
+                meta["surveys"].append(survey.spot)
+                print(f"survey turn cancelled by '{key}' after {math.degrees(survey.turned):.0f} deg")
+        tele.on_manual_input = _manual
     period = 1.0 / cfg["record_hz"]
     t0 = time.monotonic()
     next_t, last_seq, n = t0, -1, 0
@@ -83,6 +133,14 @@ def main():
         while True:
             img, seq = link.frame()
             now = time.monotonic()
+            if survey.active and tele is not None:                 # refresh the request (it lapses after 0.3 s)
+                wz = survey.step(now, link.pose()[2])
+                if wz is None:
+                    tele.clear_autonomy()
+                    meta["surveys"].append(survey.spot)
+                    print(f"survey turn done ({survey.spot['zone']}): {len(meta['surveys'])} spot(s) this session")
+                else:
+                    tele.set_autonomy(0.0, 0.0, wz)
             if a.source == "fake" and a.headless:                 # emulate the key presses
                 zone = link.hint.get()[0] if link.hint.get()[0] is not None else -1
                 zone = zone if zone < len(classes) else -1
@@ -115,6 +173,12 @@ def main():
             col = (60, 220, 60) if (recording and zone >= 0) else (60, 60, 230)
             put_text(view, f"ZONE: {label}", (12, 36), 0.9, col, 2)
             put_text(view, ("REC" if recording else "PAUSED") + f"   saved {n}   camera {link.fps():.1f} fps", (12, 66), 0.6, col)
+            if survey.active:
+                put_text(view, f"SURVEY TURN {math.degrees(survey.turned):3.0f}/360 deg  (any key stops)", (12, 160),
+                         0.7, (0, 200, 255), 2)
+            else:
+                put_text(view, f"T = survey turn here   surveys {len(meta['surveys'])}", (12, 160), 0.5,
+                         (170, 170, 170))
             put_text(view, "  ".join(f"{i + 1}:{c} {counts[i]}" for i, c in enumerate(classes)), (12, 466), 0.5)
             if tele:
                 s = tele.snapshot()
@@ -134,12 +198,20 @@ def main():
                 zone = -1
             elif k in (ord("p"), ord("P")):
                 recording = not recording
+            elif k in (ord("t"), ord("T")) and tele is not None and not survey.active:
+                if zone < 0 or not recording:
+                    print("survey turn: press the zone's number first (and un-pause) so the frames are saved")
+                else:
+                    survey.start(now, link.pose(), classes[zone])
+                    survey.spot["t_start"] = round(now - t0, 2)
+                    print(f"survey turn in {classes[zone]} at {survey.rate:.2f} rad/s (any key stops it)")
             elif k in (ord("g"), ord("G")) and tele:
                 cycle_speed(tele, go2cfg)
     except KeyboardInterrupt:
         pass
     finally:
         if tele:
+            tele.clear_autonomy()
             tele.shutdown()
         link.close()
         fh.close()

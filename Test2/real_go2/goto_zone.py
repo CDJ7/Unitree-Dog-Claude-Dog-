@@ -4,6 +4,7 @@
     python real_go2/goto_zone.py --source sdk --iface eth1                    # then press 1-4 to pick a zone
     python real_go2/goto_zone.py --source sdk --iface eth1 --target shelves   # start straight away
     python real_go2/goto_zone.py --source sdk --iface eth1 --lidar-check      # no autonomy: check the LiDAR first
+    python real_go2/goto_zone.py --source sdk --iface eth1 --objects          # + YOLO labels for remembered obstacles
 
 With the zone map (results/real_q1/zone_map.npz from `python real_go2/zone_map.py`, on by default when it
 exists and the connection gives odometry):
@@ -30,6 +31,11 @@ How it finds a zone (camera classifier) and avoids obstacles on the way (LiDAR):
             slow down and steer to the freer side; within stop_obstacle_m -> stop, remember that heading
             as blocked, LOOK again. The leg also ends when the target is predicted steadily (early_stop_*)
             or fades (lost_*). Gives up after max_legs. Closed-loop check: real_go2/nav_sim.py.
+  MEMORY    (real_go2/obstacle_memory.py, on by default with odometry): every LiDAR scan (and, with --objects,
+            Test 1's YOLO) is stored in the odometry frame, so an object the dog stopped in front of is still
+            known after it turns away or drops into the LiDAR's blind zone. All checks use min(live,
+            remembered). Before turning on the spot next to a remembered obstacle (turn_clearance_m), the dog
+            BACKS OFF along the way it came. Closed-loop check: real_go2/nav_sim.py --blind.
 Safety: the dog moves only through Test 1's teleop autonomy hook (go2_stream/teleop.py set_autonomy):
 requests lapse unless refreshed, are clamped to the teleop limits, and ANY manual key (SPACE, W/A/S/D/Q/E,
 ESC) cancels the mission at once. Walking needs LiDAR (Ethernet / --source sdk), as Test 1's missions do;
@@ -57,6 +63,7 @@ sys.path.insert(0, str(TEST2))
 from real_go2.live_zone import COLORS, PANEL_W, VIEW_H, VIEW_W, Classifier, put_text  # noqa: E402
 from real_go2.sources import GO2_STREAM, add_source_args, cycle_speed, open_link, start_teleop  # noqa: E402
 from real_go2.zone_map import ZoneLocalizer, ZoneMap, lookahead_point, map_cfg  # noqa: E402
+from real_go2.obstacle_memory import ObstacleMemory, describe_bearing, mem_cfg  # noqa: E402
 
 log = logging.getLogger("goto_zone")
 
@@ -119,6 +126,10 @@ class ZoneNavigator:
 
     def __init__(self, classes, nav, have_lidar, zmap=None):
         self.classes, self.nav, self.have_lidar = list(classes), dict(nav), have_lidar
+        # obstacle memory (real_go2/obstacle_memory.py): the caller passes the REMEMBERED free-space profile
+        # (body frame) to update(mem_free=...); every LiDAR decision uses min(live, remembered)
+        self.mem_free = None
+        self.cmd_vy = 0.0                   # sideways request (m/s, left +): only the obstacle back-off uses it
         # zone map (real_go2/zone_map.py): localisation from odometry + classifier, routes, map-checked arrival
         self.mcfg, self.zmap = map_cfg(nav), zmap
         self.loc = ZoneLocalizer(zmap, self.mcfg) if zmap is not None else None
@@ -174,7 +185,7 @@ class ZoneNavigator:
 
     @property
     def active(self):
-        return self.state in ("look", "turn", "walk", "route")
+        return self.state in ("look", "turn", "walk", "route", "backoff")
 
     @property
     def map_status(self):
@@ -185,7 +196,48 @@ class ZoneNavigator:
         return self.loc.localized, e["conf"], int(zb.argmax()), float(zb.max())
 
     # ------------------------------------------------------------------ states
+    def _too_close_to_turn(self):
+        """With the obstacle memory: is something remembered within turn_clearance_m in any direction (the Go2's
+        rear corners swing out ~0.39 m from its centre when it turns on the spot)?"""
+        if self.mem_free is None:
+            return False
+        return float(np.min(self.mem_free)) < self.nav.get("turn_clearance_m", 0.45)
+
+    def _escape_dir(self):
+        """Body-frame unit vector pointing away from the nearest remembered obstacle, if the memory says there is
+        room that way (>= backoff_m + the dog's half length), else None."""
+        nb = self.nb
+        i = int(np.argmin(self.mem_free))
+        a = i * 2 * math.pi / nb + math.pi                                  # straight away from it
+        j = self.bin_of(a)
+        if float(np.min(self.mem_free[[(j - 1) % nb, j, (j + 1) % nb]])) < self.nav.get("backoff_m", 0.25) + 0.40:
+            return None
+        return np.array([math.cos(a), math.sin(a)])
+
     def _look(self, now, heading):
+        """Look around - but first step away from a remembered obstacle that the turn would hit."""
+        if self._too_close_to_turn() and self.state != "backoff" and self._escape_dir() is not None:
+            self.state, self._t0 = "backoff", now
+            self.msg = (f"too close to turn ({float(np.min(self.mem_free)):.2f} m, remembered); stepping away "
+                        "before looking around")
+            return
+        self._begin_look(now, heading)
+
+    def _backoff_step(self, now, heading):
+        """Step straight away from the nearest remembered obstacle (forward/back AND sideways: the Go2 strafes;
+        the sideways part is in self.cmd_vy) until it can turn on the spot, or for at most 2 x backoff_m."""
+        nav = self.nav
+        speed = nav.get("backoff_speed", 0.15)
+        e = self._escape_dir() if self.mem_free is not None else None
+        done = (not self._too_close_to_turn()) or now - self._t0 >= nav.get("backoff_m", 0.25) / speed * 2.0
+        if done or e is None:
+            self.cmd_vy = 0.0
+            self._begin_look(now, heading)
+            return 0.0, 0.0
+        self.cmd_vy = float(speed * e[1])
+        return float(speed * e[0]), 0.0
+
+    def _begin_look(self, now, heading):
         self.state, self.scan, self._t0, self._turn_t0 = "look", [], now, None
         self._belief_before_look = (float(self.loc.zone_belief()[self.target])
                                     if self.loc is not None and self.loc.p0 is not None and self.target is not None
@@ -200,8 +252,21 @@ class ZoneNavigator:
         for j in (-2, -1, 0, 1, 2):
             self._world_free[(cb + j) % self.nb] = free[j % self.nb]
 
+    def _merge_memory(self, heading):
+        """After a look-around: directions the obstacle memory knows are blocked stay blocked, even if the LiDAR did
+        not see the obstacle during the turn (too close, too low, or behind the sensor)."""
+        if self.mem_free is None:
+            return
+        cb, look = self.bin_of(heading), float(self.nav.get("lookahead_m", 2.5))
+        wm = np.full(self.nb, np.nan)
+        for j in range(self.nb):
+            wm[(cb + j) % self.nb] = self.mem_free[j]
+        wf = self._world_free
+        self._world_free = np.where(np.isnan(wf), np.where(wm < look - 1e-6, wm, np.nan), np.fmin(wf, wm))
+
     def _finish_look(self, now, heading):
         nav, k, nb = self.nav, self.target, self.nb
+        self._merge_memory(heading)
         probs = np.array([p for _, p in self.scan])
         b = np.array([self.bin_of(h) for h, _ in self.scan])
         votes = np.bincount(probs.argmax(1), minlength=len(self.classes)) / len(probs)
@@ -344,16 +409,20 @@ class ZoneNavigator:
             self._last_free = (free, now)
         elif self._last_free[0] is not None and now - self._last_free[1] <= 0.5:
             free = self._last_free[0]                                         # hold the last scan between scans
+        if free is not None:
+            free = np.asarray(free, float)
+            if self.have_lidar and not np.any(free > 0):
+                return 0.0, 0.0, "no LiDAR data"
+        if self.mem_free is not None:                                       # remembered obstacles count too
+            free = np.asarray(self.mem_free, float) if free is None else np.minimum(free, self.mem_free)
         if not (self.have_lidar and free is not None):
             return vx, wz, None
-        free = np.asarray(free, float)
-        if not np.any(free > 0):
-            return 0.0, 0.0, "no LiDAR data"
         front = float(free[0])
         react = nav.get("reaction_s", 0.0) * max(vx, 0.0)                    # faster -> stop and slow earlier
         if front <= nav["stop_obstacle_m"] + react:
             self.blocked[self.bin_of(heading)] = self.legs
-            return 0.0, 0.0, f"blocked {front:.2f} m ahead"
+            mem = self.mem_free is not None and float(self.mem_free[0]) <= front + 1e-6
+            return 0.0, 0.0, f"blocked {front:.2f} m ahead" + (" (remembered)" if mem else "")
         if front <= nav["slow_obstacle_m"] + react:                            # steer round it, slowly
             left, right = min(free[1], free[2]), min(free[-1], free[-2])
             self.avoiding = 1 if left >= right else -1
@@ -396,17 +465,24 @@ class ZoneNavigator:
             return 0.0, 0.0
         return vx, wz
 
-    def update(self, now, heading, prob=None, free=None, pos=None):
+    def update(self, now, heading, prob=None, free=None, pos=None, mem_free=None):
         """One control step. prob: latest classifier output (None if no new frame). free: latest LiDAR free-space
         profile in the body frame (free_profile; None if no new scan; all zeros = no LiDAR data). pos: odometry
-        (x, y) for the zone map's localiser (it runs in every state, also while driving by hand).
+        (x, y) for the zone map's localiser (it runs in every state, also while driving by hand). mem_free: the
+        obstacle memory's free-space profile at the current pose (ObstacleMemory.free_profile), or None.
         Returns (vx, wz)."""
         nav, k = self.nav, self.target
+        if mem_free is not None:
+            self.mem_free = np.asarray(mem_free, float)
         if self.loc is not None and pos is not None:
             if prob is not None:
                 self.loc.update(pos[:2], heading, prob, now)
             else:
                 self.loc.move(pos[:2], heading)
+        if self.state != "backoff":
+            self.cmd_vy = 0.0
+        if self.state == "backoff":
+            return self._backoff_step(now, heading)
         if self.state == "route":
             return self._route_step(now, heading, free)
         if self.state == "look":
@@ -637,6 +713,7 @@ class LidarProfile:
         lcfg["topic"] = nav.get("lidar_topic", lcfg["topic"])    # Test 1's config file itself is not changed
         self.src = lidar_mod.LidarSource(lcfg)
         self._seq, self._warned = -1, False
+        self.points = self.msg = None           # latest body-frame points and cloud (obstacle memory, YOLO fusion)
 
     def __call__(self):
         from perception.pipeline import cloud_to_body
@@ -660,7 +737,63 @@ class LidarProfile:
         pts, _ = cloud_to_body(msg, sport, "auto", self.lidar_mod)
         if pts is None:
             return np.zeros(nb)
+        self.points, self.msg = pts, msg
         return free_profile(pts, nb, self.corridor, self.nav["lookahead_m"])
+
+
+class NearbyObstacles:
+    """The obstacle memory on the real dog: fed by every new LiDAR scan (body-frame points + odometry pose) and,
+    with --objects, by Test 1's YOLO detector + LiDAR fusion about twice a second (labels: "chair 0.6 m left").
+    Runs in every state, also while you drive by hand, so the dog already knows what is around it when a mission
+    starts."""
+
+    def __init__(self, profile, link, nav_cfg, objects=False, det_hz=2.0):
+        self.mem = ObstacleMemory(mem_cfg(nav_cfg))
+        self.profile, self.link, self.nav_cfg = profile, link, nav_cfg
+        self.nb, self.look = int(nav_cfg["heading_bins"]), float(nav_cfg["lookahead_m"])
+        self.det = self.dcfg = None
+        self.det_period, self._next_det, self.last_dets = 1.0 / det_hz, 0.0, []
+        if objects:
+            _go2_stream_first()
+            from perception.detector import YoloDetector
+            self.dcfg = yaml.safe_load((GO2_STREAM / "config/detection.yaml").read_text())
+            m = self.dcfg["model"]
+            path = m["path"] if Path(m["path"]).is_absolute() or not (GO2_STREAM / m["path"]).exists() \
+                else str(GO2_STREAM / m["path"])
+            self.det = YoloDetector(path, m["conf"], m.get("device", "auto"), m.get("classes") or None,
+                                    m.get("imgsz", 640))
+            log.info("Obstacle memory: labelling obstacles with YOLO (%s)", path)
+
+    def update(self, now, pose, new_scan, img):
+        """Returns the remembered free-space profile at this pose (body frame)."""
+        if pose is None:
+            return None
+        if new_scan and self.profile.points is not None:
+            self.mem.update_lidar(self.profile.points, pose, now)
+        if self.det is not None and img is not None and now >= self._next_det and self.profile.msg is not None:
+            self._next_det = now + self.det_period
+            from perception.pipeline import cloud_to_body, fuse_detections  # noqa: F401
+            sport = self.link.state.sport.get()[0] if getattr(self.link, "state", None) is not None else None
+            dets, _, _ = fuse_detections(self.det.detect(img), img.shape, self.profile.msg, sport, self.dcfg,
+                                         self.profile.lidar_mod)
+            self.last_dets = dets
+            for d in dets:
+                if d.xyz_body is not None:
+                    self.mem.add_detection(d.name, d.conf, pose, now, xyz_body=d.xyz_body)
+                else:                                    # no LiDAR points on it: label by bearing (camera hfov)
+                    hfov = math.radians(self.dcfg.get("camera_model", {}).get("hfov_deg", 120.0))
+                    u = 0.5 * (d.bbox[0] + d.bbox[2]) / img.shape[1] - 0.5
+                    self.mem.add_detection(d.name, d.conf, pose, now, bearing=-u * hfov)
+            self.mem.forget_objects(now)
+        return self.mem.free_profile(pose, self.nb, self.profile.corridor, self.look)
+
+    def summary(self, pose):
+        """Short text for the panel: the nearest remembered obstacle, or None."""
+        n = self.mem.nearest(pose) if pose is not None else None
+        if n is None:
+            return None
+        d, b, label = n
+        return f"remembered: {label or 'obstacle'} {d:.2f} m {describe_bearing(b)}"
 
 
 def apply_nav_speed(nav, nav_cfg, name):
@@ -703,6 +836,10 @@ def main():
     ap.add_argument("--allow-no-lidar", action="store_true", help="Wi-Fi / fake: walk without the obstacle check")
     ap.add_argument("--map", help="zone map (default: navigation.map.file, made by real_go2/zone_map.py)")
     ap.add_argument("--no-map", action="store_true", help="classifier-only navigation (no localisation / routes)")
+    ap.add_argument("--no-memory", action="store_true",
+                    help="no obstacle memory (only the live LiDAR: close objects are forgotten once out of view)")
+    ap.add_argument("--objects", action="store_true",
+                    help="also run Test 1's YOLO (~2 Hz) to label remembered obstacles (chair, backpack, ...)")
     ap.add_argument("--headless", action="store_true")
     ap.add_argument("--lidar-check", action="store_true",
                     help="no autonomy: show the live LiDAR free space and whether the navigator would stop/slow "
@@ -736,6 +873,10 @@ def main():
             else:
                 log.info("Zone map %s: localising from odometry + camera. Drive around for a minute (different "
                          "zones) until the map says 'here ...', or let the missions explore.", mpath.name)
+    nearby = None
+    if profile is not None and pose_fn is not None and not a.no_memory and mem_cfg(cfg["navigation"])["enabled"]:
+        nearby = NearbyObstacles(profile, link, cfg["navigation"], objects=a.objects)
+        log.info("Obstacle memory on: obstacles are remembered while out of the LiDAR's view (--no-memory to compare)")
     nav = ZoneNavigator(classes, cfg["navigation"], have_lidar=profile is not None, zmap=zmap)
     apply_nav_speed(nav, cfg["navigation"], tele.speed_name)
     heading = Heading(pose_fn)
@@ -781,6 +922,14 @@ def main():
                                  f[-len(f) // 4])
                         last_print = now
                 view = np.zeros((VIEW_H, VIEW_W, 3), np.uint8) if img is None else cv2.resize(img, (VIEW_W, VIEW_H))
+                if nearby is not None:                    # the memory runs here too: drive up to a box, turn away,
+                    pose = pose_fn()                      # and check it is still "remembered"
+                    nearby.update(now, pose, f is not None and bool(np.any(f > 0)), img if new is not None else None)
+                    txt = nearby.summary(pose)
+                    put_text(view, txt or "memory: nothing remembered nearby", (12, VIEW_H - 38), 0.5,
+                             (0, 200, 255) if txt else (170, 170, 170))
+                    if txt and now - last_print < 0.05:
+                        log.info("%s", txt)
                 comp = np.hstack([view, lidar_panel(last_free, cfg["navigation"], link.fps())])
                 if a.seconds and now - t0 >= a.seconds:
                     break
@@ -791,9 +940,14 @@ def main():
                 if (cv2.waitKey(1) & 0xFF) == 27 or tele.quit_event.is_set():
                     break
                 continue
-            free = profile() if (profile is not None and nav.active) else None
-            pose = pose_fn() if (pose_fn is not None and zmap is not None) else None
-            vx, wz = nav.update(now, h, new, free, pos=None if pose is None else pose[:2])
+            free = profile() if (profile is not None and (nav.active or nearby is not None)) else None
+            pose = pose_fn() if (pose_fn is not None and (zmap is not None or nearby is not None)) else None
+            mem_free = None
+            if nearby is not None:
+                mem_free = nearby.update(now, pose, free is not None and np.any(free > 0), img if new is not None
+                                         else None)
+            vx, wz = nav.update(now, h, new, free if nav.active else None,
+                                pos=None if (pose is None or zmap is None) else pose[:2], mem_free=mem_free)
             if pose is not None and now >= next_trace and nav.map_status is not None:
                 next_trace = now + 0.5
                 ok, conf, zb, zp = nav.map_status
@@ -802,7 +956,7 @@ def main():
                                   round(float(e["xy"][0]), 2), round(float(e["xy"][1]), 2), round(conf, 3),
                                   classes[zb], round(zp, 3)])
             if nav.active:
-                tele.set_autonomy(vx, 0.0, wz)
+                tele.set_autonomy(vx, nav.cmd_vy, wz)
             else:
                 tele.clear_autonomy()
                 wz = 0.0
@@ -822,6 +976,10 @@ def main():
             view = np.zeros((VIEW_H, VIEW_W, 3), np.uint8) if img is None else cv2.resize(img, (VIEW_W, VIEW_H))
             put_text(view, f"speed {tele.speed_name.upper()} (G)", (12, VIEW_H - 14), 0.5)
             map_overlay(view, nav, classes)
+            if nearby is not None:
+                txt = nearby.summary(pose)
+                if txt:
+                    put_text(view, txt, (12, VIEW_H - 38), 0.5, (0, 200, 255))
             comp = np.hstack([view, nav_panel(nav, classes, prob, link.fps(), recording)])
             if recording:
                 if writer is None:
@@ -866,7 +1024,9 @@ def main():
         (out / f"goto_{stamp}.json").write_text(json.dumps(
             {"classes": classes, "target": classes[nav.target] if nav.target is not None else None,
              "final_state": nav.state, "legs": nav.legs, "source": link.name, "lidar": profile is not None,
-             "video": mp4.name if writer is not None else None, "zone_map": zmap is not None, "missions": missions,
+             "video": mp4.name if writer is not None else None, "zone_map": zmap is not None,
+             "obstacle_memory": nearby is not None, "objects": bool(nearby is not None and nearby.det is not None),
+             "missions": missions,
              "events": events, "map_trace_columns": ["t", "odom_x", "odom_y", "odom_yaw", "map_x", "map_y", "sure",
                                                      "zone", "p"], "map_trace": map_trace},
             indent=1))

@@ -259,7 +259,8 @@ def main():
         return run_sim(args, dcfg)
 
     cfg = yaml.safe_load(open(args.config))
-    iface = args.iface or cfg["network"]["iface"]
+    from netutil import resolve_iface
+    iface = resolve_iface(args.iface or cfg["network"]["iface"])
     if not os.path.isdir(f"/sys/class/net/{iface}"):
         sys.exit(f"Interface '{iface}' not found. Available: {', '.join(os.listdir('/sys/class/net'))}")
 

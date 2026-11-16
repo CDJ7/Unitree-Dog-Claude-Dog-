@@ -43,7 +43,8 @@ def main():
     args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
     cfg = yaml.safe_load(open(args.config))
-    iface = args.iface or cfg["network"]["iface"]
+    from netutil import resolve_iface
+    iface = resolve_iface(args.iface or cfg["network"]["iface"])
     if args.camera_mode:
         cfg["camera"]["mode"] = args.camera_mode
     if args.viewer:

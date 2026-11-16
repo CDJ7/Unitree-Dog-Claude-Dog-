@@ -9,11 +9,22 @@ Streams the Go2 front camera and LiDAR point cloud to your laptop and lets you d
 > simulation, object mapping, `preflight.py` and `--map` were added later and are described in sections 9-12. Anything
 > marked "untested" has not been run on the real robot. Unit tests: `python -m pytest -q tests`.
 > The architecture and results write-up for the class project is in `../docs/phase1_summary.md`.
+>
+> **Update 16 Nov 2026: fixes from Test 2's real-dog lab runs** (`../Test2/real_go2/`, 12-13 Nov). Test 2 drives the dog
+> through this folder's teleop, LiDAR and perception code. Its lab findings are now applied here:
+> - `lidar.topic` is `rt/utlidar/cloud_deskewed`. The raw `rt/utlidar/cloud` is in the LiDAR's own upside-down frame,
+>   where the floor showed up as an obstacle 0.05 m away, and `cloud_to_body` now refuses it in `auto` mode.
+> - The walking corridor (`config/behaviors.yaml`) was checked on the real LiDAR: `z_min` is -0.20 and
+>   `stop_if_closer_m` is 0.7. Distances are from the dog's centre, its nose is ~0.35 m ahead, and at 0.5 m it touched
+>   things.
+> - `main.py`, `run_detection.py` and `preflight.py` pick the interface that is really on 192.168.123.x when the
+>   configured name has gone stale (WSL renames `eth1` to `eth0`): `netutil.py`.
 
 ```
 main.py      UI loop (main thread): camera window, 3D LiDAR, overlay, shutdown handling
 camera.py    CameraThread: VideoClient (JPEG) or multicast H.264 via GStreamer -> latest-frame buffer
-lidar.py     DDS subscribers (rt/utlidar/cloud, rt/sportmodestate, rt/lowstate), PointCloud2 parser, viewers
+lidar.py     DDS subscribers (rt/utlidar/cloud_deskewed, rt/sportmodestate, rt/lowstate), PointCloud2 parser, viewers
+netutil.py   find the Ethernet interface on 192.168.123.x (WSL renames adapters)
 teleop.py    pynput key state + 20 Hz control thread + watchdog thread (SportClient)
 config.yaml  all tunables and safety limits
 setup_network.sh  detect interface / set static IP / ping
@@ -112,8 +123,9 @@ Overlay on the video: FPS, current command velocity, speed scale, status, batter
   `config.yaml` is from memory and **I could not verify it**; check what your robot sends:
   `sudo tcpdump -i enp0s31f6 -n 'udp and dst net 224.0.0.0/4'`. `multicast-iface` must be the NIC on 192.168.123.x
   (`enp0s31f6`). Use it only if VideoClient's frame rate is too low (VideoClient is typically ~10-15 fps).
-- The LiDAR cloud is expressed in the robot's odometry frame (`rt/utlidar/cloud`); a drifting origin is normal.
-  `rt/utlidar/cloud_deskewed` may be a better topic - set `lidar.topic`.
+- The LiDAR topic is `rt/utlidar/cloud_deskewed`, which is in the robot's odometry frame; a drifting origin is
+  normal. Don't use `rt/utlidar/cloud`: it is in the sensor's own, upside-down frame (checked on the dog in Test 2's
+  lab).
 - `rt/lowstate` arrives at ~500 Hz and is only used for battery SOC; if CPU is high set `state.low_topic` to a
   low-frequency variant if your firmware has one, or remove battery from the overlay.
 - Camera, LiDAR and state callbacks run on DDS/camera threads and only store the latest value; both GUI windows
@@ -169,9 +181,10 @@ Each detection (`perception.detector.Detection`) has `name, conf, bbox, distance
 - The LiDAR cloud is sparse: small or distant objects may get fewer than `fusion.min_points` points and show "depth: n/a".
 - The camera frame and the cloud are matched by "latest of each", not by timestamp, so a moving object or a turning dog will
   have some error.
-- `rt/utlidar/cloud` may be published in an odom (world) frame. With `fusion.lidar_frame: auto` the app checks the message's
-  `header.frame_id` (logged once at start) and, if it contains "odom", transforms into the body frame using the pose from
-  `rt/sportmodestate`. Tell me what the log line shows if distances look wrong.
+- With `fusion.lidar_frame: auto` the app checks the cloud's `header.frame_id` (logged once at start). If it contains
+  "odom" (`rt/utlidar/cloud_deskewed`, the default), the cloud is transformed into the body frame using the pose from
+  `rt/sportmodestate`. A frame named like the LiDAR itself (`utlidar_lidar`, from the raw `rt/utlidar/cloud`) is
+  refused: it is upside down relative to the body (Test 2 lab, 12 Nov 2026).
 - Not yet run on a real robot. Unit tests, the detector on a sample image, and the threaded pipeline with synthetic LiDAR
   data were run.
 
