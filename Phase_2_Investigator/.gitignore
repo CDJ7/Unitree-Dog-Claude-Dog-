@@ -29,3 +29,6 @@ evaluation/results/tmp/
 *.npy
 *.npz
 sim_env/scenarios/generated/
+
+# Stage R: terminal logs of real-robot runs
+logs/
