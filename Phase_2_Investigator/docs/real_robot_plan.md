@@ -4,24 +4,39 @@ Started 17 Nov 2026. Test 2 is submitted and frozen; everything new lives in `Ph
 Test 2 code and models are reused (imported or copied), never changed. The laptop is now **native Linux**,
 driven from the terminal (Claude Code in the terminal), so nothing here needs VS Code, WSL or a GUI.
 
-## 1. Why the dog picked the wrong room, and the fix
+## 1. Where Test 2 left off, and what changes
 
-Test 2's go-to-zone (`Test2/real_go2/goto_zone.py`) decided everything from camera views:
-- *where am I*: the majority zone of one look-around;
-- *which way*: the direction in which the target looked most likely.
+Test 2's go-to-zone got better in two steps (`Test2/REPORT.md` 7.3–7.8):
 
-Test 2's own analysis of the lab data (`Test2/REPORT.md` 7.6) shows why that is fragile:
-- **The camera sees where the dog faces, not where it stands.** Open-area accuracy was 0.24 facing one
-  way and 0.90 facing another.
-- **Errors come in streaks:** up to 8.8 s of wrong frames while the dog faces one direction.
+**1. Camera only (7.3).** *Where am I* came from the majority of one look-around, *which way* from the
+direction where the target looked most likely. The lab data shows why that is fragile (7.6):
+- The camera sees where the dog faces, not where it stands. Open-area accuracy was 0.24 facing one way
+  and 0.90 facing another.
+- Errors come in streaks of up to 8.8 s.
+- In the lab trials it wandered when the target wasn't in view, and in the replayed real-map simulation
+  6 of 36 requests stopped in the wrong zone.
 
-So a direction can look like "lab_2" because lab_2 is *visible* from there, not because the path leads
-there. The data is part of it (one afternoon, 3 training walks), but the decision rule is the bigger
-problem.
+**2. Zone map from the recordings (7.7–7.8).** `Test2/real_go2/zone_map.py` aligned the five labelled
+recording sessions into one map: P(zone | place) and the area the dog had walked. A histogram filter
+localises the dog on it from classifier evidence plus odometry:
+- median 0.61 m error once localised;
+- first localised after 52 s of walking.
 
-**The fix:** decide with a map, not with single views. The dog builds its own LiDAR map, and every place
-on the map collects the classifier's votes from all directions it was seen in. Zones become regions of
-the map. Then "go to lab_2" means: plan a path on the map to the inside of the lab_2 region.
+On the real dog: **6 of 6** completed requests arrived in the filmed run, with 6 more cancelled by the
+operator.
+
+**What that map can't do, and what Phase 2 adds:**
+
+| | Test 2 zone map | Phase 2 Stage R |
+|---|---|---|
+| Who makes the map | You: drive and press zone keys in 5 recording sessions | **The dog: it explores on its own** |
+| What the map knows | Where the dog walked, and the zone labels you keyed in | **The room's walls and furniture (LiDAR occupancy map)**, and zone votes from the camera at every place, from every direction |
+| Where it can go | Only along walked corridors | Anywhere the LiDAR saw free, with real obstacle clearance |
+| Localisation | From the classifier (needs a walk through 2–3 zones; 0.6 m) | **From the LiDAR geometry** (one look-around; independent of classifier mistakes) |
+| New room or moved furniture | Record and label again | Run `map_zones.py` again |
+
+The two combine well. The labelled recordings can later anchor the dog's own map (step R6), and both use
+the same classifier.
 
 ```mermaid
 flowchart LR
@@ -55,7 +70,7 @@ flowchart LR
 | **R3** | `mapping/`: zone map, autonomous mapping (`scripts/map_zones.py`) | Built, scored in simulation (section 3) |
 | **R4** | `scripts/goto_zone.py`: relocalise on a saved map, plan, drive, confirm with a look-around | Built, tested in simulation (section 3) |
 | R5 | Lab session: `real_check` → `map_zones` → `goto_zone` trials; tune `--body-height`, speeds and the scan band | **Next, needs the dog** |
-| R6 | Better zone evidence: operator anchors while mapping (press 1–4 to tag the current place), and more varied training sessions | Later |
+| R6 | Better zone evidence: align Test 2's labelled recordings (`zone_map.npz`) to the LiDAR map as a prior; operator anchors while mapping (press 1–4 to tag the current place); more varied training sessions | Later |
 | R7 | Drift: odometry drifts over a long run; correct it continuously with the same scan matching as relocalisation | Later, if the lab map shows doubled walls |
 
 ### Crime-scene dog on the real robot (after R5)

@@ -109,6 +109,8 @@ def main():
     clf = ZoneClassifier(model)
     print(f"zone classifier {Path(model).name}: {clf.classes}")
     nav = Navigator(sim, verbose=True)
+    if hasattr(sim, "safety_config"):                     # real dog: larger stop / slow distances
+        nav.safety.cfg = sim.safety_config
     mapper = ZoneMapper(nav, clf)
     video = None
     if a.video:

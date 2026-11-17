@@ -74,3 +74,11 @@ def test_takeover_stops_the_run():
     with pytest.raises(OperatorStop):
         s.step(0.1)
     assert link.moves[-1] == (0, 0, 0)
+
+
+def test_real_dog_uses_larger_safety_margins():
+    from navigation.local import SafetyConfig
+    s = RealGo2Session(FakeLink(), keys=False)
+    sim_cfg = SafetyConfig()
+    assert s.safety_config.stop_dist >= 0.40 > sim_cfg.stop_dist
+    assert s.safety_config.slow_dist > sim_cfg.slow_dist

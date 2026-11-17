@@ -36,6 +36,7 @@ def relocalize(sim, zm, log=print, rate=0.5):
     from mapping.localize import align
     from navigation.explorer import Navigator
     tmp = Navigator(sim, verbose=False)
+    tmp.safety.cfg = sim.safety_config
     pts = []
     tmp.on_tick.append(lambda nav: pts.append(sim.odom_points()[::4, :2]))
     st0 = sim.state()
@@ -125,6 +126,8 @@ def main():
                                  "covers well, away from people and moved furniture, and try again.")
         clf = ZoneClassifier(a.model or meta.get("model"))
         nav = Navigator(sim, grid=zm.grid, verbose=True)
+        if hasattr(sim, "safety_config"):                     # real dog: larger stop / slow distances
+            nav.safety.cfg = sim.safety_config
         mapper = ZoneMapper(nav, clf, zone_map=zm)
         for t in targets:
             goal = np.array(zm.regions()[t]["goal"])

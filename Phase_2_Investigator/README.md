@@ -6,10 +6,31 @@ impact angles, directionality, area of origin, pattern (mechanism)
 classification and the weapon categories the pattern is *consistent with*.
 Forensic-science education project; people appear only as simple mannequins.
 
+**Status (17 Nov 2026):** Stage R (the real dog maps and tags the lab) is in progress, see below.
 **Status (29 Oct 2026):** Stage A (simulation) is built: A1-A6 and the Stage A checklist with
 evidence ([docs/stage_a_checklist.md](docs/stage_a_checklist.md)). Waiting for confirmation before
 Stage B (analysis + GUI). The BPA maths and mechanism classifier built earlier stay untouched until then.
 Plan: [docs/plan.md](docs/plan.md).
+
+## Stage R: the real Go2 maps the lab itself (started 17 Nov 2026)
+
+Test 2 is submitted and frozen; its real-dog work continues here. The dog now **explores the lab on its
+own, builds a LiDAR map, and tags every part of it with a zone** (lab_1, lab_2, open_area, shelves),
+using Test 2's camera classifier. You can then send it to a zone on that map. This is the base for
+bringing the crime-scene search to the real robot.
+
+- Plan, and how it relates to Test 2's zone map: [`docs/real_robot_plan.md`](docs/real_robot_plan.md)
+- Terminal walkthrough for the Linux laptop: [`real_robot/README.md`](real_robot/README.md)
+- Notes for Claude Code in the terminal: [`CLAUDE.md`](CLAUDE.md)
+
+```bash
+python scripts/real_check.py                                    # sensors only, the dog does not move
+python scripts/map_zones.py --backend real --max-time 600       # the dog explores and tags zones
+python scripts/goto_zone.py --map outputs/zone_map/<map> --backend real --zone lab_2
+python scripts/map_zones.py --random 1854 --video               # the same in simulation, scored
+```
+
+STAGE_R_RESULTS
 
 ## Setup (Windows + WSL2 Ubuntu 22.04, or native Ubuntu 22.04)
 

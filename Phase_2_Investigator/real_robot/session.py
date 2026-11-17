@@ -43,6 +43,16 @@ GO2_STREAM = REPO / "go2_stream"
 log = logging.getLogger("real_go2")
 
 
+def real_safety_config():
+    """Phase 2's safety layer measures clearance from the dog's nose (half length 0.35 m ahead of the centre).
+    The simulator values (stop 0.20 m, slow from 0.60 m) are too tight for the real dog: in the Test 2 lab runs
+    (13 Nov 2026) a 0.50 m stop measured from the centre left ~15 cm and the dog touched obstacles, which was
+    fixed with 0.60 m + 0.5 s x speed from the centre (0.75 m at 0.3 m/s, a 0.40 m nose gap).
+    Same margins here: stop at a 0.40 m nose gap, slow from 0.90 m; side and turning margins also larger."""
+    from navigation.local import SafetyConfig
+    return SafetyConfig(stop_dist=0.40, slow_dist=0.90, corridor_margin=0.08, sweep_radius=0.48)
+
+
 class OperatorStop(KeyboardInterrupt):
     """The operator (terminal key, remote, teleop key) or a safety check ended the autonomous run."""
 
@@ -300,6 +310,7 @@ class RealGo2Session:
         self.cloud_window_s, self.stale_s = float(cloud_window_s), float(stale_s)
         self.camera_fovy_deg, self.camera_xyz = float(camera_fovy_deg), np.asarray(camera_xyz, float)
         self.environment_id = f"real_{link.name}"
+        self.safety_config = real_safety_config()      # used by the scripts in place of the simulator values
         self._clouds = deque()
         self._floor = None
         self._cmd = np.zeros(3)
