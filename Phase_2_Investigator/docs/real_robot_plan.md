@@ -67,8 +67,8 @@ flowchart LR
 | **R0** | Linux laptop, terminal only: setup, network, Claude Code notes (`CLAUDE.md`) | Written; to run on the laptop |
 | **R1** | `real_robot/session.py`: the real dog behind the simulator's session API, so Phase 2's navigation runs on it unchanged | Built. Unit-tested, and driven end to end through the simulator (`--link sim`) |
 | **R2** | `scripts/real_check.py`: sensors-only check, the dog does not move (pose, LiDAR, floor height, camera, classifier, map snapshot) | Built, tested with `--link sim` |
-| **R3** | `mapping/`: zone map, autonomous mapping (`scripts/map_zones.py`) | Built, scored in simulation (section 3) |
-| **R4** | `scripts/goto_zone.py`: relocalise on a saved map, plan, drive, confirm with a look-around | Built, tested in simulation (section 3) |
+| **R3** | `mapping/`: zone map, autonomous mapping (`scripts/map_zones.py`) | Built; in simulation 4/4 zone goals right, 0 collisions (section 3) |
+| **R4** | `scripts/goto_zone.py`: relocalise on a saved map, plan, drive, confirm with a look-around | Built; in simulation 4/4 and 2/2 (relocalised) arrived (section 3) |
 | R5 | Lab session: `real_check` → `map_zones` → `goto_zone` trials; tune `--body-height`, speeds and the scan band | **Next, needs the dog** |
 | R6 | Better zone evidence: align Test 2's labelled recordings (`zone_map.npz`) to the LiDAR map as a prior; operator anchors while mapping (press 1–4 to tag the current place); more varied training sessions | Later |
 | R7 | Drift: odometry drifts over a long run; correct it continuously with the same scan matching as relocalisation | Later, if the lab map shows doubled walls |
@@ -96,10 +96,22 @@ Stage B (analysis + GUI) was outlined but not started. Bringing it to the real d
 
 ## 3. Results so far (simulation)
 
-See `outputs/zone_map/` and `docs/media/stage_r_*`. Every number below is from the run's `report.json` /
-`outputs/goto/*.json`.
+Every number is from the files in `docs/media/stage_r/`; the README section "Stage R results so far"
+has the tables and the map.
+- **Mapping** of house-185 scene r1854 (never seen by the classifier):
+  - 13 look-arounds, 0 collisions;
+  - all 4 zone goal points in the right zone;
+  - 0.667 of map cells in the right zone (victim 0.954, desk 0.813, bed 0.615, lounge 0.603).
+  - The bathroom was not entered: its doorway is narrower than the planning radius.
+- **Go to zone:** 4/4 arrived on that map.
+- **Relocalisation** through the real-robot code path: within 2 cm and 2° of the true start, after a
+  40° / 2.5 m odometry offset; then 2/2 arrived.
 
-*(Filled in by the runs in this commit: see the README section "Stage R".)*
+**What was learned:**
+- Frontier exploration alone ends quickly, because the LiDAR sees a whole room from a few spots. Look-arounds
+  spread over the floor are what fill the zone map.
+- Viewpoints reachable only through tight gaps get the dog wedged, so coverage keeps to the normal
+  planning radius.
 
 ## 4. Things I need from you
 

@@ -1,0 +1,76 @@
+{
+ "classes": [
+  "victim_area",
+  "bed_area",
+  "lounge_area",
+  "desk_entry_area",
+  "bathroom"
+ ],
+ "cell": 0.25,
+ "radius": 0.3,
+ "heading_bins": 8,
+ "min_frames": 3,
+ "frames": 617,
+ "regions": {
+  "victim_area": {
+   "index": 0,
+   "area_m2": 7.13,
+   "tagged_m2": 2.83,
+   "centroid": [
+    1.072,
+    2.124
+   ],
+   "goal": [
+    1.605,
+    1.605
+   ],
+   "confidence": 0.685
+  },
+  "bed_area": {
+   "index": 1,
+   "area_m2": 4.49,
+   "tagged_m2": 1.73,
+   "centroid": [
+    3.32,
+    3.624
+   ],
+   "goal": [
+    2.105,
+    3.005
+   ],
+   "confidence": 0.646
+  },
+  "lounge_area": {
+   "index": 2,
+   "area_m2": 3.69,
+   "tagged_m2": 2.06,
+   "centroid": [
+    3.375,
+    2.177
+   ],
+   "goal": [
+    3.805,
+    1.855
+   ],
+   "confidence": 0.63
+  },
+  "desk_entry_area": {
+   "index": 3,
+   "area_m2": 9.19,
+   "tagged_m2": 3.18,
+   "centroid": [
+    5.719,
+    1.866
+   ],
+   "goal": [
+    5.205,
+    2.005
+   ],
+   "confidence": 0.725
+  }
+ },
+ "backend": "sim",
+ "model": "/home/user/Unitree-Dog-Claude-Dog-/Test2/results/q1/resnet18/best.pt",
+ "scenario": "/home/user/Unitree-Dog-Claude-Dog-/Phase_2_Investigator/sim_env/scenarios/generated/r1854.yaml",
+ "link": "go2"
+}

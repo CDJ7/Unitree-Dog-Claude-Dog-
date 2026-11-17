@@ -70,10 +70,11 @@ class ZoneMapper:
     def coverage_goal(self, spacing=1.0, min_clear=0.35):
         """The nearest reachable free point (by path) that is at least `spacing` m from every look-around so
         far, with `min_clear` m to obstacles (room to turn on the spot); or None when the floor is covered."""
-        from navigation.explorer import TIGHT_RADIUS
         nav = self.nav
         g = nav.grid
-        f = nav.field(TIGHT_RADIUS)          # reachable through tight gaps too (doorways), as go_to plans
+        # reachable with the normal planning radius only: viewpoints that need the tight radius got the robot
+        # wedged in a gap in simulation (r1854, 4 stuck goals in a row), so they are left out
+        f = nav.field()
         clear = g.obstacle_distance()
         cand = g.free() & np.isfinite(f.cum) & (clear >= min_clear)
         rr, cc = np.nonzero(cand)
