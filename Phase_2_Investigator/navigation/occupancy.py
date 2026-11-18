@@ -52,11 +52,14 @@ class OccupancyGrid:
         self.seen[r, c] = True
 
     def update(self, scan, max_range=8.0):
-        """Integrate one `interfaces.LidarScan` (world-frame poses inside)."""
+        """Integrate one `interfaces.LidarScan` (world-frame poses inside). Rays whose range is NaN are skipped
+        (a real-robot scan made from a sparse point cloud has directions with no information at all)."""
         T = scan.T_world_lidar
         o = T[:3, 3]
         ang = scan.angles
         rng = scan.ranges.astype(float)
+        info = ~np.isnan(rng)              # NaN = no information for that ray (real-robot scans); inf = no return
+        ang, rng = ang[info], rng[info]
         hit = np.isfinite(rng) & (rng <= max_range)
         reach = np.where(hit, rng, max_range)
         d_local = np.stack([np.cos(ang), np.sin(ang), np.zeros_like(ang)], -1)

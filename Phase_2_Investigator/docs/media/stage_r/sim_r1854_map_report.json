@@ -1,0 +1,228 @@
+{
+ "sim_time_s": 322.8,
+ "wall_time_s": 348.7,
+ "path_length_m": 35.74,
+ "known_free_m2": 24.92,
+ "camera_coverage": {
+  "surfaces": 0.752,
+  "floor": 0.848
+ },
+ "collisions": [],
+ "n_collisions": 0,
+ "safety_stops": 10,
+ "goals": [
+  [
+   28.799999999994917,
+   "frontier",
+   2.005,
+   3.5550000000000006,
+   true
+  ],
+  [
+   55.2000000000215,
+   "frontier",
+   1.005,
+   0.5550000000000006,
+   true
+  ],
+  [
+   107.0999999999318,
+   "frontier",
+   3.6050000000000004,
+   2.205000000000001,
+   true
+  ],
+  [
+   122.99999999989474,
+   "viewpoint",
+   4.005,
+   1.2550000000000008,
+   true
+  ],
+  [
+   138.89999999993512,
+   "viewpoint",
+   4.805000000000001,
+   0.6550000000000002,
+   true
+  ],
+  [
+   158.70000000002966,
+   "viewpoint",
+   5.855,
+   2.0550000000000006,
+   true
+  ],
+  [
+   175.4000000001094,
+   "viewpoint",
+   5.055000000000001,
+   2.8050000000000006,
+   true
+  ],
+  [
+   198.30000000021874,
+   "viewpoint",
+   2.4050000000000002,
+   2.3550000000000004,
+   true
+  ],
+  [
+   214.5000000002961,
+   "viewpoint",
+   1.505,
+   1.9050000000000002,
+   true
+  ],
+  [
+   229.70000000036868,
+   "viewpoint",
+   0.5550000000000002,
+   2.255000000000001,
+   true
+  ],
+  [
+   254.4000000004866,
+   "viewpoint",
+   1.0550000000000002,
+   3.9050000000000002,
+   true
+  ],
+  [
+   291.2000000006623,
+   "viewpoint",
+   4.555000000000001,
+   3.705000000000001,
+   true
+  ]
+ ],
+ "frames_tagged": 617,
+ "look_arounds": 13,
+ "regions": {
+  "victim_area": {
+   "index": 0,
+   "area_m2": 7.13,
+   "tagged_m2": 2.83,
+   "centroid": [
+    1.072,
+    2.124
+   ],
+   "goal": [
+    1.605,
+    1.605
+   ],
+   "confidence": 0.685
+  },
+  "bed_area": {
+   "index": 1,
+   "area_m2": 4.49,
+   "tagged_m2": 1.73,
+   "centroid": [
+    3.32,
+    3.624
+   ],
+   "goal": [
+    2.105,
+    3.005
+   ],
+   "confidence": 0.646
+  },
+  "lounge_area": {
+   "index": 2,
+   "area_m2": 3.69,
+   "tagged_m2": 2.06,
+   "centroid": [
+    3.375,
+    2.177
+   ],
+   "goal": [
+    3.805,
+    1.855
+   ],
+   "confidence": 0.63
+  },
+  "desk_entry_area": {
+   "index": 3,
+   "area_m2": 9.19,
+   "tagged_m2": 3.18,
+   "centroid": [
+    5.719,
+    1.866
+   ],
+   "goal": [
+    5.205,
+    2.005
+   ],
+   "confidence": 0.725
+  }
+ },
+ "backend": "sim",
+ "model": "/home/user/Unitree-Dog-Claude-Dog-/Test2/results/q1/resnet18/best.pt",
+ "score": {
+  "environment": "scenesmith_house_185",
+  "mapped_free_m2_in_zones": 24.5,
+  "cell_accuracy": 0.6666,
+  "per_zone": {
+   "victim_area": {
+    "cells": 2564,
+    "area_m2": 6.41,
+    "accuracy": 0.954
+   },
+   "bed_area": {
+    "cells": 1972,
+    "area_m2": 4.93,
+    "accuracy": 0.6146
+   },
+   "lounge_area": {
+    "cells": 1591,
+    "area_m2": 3.98,
+    "accuracy": 0.6028
+   },
+   "desk_entry_area": {
+    "cells": 2355,
+    "area_m2": 5.89,
+    "accuracy": 0.8132
+   },
+   "bathroom": {
+    "cells": 1317,
+    "area_m2": 3.29,
+    "accuracy": 0.0
+   }
+  },
+  "goals": {
+   "victim_area": {
+    "goal": [
+     1.605,
+     1.605
+    ],
+    "true_zone_at_goal": "victim_area",
+    "correct": true
+   },
+   "bed_area": {
+    "goal": [
+     2.105,
+     3.005
+    ],
+    "true_zone_at_goal": "bed_area",
+    "correct": true
+   },
+   "lounge_area": {
+    "goal": [
+     3.805,
+     1.855
+    ],
+    "true_zone_at_goal": "lounge_area",
+    "correct": true
+   },
+   "desk_entry_area": {
+    "goal": [
+     5.205,
+     2.005
+    ],
+    "true_zone_at_goal": "desk_entry_area",
+    "correct": true
+   }
+  },
+  "goals_correct": "4/4"
+ }
+}

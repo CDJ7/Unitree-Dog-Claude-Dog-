@@ -6,10 +6,60 @@ impact angles, directionality, area of origin, pattern (mechanism)
 classification and the weapon categories the pattern is *consistent with*.
 Forensic-science education project; people appear only as simple mannequins.
 
+**Status (17 Nov 2026):** Stage R (the real dog maps and tags the lab) is in progress, see below.
 **Status (29 Oct 2026):** Stage A (simulation) is built: A1-A6 and the Stage A checklist with
 evidence ([docs/stage_a_checklist.md](docs/stage_a_checklist.md)). Waiting for confirmation before
 Stage B (analysis + GUI). The BPA maths and mechanism classifier built earlier stay untouched until then.
 Plan: [docs/plan.md](docs/plan.md).
+
+## Stage R: the real Go2 maps the lab itself (started 17 Nov 2026)
+
+Test 2 is submitted and frozen; its real-dog work continues here. The dog now **explores the lab on its
+own, builds a LiDAR map, and tags every part of it with a zone** (lab_1, lab_2, open_area, shelves),
+using Test 2's camera classifier. You can then send it to a zone on that map. This is the base for
+bringing the crime-scene search to the real robot.
+
+- Plan, and how it relates to Test 2's zone map: [`docs/real_robot_plan.md`](docs/real_robot_plan.md)
+- Terminal walkthrough for the Linux laptop: [`real_robot/README.md`](real_robot/README.md)
+- Notes for Claude Code in the terminal: [`CLAUDE.md`](CLAUDE.md)
+
+```bash
+python scripts/real_check.py                                    # sensors only, the dog does not move
+python scripts/map_zones.py --backend real --max-time 600       # the dog explores and tags zones
+python scripts/goto_zone.py --map outputs/zone_map/<map> --backend real --zone lab_2
+python scripts/map_zones.py --random 1854 --video               # the same in simulation, scored
+```
+
+### Stage R results so far (simulation; the real-dog session is next)
+
+**The test scene:** house-185 scene r1854, which Test 2's classifier never saw in training. The dog
+explored it on its own (frontiers, then look-arounds about 1 m apart) and tagged its map with the five
+zones. The map is scored against the true zone polygons. Files are in `docs/media/stage_r/`.
+
+| Mapping run (`sim_r1854_map_report.json`) | Value |
+|---|---|
+| Time / path | 323 s of robot time, 35.7 m |
+| Look-arounds / camera frames tagged | 13 / 617 |
+| Collisions | 0 |
+| Zone goal points in the right zone | **4/4** zones on the map |
+| Map cells in the right zone | 0.667 overall |
+| Map cells in the right zone, by zone | victim_area 0.954, desk_entry_area 0.813, bed_area 0.615, lounge_area 0.603, bathroom 0.000 |
+
+The bathroom was never entered, so it has no camera votes. Its doorway is too narrow for the 0.32 m
+planning radius, and the map labels it from the neighbouring zone. Letting the coverage phase use the
+0.24 m tight radius was tried and made things worse: the dog wedged itself in a gap and 4 goals in a
+row failed (cell accuracy 0.553).
+
+| Go to zone on that map | Result |
+|---|---|
+| All four mapped zones, simulator frame (`sim_goto_4zones.json`) | **4/4 arrived**, 17.7–27.5 s each, 0 collisions. The camera look-around agreed every time. |
+| Real-robot code path through the simulator, odometry offset by (1.5 m, −2 m, 40°) (`sim_goto_relocalised.json`) | Relocalised from one look-around at (4.88, 1.76), heading −2°, against the true start (4.88, 1.78, 0°); score 0.99. Then **2/2 arrived**. At victim_area the camera said lounge_area (0.44): the facing-vs-standing confusion that the map now overrides. |
+
+![Zone map built by the dog](docs/media/stage_r/sim_r1854_zone_map.png)
+
+*The dog's own map of r1854: black obstacles, zones in colour (darker = more camera votes), its path in
+blue, and each zone's goal point. Video: [`sim_r1854_map_building.mp4`](docs/media/stage_r/sim_r1854_map_building.mp4).*
+
 
 ## Setup (Windows + WSL2 Ubuntu 22.04, or native Ubuntu 22.04)
 
