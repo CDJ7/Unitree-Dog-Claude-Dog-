@@ -1,0 +1,129 @@
+{
+ "camera": {
+  "width": 1280,
+  "height": 720,
+  "hfov_deg": 100.0
+ },
+ "views_per_scene": 2,
+ "scenes": {
+  "train": [
+   "r3001",
+   "r3002",
+   "r3003",
+   "r3004",
+   "r3006",
+   "r3007",
+   "r3008",
+   "r3009",
+   "r3011",
+   "r3012",
+   "r3101",
+   "r3102",
+   "r3104",
+   "r3201",
+   "r3202",
+   "r3203",
+   "r3205",
+   "r3206"
+  ],
+  "valid": [
+   "r3005",
+   "r3010",
+   "r3103",
+   "r3204"
+  ],
+  "test": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5"
+  ]
+ },
+ "depth": {
+  "threshold": 0.5,
+  "train_regions": 203,
+  "train_stain_regions": 123,
+  "valid": {
+   "regions": 79,
+   "stain_regions": 52,
+   "precision": 0.9286,
+   "recall": 1.0,
+   "f1": 0.963,
+   "distractor_regions": 8,
+   "distractor_false_positive_rate": 0.0,
+   "other_false_positive_rate": 0.2105,
+   "cluster_views": 11,
+   "cluster_recall_per_view": 0.9091,
+   "views": 8,
+   "views_with_a_false_detection": 0.25
+  },
+  "test": {
+   "regions": 44,
+   "stain_regions": 27,
+   "precision": 0.8966,
+   "recall": 0.963,
+   "f1": 0.9286,
+   "distractor_regions": 11,
+   "distractor_false_positive_rate": 0.0909,
+   "other_false_positive_rate": 0.3333,
+   "cluster_views": 11,
+   "cluster_recall_per_view": 0.9091,
+   "views": 10,
+   "views_with_a_false_detection": 0.3
+  },
+  "importance": {
+   "s_std": 0.2115,
+   "h_sin": 0.1135,
+   "flat_rms": 0.0953,
+   "h_cos": 0.0774,
+   "log_area_m2": 0.0756,
+   "depth": 0.07,
+   "v_std": 0.0549,
+   "s_mean": 0.053
+  }
+ },
+ "image": {
+  "threshold": 0.25,
+  "train_regions": 203,
+  "train_stain_regions": 123,
+  "valid": {
+   "regions": 79,
+   "stain_regions": 52,
+   "precision": 0.9123,
+   "recall": 1.0,
+   "f1": 0.9541,
+   "distractor_regions": 8,
+   "distractor_false_positive_rate": 0.0,
+   "other_false_positive_rate": 0.2632,
+   "cluster_views": 11,
+   "cluster_recall_per_view": 1.0,
+   "views": 8,
+   "views_with_a_false_detection": 0.375
+  },
+  "test": {
+   "regions": 44,
+   "stain_regions": 27,
+   "precision": 0.8438,
+   "recall": 1.0,
+   "f1": 0.9153,
+   "distractor_regions": 11,
+   "distractor_false_positive_rate": 0.1818,
+   "other_false_positive_rate": 0.5,
+   "cluster_views": 11,
+   "cluster_recall_per_view": 1.0,
+   "views": 10,
+   "views_with_a_false_detection": 0.4
+  },
+  "importance": {
+   "s_std": 0.1887,
+   "h_cos": 0.1396,
+   "h_sin": 0.132,
+   "spot_px_median": 0.1098,
+   "s_mean": 0.0974,
+   "v_std": 0.0917,
+   "v_mean": 0.0572,
+   "log_hull": 0.039
+  }
+ }
+}

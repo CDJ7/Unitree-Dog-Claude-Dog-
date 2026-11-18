@@ -30,6 +30,7 @@ class OccupancyGrid:
         self.seen = np.zeros(self.shape, bool)
         self.low_hits = np.zeros(self.shape, np.int16)
         self.z_min, self.z_max = z_min, z_max
+        self.keepout = np.zeros(self.shape, bool)       # floor evidence the robot must not walk over (C4)
 
     # ------------------------------------------------------------- indexing
     def to_cell(self, xy):
@@ -142,11 +143,28 @@ class OccupancyGrid:
             return np.full(self.shape, 99.0)
         return distance_transform_edt(~occ) * self.res
 
-    def costmap(self, robot_radius=0.28, soft=0.6, unknown_cost=None):
+    def set_keepout(self, disks):
+        """Mark floor evidence: disks = [(xy, radius_m)]. Replaces the previous keep-out layer."""
+        ko = np.zeros(self.shape, bool)
+        for xy, rad in disks:
+            r0, c0 = self.to_cell(xy)
+            k = int(np.ceil(rad / self.res))
+            rr, cc = np.mgrid[r0 - k:r0 + k + 1, c0 - k:c0 + k + 1]
+            ok = self.inside(rr, cc) & ((rr - r0) ** 2 + (cc - c0) ** 2 <= k * k)
+            ko[rr[ok], cc[ok]] = True
+        self.keepout = ko
+
+    def costmap(self, robot_radius=0.28, soft=0.6, unknown_cost=None, keepout_cost=60.0):
         """Traversal cost per cell for planning: inf inside the inflated obstacles,
-        1 + a soft penalty near obstacles; unknown cells are inf unless unknown_cost is given."""
+        1 + a soft penalty near obstacles; unknown cells are inf unless unknown_cost is given.
+        Cells whose body footprint would touch keep-out evidence cost `keepout_cost` extra: paths go around
+        evidence, but a doorway covered by a drip trail is still passable when there is no other way."""
         dist = self.obstacle_distance()
         cost = 1.0 + 4.0 * np.clip((soft - dist) / (soft - robot_radius), 0, 1) ** 2
+        ko = getattr(self, "keepout", None)
+        if ko is not None and ko.any():
+            dk = distance_transform_edt(~ko) * self.res
+            cost[dk <= robot_radius] += keepout_cost
         cost[dist <= robot_radius] = np.inf
         unk = self.unknown()
         cost[unk] = np.inf if unknown_cost is None else np.maximum(cost[unk], unknown_cost)

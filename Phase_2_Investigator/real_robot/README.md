@@ -145,6 +145,19 @@ python scripts/goto_zone.py --map outputs/zone_map/r1854 --backend real --link s
 pose, an odometry-frame point cloud, camera frames and velocity commands.
 `--odom-offset` pretends the dog booted somewhere else, which tests relocalisation.
 
+## Running next to other robot software (TurtleBot / ROS 2)
+
+- **CPU:** Phase 2 uses at most `PHASE2_THREADS` threads (default 2) for numpy, OpenCV and PyTorch. The
+  zone classifier needs about 30 ms per frame on one thread. On a laptop that is doing nothing else, you
+  can raise it: `export PHASE2_THREADS=4`.
+- **DDS:** the Go2 speaks DDS on domain 0, and so does ROS 2 by default. A ROS 2 / TurtleBot terminal on
+  domain 0 can discover the dog's topics (and the other way round), which floods both. Put the TurtleBot
+  on its own domain, e.g. `export ROS_DOMAIN_ID=30` (the TurtleBot3 guides use 30) in its terminal and
+  `~/.bashrc`, and leave the Go2 terminals on 0. The Unitree SDK here also binds to the Ethernet port
+  only (`ChannelFactoryInitialize(0, <iface>)`).
+- **Network:** the dog's cable gives the laptop a second network (192.168.123.x, no gateway), so the
+  TurtleBot's Wi-Fi network and internet are not affected.
+
 ## Safety
 
 - The dog moves only through Test 1's teleop autonomy hook:
