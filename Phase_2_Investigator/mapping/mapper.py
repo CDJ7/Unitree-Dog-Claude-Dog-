@@ -28,7 +28,8 @@ class ZoneMapper:
     def __init__(self, nav, classifier, zone_map=None, every_s=0.5, look_rate=None, log=print, **zm_kw):
         self.nav, self.clf = nav, classifier
         self.sim = nav.sim
-        self.zone_map = zone_map or ZoneMap(nav.grid, classifier.classes, **zm_kw)
+        self.zone_map = zone_map or ZoneMap(nav.grid, classifier.classes if classifier is not None else ["unknown"],
+                                            **zm_kw)
         self.every_s, self.look_rate = every_s, look_rate or NAV_LIMITS.wz
         self.log = log
         self.next_t = -np.inf
@@ -40,7 +41,7 @@ class ZoneMapper:
     # ---------------------------------------------------------------- tagging
     def __call__(self, nav):
         t = self.sim.time
-        if t < self.next_t:
+        if self.clf is None or t < self.next_t:            # no classifier: explore and look around only
             return
         self.next_t = t + self.every_s
         frame = self.sim.camera()

@@ -195,6 +195,7 @@ class ZoneMap:
         g.logodds, g.seen, g.low_hits = d["logodds"], d["seen"], d["low_hits"]
         g.shape = g.logodds.shape
         g.z_min, g.z_max = (float(v) for v in d["z"])
+        g.keepout = np.zeros(g.shape, bool)
         zm = cls(g, meta["classes"], meta["cell"], meta["radius"], meta["heading_bins"], meta["min_frames"])
         zm.psum, zm.n, zm.frames = d["psum"], d["n"], meta["frames"]
         return zm, d["path"]

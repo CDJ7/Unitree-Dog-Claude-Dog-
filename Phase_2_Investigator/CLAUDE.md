@@ -37,6 +37,11 @@ Plans: `docs/plan.md` (Stage A/B), `docs/real_robot_plan.md` (Stage R and crime 
 - After code changes: `python -m pytest -q` (about 2 minutes; the zone-map, localize and real-session
   tests take seconds).
 
+## Shared laptop
+The laptop also runs a TurtleBot / ROS 2 terminal (senior design). Keep Phase 2 light: `PHASE2_THREADS` (default 2)
+caps numpy / OpenCV / PyTorch threads. Never kill or change other processes. Don't change `ROS_DOMAIN_ID` or the
+TurtleBot's setup; just suggest a separate ROS 2 domain (e.g. 30) if both robots' DDS traffic mixes.
+
 ## Real-dog facts (from Test 1 / Test 2 lab sessions)
 - **Ethernet:** the laptop is 192.168.123.222/24 and the dog is 192.168.123.161. The interface is
   auto-detected (`real_robot.session.pick_iface`). The network profile is

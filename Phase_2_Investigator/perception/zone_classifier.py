@@ -48,7 +48,7 @@ class ZoneClassifier:
         m.load_state_dict({k: v.float() for k, v in ck["state_dict"].items()})
         self.model = m.eval()
         self.torch = torch
-        torch.set_num_threads(threads or max(1, (os.cpu_count() or 2) - 1))
+        torch.set_num_threads(threads or int(os.environ.get("PHASE2_THREADS", "2")))   # see sim_env/__init__.py
 
     def __call__(self, rgb):
         """P(zone) for one RGB uint8 frame (any size; 16:9 frames are centre-cropped to 4:3)."""
