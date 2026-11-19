@@ -1,0 +1,136 @@
+{
+ "groups": {
+  "train": 367,
+  "valid": 89,
+  "test": 30
+ },
+ "train_labels": {
+  "impact": 121,
+  "castoff": 97,
+  "drip": 103,
+  "projected": 46
+ },
+ "test_labels": {
+  "impact": 13,
+  "castoff": 6,
+  "projected": 3,
+  "drip": 8
+ },
+ "models": {
+  "ideal_synthetic (Phase 2)": {
+   "valid_accuracy": 0.809,
+   "test_accuracy": 0.7,
+   "test_confusion": {
+    "classes": [
+     "castoff",
+     "drip",
+     "impact",
+     "projected"
+    ],
+    "rows_true_cols_pred": [
+     [
+      4,
+      0,
+      2,
+      0
+     ],
+     [
+      0,
+      8,
+      0,
+      0
+     ],
+     [
+      1,
+      0,
+      6,
+      6
+     ],
+     [
+      0,
+      0,
+      0,
+      3
+     ]
+    ]
+   }
+  },
+  "simclose": {
+   "valid_accuracy": 0.888,
+   "test_accuracy": 0.867,
+   "test_confusion": {
+    "classes": [
+     "castoff",
+     "drip",
+     "impact",
+     "projected"
+    ],
+    "rows_true_cols_pred": [
+     [
+      6,
+      0,
+      0,
+      0
+     ],
+     [
+      2,
+      6,
+      0,
+      0
+     ],
+     [
+      1,
+      0,
+      12,
+      0
+     ],
+     [
+      1,
+      0,
+      0,
+      2
+     ]
+    ]
+   }
+  },
+  "simclose + ideal_synthetic": {
+   "valid_accuracy": 0.933,
+   "test_accuracy": 0.967,
+   "test_confusion": {
+    "classes": [
+     "castoff",
+     "drip",
+     "impact",
+     "projected"
+    ],
+    "rows_true_cols_pred": [
+     [
+      6,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      8,
+      0,
+      0
+     ],
+     [
+      1,
+      0,
+      12,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      3
+     ]
+    ]
+   }
+  }
+ },
+ "chosen_on_validation": "simclose + ideal_synthetic"
+}

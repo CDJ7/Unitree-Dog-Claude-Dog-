@@ -137,45 +137,59 @@ Video: [`s1_investigation.mp4`](docs/media/stage_c/s1_investigation.mp4).*
 
 Better floor framing (aim lower, stand closer) is needed before stain analysis (C5) can use these.*
 
-### Stain analysis from the dog's own close-ups (C5, 19 Nov 2026)
+### Stain analysis from the dog's own close-ups (C5, 19–20 Nov 2026)
 
-After the search, `scripts/investigate.py` now continues on its own, using only what the dog detected
-and photographed (no ground truth):
-1. **Close-up tour** (`navigation/closeups.py`): for every confirmed evidence cluster, aim points across
-   the whole cluster. The dog stands about 0.5 m from floor stains, and 0.5–1.3 m from walls when
-   furniture or a body is in the way. It takes 1920×1080 close-ups.
-2. **Measures every stain** (`analysis/closeup.py`) with Phase 2's existing BPA code: surface plane from
-   depth, perspective undone, then ellipse, impact angle and direction.
-3. **Analyses the scene** (`analysis/scene_report.py`): stain groups, the mechanism classifier, the weapon
-   categories the pattern is "consistent with", and a gravity-corrected area of origin. The result is a
-   per-zone `scene_report.md` written by the dog.
+After the search, `scripts/investigate.py` continues on its own, using only what the dog detected and
+photographed (no ground truth):
+1. **Close-up tour** (`navigation/closeups.py`): aim points across every confirmed evidence cluster. The
+   dog stands about 0.5 m from floor stains, and 0.5–1.3 m from walls when furniture or a body is in the
+   way. It takes 1920×1080 close-ups.
+2. **Measures every stain** (`analysis/closeup.py`) with Phase 2's BPA code: surface plane from depth,
+   perspective undone, then ellipse, impact angle and direction.
+3. **Analyses the scene** (`analysis/scene_report.py`): stain groups, the mechanism, the weapon categories
+   the pattern is "consistent with", and a gravity-corrected area of origin. The result is a per-zone
+   `scene_report.md` written by the dog.
 
-**Scenario 1** (true events: a blunt-force impact on the west wall and a cast-off onto the floor; files
-`docs/media/stage_c/s1_analysis.json`, `s1_scene_report.md`):
+**Mechanism classifier for close-ups** (`training/train_mechanism_simclose.py`):
+- **The problem:** Phase 2's classifier learned from ideal measurements of every stain. Close-ups miss
+  the small round stains at a pattern's edges, so it called scenario 1's impact "projected".
+- **The fix:** stain groups measured from *simulated close-ups* taken the way the mission takes them, from
+  58 random scenes in all three houses (367 groups), together with Phase 2's ideal synthetic groups.
+- **Test set:** the 5 hand-made scenarios, 30 groups, never used in training
+  (`docs/media/stage_c/mechanism_simclose.json`).
 
-| | Result |
-|---|---|
-| Close-ups taken | 8, covering all 6 inspected clusters |
-| Stains measured / usable / matched to a true stain | 191 / 115 / 113 |
-| Impact angle error, median (90th percentile) | 6.2° (17.2°) |
-| Travel direction error, median; reversed | 3.8°; 22 % |
-| Area of origin of the wall impact | **0.50 m** from the true origin (straight-line estimate 0.41 m) |
-| Mechanism | **0 / 2 correct**: both groups called "projected" (truth: impact, cast-off) |
+| Classifier | Validation | **Test** |
+|---|---|---|
+| Phase 2 original (ideal synthetic) | 0.809 | 0.700 |
+| Simulator close-ups only | 0.888 | 0.867 |
+| **Close-ups + ideal synthetic** (chosen on validation, `perception/models/mechanism_gb_simclose.pkl`) | 0.933 | **0.967** |
 
-**Honest status:**
-- **Measuring and locating work.** Single-stain angles and directions are in the range Phase 2 measured
-  for the camera path, and the area of origin of the main impact is placed within half a metre.
-- **The mechanism call does not work yet from the dog's own close-ups.** The classifier is right on
-  ideal measurements of these same scenes: impact and cast-off in S1, projected and drip in S2. But on
-  the close-ups it says "projected".
-- **The cause is which stains get photographed,** not how they are measured. With *ideal* measurements of
-  only the stains the close-ups covered, the S1 impact is already called "projected". The close-ups
-  miss the small, round stains at the edges of the pattern, and half of them were taken from more than
-  1.5 m away.
-- **Tried and dropped:** retraining the classifier on degraded "close-up-like" synthetic measurements was
-  worse.
-- **Next:** closer views (the real Go2 can pitch its body, or use a camera on an arm or a stick), and
-  training the classifier on measurements from simulator close-ups.
+**The full mission on all five hand-made scenarios** (`docs/media/stage_c/s*_report*.json`,
+`missions_simclose.json`):
+
+| Scenario | Clusters found | Stains in found clusters | Distractors flagged | Floor stains walked over (after found) | Collisions | Close-ups | Mechanism | Area-of-origin error |
+|---|---|---|---|---|---|---|---|---|
+| S1 living room, blunt | 5/7 | 0.98 | 0/3 | 24/84 (20) | 0 | 8 | **2/2** (impact, cast-off) | 0.42 m |
+| S2 living room, projected | 3/4 | 0.98 | 0/3 | 0/34 | 0 | 1 | **1/1** (projected) | 0.62 m |
+| S3 bedroom, fall | 4/6 | 0.94 | 0/3 | 16/140 (0) | 0 | 3 | **1/1** (impact) | 0.68 m |
+| S4 bedroom, cast-off | 1/19 | 0.57 | 0/3 | 0/17 | 0 | 0 | not analysed | — |
+| S5 simple room, bat | 4/6 | 0.98 | 0/3 | 0/44 | 0 | 0 | not analysed | — |
+
+- **Measured stains:** the impact-angle error is a median of 6.1–6.6° in S1–S3.
+- **The scene report for S1** reads: "impact spatter … consistent with a blunt swung object (e.g. bat, pipe,
+  hammer)", with an area of origin about 1.2 m above the floor (truth: a pipe, origin 1.55 m). See
+  `docs/media/stage_c/s1_scene_report.md`.
+
+**Failures, and why:**
+- **S4:** 15 of its 19 clusters are cast-off on top of the bed, about 0.6 m up, above the dog's camera
+  (0.41 m). It cannot see them. The one cluster it found (the wall impact) had no reachable standing spot
+  for close-ups.
+- **S5:** at 84 s the dog drove into a tight corner, blocked in front and behind with no room to turn. It
+  stayed there, so the coverage and close-up phases never ran. The search still found 4/6 clusters
+  (98 % of the stains) from where it was. Avoiding such corners in the first place is the next navigation
+  fix.
+- **Real dog:** the Go2's own front camera (1280×720 at about 100°) is far too coarse for droplet-level
+  close-ups. On the real dog this step needs a separate high-resolution camera.
 
 ## Setup (Windows + WSL2 Ubuntu 22.04, or native Ubuntu 22.04)
 

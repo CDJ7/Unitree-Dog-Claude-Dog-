@@ -1,0 +1,80 @@
+{
+ "model": "ideal",
+ "runs": [
+  {
+   "run": "s1_living_room_blunt",
+   "clusters_found": "5/7",
+   "stains_in_found_clusters": 0.976,
+   "precision": 0.95,
+   "distractors_flagged": "0/3",
+   "floor_stains_stepped_on": "24/84",
+   "stepped_after_found": 20,
+   "collisions": 0,
+   "closeups": 8,
+   "stains_measured": 191,
+   "alpha_err_median_deg": 6.16,
+   "mechanism_correct": "0/2",
+   "origin_error_median_m": 1.568,
+   "groups": [
+    [
+     166,
+     "wall",
+     "projected",
+     "impact"
+    ],
+    [
+     24,
+     "floor",
+     "projected",
+     "castoff"
+    ]
+   ]
+  },
+  {
+   "run": "s2_living_room_projected",
+   "clusters_found": "3/4",
+   "stains_in_found_clusters": 0.981,
+   "precision": 1.0,
+   "distractors_flagged": "0/3",
+   "floor_stains_stepped_on": "0/34",
+   "stepped_after_found": 0,
+   "collisions": 0,
+   "closeups": 1,
+   "stains_measured": 120,
+   "alpha_err_median_deg": 6.07,
+   "mechanism_correct": "1/1",
+   "origin_error_median_m": 0.624,
+   "groups": [
+    [
+     119,
+     "wall",
+     "projected",
+     "projected"
+    ]
+   ]
+  },
+  {
+   "run": "s3_bedroom_fall",
+   "clusters_found": "4/6",
+   "stains_in_found_clusters": 0.943,
+   "precision": 1.0,
+   "distractors_flagged": "0/3",
+   "floor_stains_stepped_on": "16/140",
+   "stepped_after_found": 0,
+   "collisions": 0,
+   "closeups": 3,
+   "stains_measured": 43,
+   "alpha_err_median_deg": 6.55,
+   "mechanism_correct": "1/1",
+   "origin_error_median_m": 0.68,
+   "groups": [
+    [
+     35,
+     "floor",
+     "impact",
+     "impact"
+    ]
+   ]
+  }
+ ]
+}

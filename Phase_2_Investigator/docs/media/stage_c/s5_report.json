@@ -1,0 +1,180 @@
+{
+ "sim_time_s": 414.5,
+ "wall_time_s": 346.4,
+ "path_length_m": 5.84,
+ "known_free_m2": 24.16,
+ "camera_coverage": {
+  "surfaces": 0.565,
+  "floor": 0.706
+ },
+ "collisions": [],
+ "n_collisions": 0,
+ "safety_stops": 1080,
+ "goals": [
+  [
+   29.49999999999453,
+   "frontier",
+   0.5249999999999999,
+   3.5250000000000004,
+   true
+  ],
+  [
+   85.19999999998284,
+   "viewpoint",
+   0.6749999999999998,
+   2.125,
+   false
+  ],
+  [
+   109.4999999999262,
+   "viewpoint",
+   1.625,
+   2.4750000000000005,
+   false
+  ],
+  [
+   133.6999999999103,
+   "viewpoint",
+   1.125,
+   1.2250000000000005,
+   false
+  ],
+  [
+   157.10000000002202,
+   "viewpoint",
+   2.375,
+   1.7750000000000004,
+   false
+  ],
+  [
+   180.50000000013375,
+   "viewpoint",
+   2.575,
+   2.825,
+   false
+  ],
+  [
+   203.90000000024548,
+   "viewpoint",
+   3.325,
+   3.5250000000000004,
+   false
+  ],
+  [
+   227.30000000035722,
+   "viewpoint",
+   3.375,
+   1.625,
+   false
+  ],
+  [
+   250.70000000046895,
+   "viewpoint",
+   4.075,
+   0.875,
+   false
+  ],
+  [
+   274.1000000005807,
+   "viewpoint",
+   3.7750000000000004,
+   4.425000000000001,
+   false
+  ],
+  [
+   297.5000000006924,
+   "viewpoint",
+   1.6749999999999998,
+   0.375,
+   false
+  ],
+  [
+   320.90000000080414,
+   "viewpoint",
+   5.025,
+   2.9250000000000007,
+   false
+  ],
+  [
+   344.3000000009159,
+   "viewpoint",
+   3.175,
+   0.42500000000000027,
+   false
+  ],
+  [
+   367.7000000010276,
+   "viewpoint",
+   5.625,
+   2.125,
+   false
+  ],
+  [
+   391.10000000113934,
+   "viewpoint",
+   5.475,
+   3.825,
+   false
+  ],
+  [
+   414.50000000125107,
+   "viewpoint",
+   4.975,
+   0.42500000000000027,
+   false
+  ]
+ ],
+ "frames_tagged": 0,
+ "look_arounds": 2,
+ "inspected": [
+  {
+   "id": "e6",
+   "closeups": 0
+  },
+  {
+   "id": "e1",
+   "closeups": 0
+  },
+  {
+   "id": "e8",
+   "closeups": 0
+  },
+  {
+   "id": "e9",
+   "closeups": 0
+  },
+  {
+   "id": "e3",
+   "closeups": 0
+  },
+  {
+   "id": "e11",
+   "closeups": 0
+  }
+ ],
+ "scenario": "s5_simple_room_bat",
+ "keepout": true,
+ "detector": "stain_rf_depth.pkl",
+ "detector_threshold": 0.25,
+ "detections": 143,
+ "evidence_frames": 545,
+ "sim_time_total_s": 556.5,
+ "wall_time_total_s": 468.5,
+ "score": {
+  "truth_clusters": 6,
+  "found_clusters": 7,
+  "truth_found": 4,
+  "recall": 0.667,
+  "precision": 1.0,
+  "median_error_to_centre_m": 0.235,
+  "truth_missed": [
+   "c3",
+   "c5"
+  ],
+  "distractors_flagged": 0,
+  "distractors": 3
+ },
+ "floor_stains_stepped_on": 0,
+ "floor_stains_stepped_on_after_found": 0,
+ "floor_stains_total": 44
+}
