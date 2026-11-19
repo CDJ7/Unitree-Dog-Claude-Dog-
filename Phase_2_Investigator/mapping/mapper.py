@@ -78,6 +78,10 @@ class ZoneMapper:
         f = nav.field()
         clear = g.obstacle_distance()
         cand = g.free() & np.isfinite(f.cum) & (clear >= min_clear)
+        ko = getattr(g, "keepout", None)
+        if ko is not None and ko.any():                     # never stand (and spin) on floor evidence
+            from scipy.ndimage import distance_transform_edt as _edt
+            cand &= _edt(~ko) * g.res > 0.40
         rr, cc = np.nonzero(cand)
         if not len(rr):
             return None

@@ -1,0 +1,408 @@
+{
+ "frames": 384,
+ "link_m": 0.35,
+ "min_views": 2,
+ "min_prob": 0.5,
+ "clusters": [
+  {
+   "id": "e0",
+   "xyz": [
+    3.385,
+    2.364,
+    0.001
+   ],
+   "normal": [
+    0.006,
+    -0.003,
+    1.0
+   ],
+   "surface": "floor",
+   "views": 33,
+   "mean_prob": 0.859,
+   "max_prob": 0.998,
+   "area_m2_max": 0.0001,
+   "zone": "lounge_area",
+   "confirmed": true
+  },
+  {
+   "id": "e1",
+   "xyz": [
+    3.815,
+    2.365,
+    0.001
+   ],
+   "normal": [
+    0.014,
+    0.032,
+    0.999
+   ],
+   "surface": "floor",
+   "views": 35,
+   "mean_prob": 0.86,
+   "max_prob": 0.985,
+   "area_m2_max": 0.0,
+   "zone": "lounge_area",
+   "confirmed": true
+  },
+  {
+   "id": "e2",
+   "xyz": [
+    0.051,
+    2.735,
+    1.402
+   ],
+   "normal": [
+    1.0,
+    0.003,
+    -0.002
+   ],
+   "surface": "wall",
+   "views": 54,
+   "mean_prob": 0.816,
+   "max_prob": 0.959,
+   "area_m2_max": 0.0006,
+   "zone": "victim_area",
+   "confirmed": true
+  },
+  {
+   "id": "e3",
+   "xyz": [
+    5.392,
+    2.297,
+    0.001
+   ],
+   "normal": [
+    -0.027,
+    -0.005,
+    1.0
+   ],
+   "surface": "floor",
+   "views": 7,
+   "mean_prob": 0.89,
+   "max_prob": 0.969,
+   "area_m2_max": 0.0,
+   "zone": "desk_entry_area",
+   "confirmed": true
+  },
+  {
+   "id": "e4",
+   "xyz": [
+    5.209,
+    2.49,
+    0.274
+   ],
+   "normal": [
+    0.973,
+    0.195,
+    0.124
+   ],
+   "surface": "wall",
+   "views": 12,
+   "mean_prob": 0.637,
+   "max_prob": 0.94,
+   "area_m2_max": 0.0001,
+   "zone": "desk_entry_area",
+   "confirmed": true
+  },
+  {
+   "id": "e5",
+   "xyz": [
+    5.01,
+    2.388,
+    0.001
+   ],
+   "normal": [
+    0.017,
+    -0.004,
+    1.0
+   ],
+   "surface": "floor",
+   "views": 14,
+   "mean_prob": 0.919,
+   "max_prob": 0.963,
+   "area_m2_max": 0.0,
+   "zone": "desk_entry_area",
+   "confirmed": true
+  },
+  {
+   "id": "e6",
+   "xyz": [
+    4.28,
+    2.301,
+    0.001
+   ],
+   "normal": [
+    0.026,
+    0.01,
+    1.0
+   ],
+   "surface": "floor",
+   "views": 43,
+   "mean_prob": 0.902,
+   "max_prob": 0.973,
+   "area_m2_max": 0.0,
+   "zone": "desk_entry_area",
+   "confirmed": true
+  },
+  {
+   "id": "e7",
+   "xyz": [
+    0.051,
+    2.419,
+    1.136
+   ],
+   "normal": [
+    1.0,
+    -0.01,
+    -0.006
+   ],
+   "surface": "wall",
+   "views": 74,
+   "mean_prob": 0.853,
+   "max_prob": 0.972,
+   "area_m2_max": 0.0005,
+   "zone": "victim_area",
+   "confirmed": true
+  },
+  {
+   "id": "e8",
+   "xyz": [
+    6.645,
+    2.156,
+    0.001
+   ],
+   "normal": [
+    0.01,
+    -0.034,
+    0.999
+   ],
+   "surface": "floor",
+   "views": 4,
+   "mean_prob": 0.801,
+   "max_prob": 0.863,
+   "area_m2_max": 0.0,
+   "zone": "bathroom",
+   "confirmed": true
+  },
+  {
+   "id": "e9",
+   "xyz": [
+    0.051,
+    2.381,
+    1.411
+   ],
+   "normal": [
+    1.0,
+    -0.008,
+    0.004
+   ],
+   "surface": "wall",
+   "views": 32,
+   "mean_prob": 0.841,
+   "max_prob": 0.953,
+   "area_m2_max": 0.0002,
+   "zone": "victim_area",
+   "confirmed": true
+  },
+  {
+   "id": "e10",
+   "xyz": [
+    0.051,
+    2.868,
+    0.964
+   ],
+   "normal": [
+    1.0,
+    0.017,
+    0.001
+   ],
+   "surface": "wall",
+   "views": 60,
+   "mean_prob": 0.842,
+   "max_prob": 0.967,
+   "area_m2_max": 0.0002,
+   "zone": null,
+   "confirmed": true
+  },
+  {
+   "id": "e11",
+   "xyz": [
+    0.051,
+    2.144,
+    0.644
+   ],
+   "normal": [
+    1.0,
+    0.011,
+    -0.013
+   ],
+   "surface": "wall",
+   "views": 49,
+   "mean_prob": 0.88,
+   "max_prob": 0.984,
+   "area_m2_max": 0.0001,
+   "zone": "victim_area",
+   "confirmed": true
+  },
+  {
+   "id": "e12",
+   "xyz": [
+    0.051,
+    3.069,
+    1.153
+   ],
+   "normal": [
+    1.0,
+    0.014,
+    0.008
+   ],
+   "surface": "wall",
+   "views": 47,
+   "mean_prob": 0.824,
+   "max_prob": 0.937,
+   "area_m2_max": 0.0001,
+   "zone": null,
+   "confirmed": true
+  },
+  {
+   "id": "e13",
+   "xyz": [
+    0.051,
+    2.655,
+    0.629
+   ],
+   "normal": [
+    0.999,
+    -0.025,
+    -0.02
+   ],
+   "surface": "wall",
+   "views": 54,
+   "mean_prob": 0.892,
+   "max_prob": 0.967,
+   "area_m2_max": 0.0001,
+   "zone": "victim_area",
+   "confirmed": true
+  },
+  {
+   "id": "e14",
+   "xyz": [
+    0.051,
+    2.558,
+    0.891
+   ],
+   "normal": [
+    0.999,
+    -0.034,
+    -0.023
+   ],
+   "surface": "wall",
+   "views": 16,
+   "mean_prob": 0.809,
+   "max_prob": 0.955,
+   "area_m2_max": 0.0,
+   "zone": "victim_area",
+   "confirmed": true
+  },
+  {
+   "id": "e15",
+   "xyz": [
+    2.69,
+    1.577,
+    0.406
+   ],
+   "normal": [
+    -1.0,
+    -0.0,
+    0.0
+   ],
+   "surface": "wall",
+   "views": 1,
+   "mean_prob": 0.414,
+   "max_prob": 0.414,
+   "area_m2_max": 0.0003,
+   "zone": "victim_area",
+   "confirmed": false
+  },
+  {
+   "id": "e16",
+   "xyz": [
+    0.051,
+    3.025,
+    0.175
+   ],
+   "normal": [
+    1.0,
+    -0.026,
+    0.002
+   ],
+   "surface": "wall",
+   "views": 10,
+   "mean_prob": 0.792,
+   "max_prob": 0.918,
+   "area_m2_max": 0.0,
+   "zone": null,
+   "confirmed": true
+  },
+  {
+   "id": "e17",
+   "xyz": [
+    5.209,
+    2.49,
+    0.273
+   ],
+   "normal": [
+    -0.819,
+    -0.574,
+    -0.018
+   ],
+   "surface": "wall",
+   "views": 4,
+   "mean_prob": 0.745,
+   "max_prob": 0.898,
+   "area_m2_max": 0.0001,
+   "zone": "desk_entry_area",
+   "confirmed": true
+  },
+  {
+   "id": "e18",
+   "xyz": [
+    5.354,
+    2.59,
+    0.451
+   ],
+   "normal": [
+    0.127,
+    -0.24,
+    -0.962
+   ],
+   "surface": "raised",
+   "views": 1,
+   "mean_prob": 0.599,
+   "max_prob": 0.599,
+   "area_m2_max": 0.0,
+   "zone": null,
+   "confirmed": false
+  },
+  {
+   "id": "e19",
+   "xyz": [
+    0.051,
+    3.026,
+    0.175
+   ],
+   "normal": [
+    0.3,
+    -0.939,
+    -0.168
+   ],
+   "surface": "wall",
+   "views": 1,
+   "mean_prob": 0.786,
+   "max_prob": 0.786,
+   "area_m2_max": 0.0,
+   "zone": "victim_area",
+   "confirmed": false
+  }
+ ]
+}

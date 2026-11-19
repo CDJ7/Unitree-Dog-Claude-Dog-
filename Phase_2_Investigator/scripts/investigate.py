@@ -135,7 +135,7 @@ def main():
     a = ap.parse_args()
     if not (a.scenario or a.random is not None):
         a.scenario = "1"
-    from mapping.evidence_map import EvidenceMap, floor_stains_stepped_on, score
+    from mapping.evidence_map import EvidenceMap, floor_stains_stepped_on, score, stepped_after_found
     from mapping.mapper import ZoneMapper
     from navigation.explorer import Navigator
     from navigation.inspect import inspect_point
@@ -177,9 +177,10 @@ def main():
                 "evidence_frames": ev.frames, "sim_time_total_s": round(sim.time - t0, 1),
                 "wall_time_total_s": round(time.time() - wall0, 1)})
     rep["score"] = score(ev, gt)
-    stepped = floor_stains_stepped_on(gt, nav.log.path)
+    stepped = floor_stains_stepped_on(gt, nav.log.path, times=True)
     n_floor = sum(1 for s in gt["stains"] if s["center_world"][2] < 0.03)
     rep["floor_stains_stepped_on"] = len(stepped)
+    rep["floor_stains_stepped_on_after_found"] = len(stepped_after_found(ev, stepped))
     rep["floor_stains_total"] = n_floor
     rep.pop("regions", None)
     ev.save(out / "evidence.json")
@@ -188,7 +189,8 @@ def main():
     s = rep["score"]
     print(f"[investigate] {name}: {s['truth_found']}/{s['truth_clusters']} stain clusters found (precision "
           f"{s['precision']}, median error {s['median_error_to_centre_m']} m), distractors flagged "
-          f"{s['distractors_flagged']}/{s['distractors']}; floor stains stepped on {len(stepped)}/{n_floor}; "
+          f"{s['distractors_flagged']}/{s['distractors']}; floor stains stepped on {len(stepped)}/{n_floor} "
+          f"({rep['floor_stains_stepped_on_after_found']} after they were found); "
           f"collisions {rep['n_collisions']} -> {out}")
     sim.close()
 

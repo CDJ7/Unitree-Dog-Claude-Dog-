@@ -63,7 +63,11 @@ class EvidenceMap:
                 best["_last_frame"] = self.frames
             best["last_t"] = t
             if zone_of is not None:
-                best["zone"] = zone_of(best["xyz"][:2])
+                # walls: look up the zone a little way into the room (the wall cell itself is no zone)
+                q = best["xyz"][:2] + (0.4 * best["normal"][:2] if abs(best["normal"][2]) < 0.8 else 0.0)
+                best["zone"] = zone_of(q)
+            if "confirmed_t" not in best and best["views"] >= self.min_views and np.mean(best["probs"]) >= self.min_prob:
+                best["confirmed_t"] = t
 
     def confirmed(self):
         return [c for c in self.clusters if c["views"] >= self.min_views and np.mean(c["probs"]) >= self.min_prob]
@@ -127,17 +131,34 @@ def score(evidence, gt, match_m=0.6, min_stains=3):
             "distractors_flagged": sum(d["flagged_as_evidence"] for d in distractors), "distractors": len(distractors)}
 
 
-def floor_stains_stepped_on(gt, path, half_length=0.35, half_width=0.155):
+def floor_stains_stepped_on(gt, path, half_length=0.35, half_width=0.155, times=False):
     """Ground-truth floor stains that the robot's body rectangle passed over along `path` [(t, x, y, yaw)].
-    (The legs stand inside the body outline, so this counts every stain a foot could have touched.)"""
+    (The legs stand inside the body outline, so this counts every stain a foot could have touched.)
+    times=True returns {stain id: (first time under the body, xy)}."""
     st = [s for s in gt["stains"] if s["center_world"][2] < 0.03]
     if not st or not len(path):
-        return []
+        return {} if times else []
     P = np.array([s["center_world"][:2] for s in st])
-    hit = np.zeros(len(P), bool)
-    for _, x, y, yaw in path:
+    first = np.full(len(P), np.nan)
+    for t, x, y, yaw in path:
         d = P - (x, y)
         c, s_ = np.cos(yaw), np.sin(yaw)
         lx, ly = c * d[:, 0] + s_ * d[:, 1], -s_ * d[:, 0] + c * d[:, 1]
-        hit |= (np.abs(lx) <= half_length) & (np.abs(ly) <= half_width)
-    return [st[i]["id"] for i in np.flatnonzero(hit)]
+        new = (np.abs(lx) <= half_length) & (np.abs(ly) <= half_width) & np.isnan(first)
+        first[new] = t
+    idx = np.flatnonzero(~np.isnan(first))
+    if times:
+        return {st[i]["id"]: (float(first[i]), P[i]) for i in idx}
+    return [st[i]["id"] for i in idx]
+
+
+def stepped_after_found(evidence, stepped, near=0.5):
+    """Stains first stepped on after a confirmed floor cluster within `near` m of them existed: the ones the
+    keep-out layer was meant to protect. stepped: floor_stains_stepped_on(..., times=True)."""
+    known = [(c["confirmed_t"], c["xyz"][:2]) for c in evidence.confirmed()
+             if c.get("confirmed_t") is not None and evidence.surface_kind(c["xyz"], c["normal"]) == "floor"]
+    out = []
+    for sid, (t, xy) in stepped.items():
+        if any(tc <= t and np.linalg.norm(xy - p) <= near for tc, p in known):
+            out.append(sid)
+    return out

@@ -3,7 +3,7 @@ from types import SimpleNamespace as NS
 
 import numpy as np
 
-from mapping.evidence_map import EvidenceMap, floor_stains_stepped_on, score
+from mapping.evidence_map import EvidenceMap, floor_stains_stepped_on, score, stepped_after_found
 from navigation.occupancy import OccupancyGrid
 from navigation.planner import CostField
 
@@ -56,3 +56,25 @@ def test_stepped_on_counts_stains_under_the_body():
                      {"id": "w", "center_world": [1.0, 0.0, 1.0]}]}
     path = [(0, x, 0.0, 0.0) for x in np.arange(0, 2, 0.1)]
     assert floor_stains_stepped_on(gt, path) == ["a"]
+
+
+def test_stepped_after_found_only_counts_known_evidence():
+    ev = EvidenceMap()
+    ev.add_frame([det((1.0, 0.0, 0.0))], t=5.0)
+    ev.add_frame([det((1.0, 0.0, 0.0))], t=6.0)              # confirmed at t = 6
+    gt = {"stains": [{"id": "a", "center_world": [1.0, 0.0, 0.0]}, {"id": "b", "center_world": [3.0, 0.0, 0.0]}]}
+    path = [(t, x, 0.0, 0.0) for t, x in zip(np.arange(0, 20, 1.0), np.arange(0, 4, 0.2))]
+    stepped = floor_stains_stepped_on(gt, path, times=True)
+    assert set(stepped) == {"a", "b"} and stepped["a"][0] < 6.0  # "a" was walked over before it was found
+    assert stepped_after_found(ev, stepped) == []
+    late = floor_stains_stepped_on(gt, [(t + 10, x, y, yaw) for t, x, y, yaw in path], times=True)
+    assert stepped_after_found(ev, late) == ["a"]
+
+
+def test_safety_does_not_freeze_on_a_point_inside_the_body():
+    from navigation.local import SafetyLayer
+    sl = SafetyLayer()
+    inside = np.array([[-0.34, 0.0]])                        # a return grazing the rear of the body
+    assert not sl.motion_hits(inside, 0.15, 0.0)            # driving forward is still allowed
+    ahead = np.array([[0.45, 0.0]])
+    assert sl.motion_hits(ahead, 0.3, 0.0, horizon=0.5)      # a real obstacle ahead still counts

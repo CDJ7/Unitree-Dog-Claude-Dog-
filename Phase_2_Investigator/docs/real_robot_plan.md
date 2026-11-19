@@ -69,7 +69,7 @@ flowchart LR
 | **R2** | `scripts/real_check.py`: sensors-only check, the dog does not move (pose, LiDAR, floor height, camera, classifier, map snapshot) | Built, tested with `--link sim` |
 | **R3** | `mapping/`: zone map, autonomous mapping (`scripts/map_zones.py`) | Built; in simulation 4/4 zone goals right, 0 collisions (section 3) |
 | **R4** | `scripts/goto_zone.py`: relocalise on a saved map, plan, drive, confirm with a look-around | Built; in simulation 4/4 and 2/2 (relocalised) arrived (section 3) |
-| R5 | Lab session: `real_check` → `map_zones` → `goto_zone` trials; tune `--body-height`, speeds and the scan band | **Next, needs the dog** |
+| R5 | Lab session: `real_check` → `map_zones` → `goto_zone` trials; tune `--body-height`, speeds and the scan band | **Next, needs the dog** (lab procedure: `real_robot/README.md`) |
 | R6 | Better zone evidence: align Test 2's labelled recordings (`zone_map.npz`) to the LiDAR map as a prior; operator anchors while mapping (press 1–4 to tag the current place); more varied training sessions | Later |
 | R7 | Drift: odometry drifts over a long run; correct it continuously with the same scan matching as relocalisation | Later, if the lab map shows doubled walls |
 
@@ -85,14 +85,14 @@ Phase 2 Stage A built the crime-scene investigator in simulation:
 
 Stage B (analysis + GUI) was outlined but not started. Bringing it to the real dog:
 
-| Step | What | Builds on |
-|---|---|---|
-| **C1** | **Evidence in the lab:** non-graphic red stain prints on paper or poster board, taped to walls and floor (removable), plus red distractors. Ground truth is measured with a tape. | Phase 2's stain shapes (`sim_env/spatter`) can be printed to scale |
-| **C2** | **Stain detector:** first a colour + shape detector (no GPU); then RF-DETR-Seg fine-tuned on the Phase 2 COCO set plus real photos from the dog's camera | Phase 2 A6 dataset, plan section 7 (B1) |
-| **C3** | **Evidence on the map:** detection → camera ray → floor plane (known camera height) or LiDAR wall → a marker on the zone map, e.g. "stain cluster in lab_2 at (x, y)" | R3 zone map, `sim_env/interfaces.py` CameraFrame |
-| **C4** | **Search mission:** map the lab, patrol so the camera sees every surface, inspect each cluster from 2–3 angles, never drive over evidence (evidence cells become obstacles in the costmap) | `navigation/coverage.py`, `navigation/inspect.py`, Test 2 Q3 |
-| **C5** | **Analysis and report:** impact angle from each stain's ellipse (W/L = sin α), directionality, area of origin, mechanism; one report per zone | `analysis/bpa`, `analysis/classifier` (exist) |
-| **C6** | **Reenactment and GUI:** event playback from the analysed event; a browser page served from the laptop | Phase 2 A5 playback, plan B4 |
+| Step | What | Builds on | Status (19 Nov) |
+|---|---|---|---|
+| **C1** | **Evidence in the lab:** non-graphic red stain prints on paper or poster board, taped to walls and floor (removable), plus red distractors. Ground truth is measured with a tape. | Phase 2's stain shapes (`sim_env/spatter`) can be printed to scale | Waiting for your answer: what can go in the lab |
+| **C2** | **Stain detector:** first a colour + shape detector (no GPU); then RF-DETR-Seg fine-tuned on the Phase 2 COCO set plus real photos from the dog's camera | Phase 2 A6 dataset, plan section 7 (B1) | **Done in simulation:** colour + shape + geometry random forest, test precision 0.92 / recall 0.97 (image only 0.92 / 0.92), 4.8 % of distractors flagged. Real dog: the image-only model, then real photos |
+| **C3** | **Evidence on the map:** detection → camera ray → floor plane (known camera height) or LiDAR wall → a marker on the zone map, e.g. "stain cluster in lab_2 at (x, y)" | R3 zone map, `sim_env/interfaces.py` CameraFrame | **Done in simulation:** evidence clusters with surface, zone, views, confirmation; scenario 1: 5/7 clusters, precision 0.94 |
+| **C4** | **Search mission:** map the lab, patrol so the camera sees every surface, inspect each cluster from 2–3 angles, never drive over evidence (evidence cells become obstacles in the costmap) | `navigation/coverage.py`, `navigation/inspect.py`, Test 2 Q3 | **Done in simulation:** keep-out layer and inspection of detected clusters; scenario 1: floor stains walked over 23/84 vs 56/84 without keep-out, 0 collisions |
+| **C5** | **Analysis and report:** impact angle from each stain's ellipse (W/L = sin α), directionality, area of origin, mechanism; one report per zone | `analysis/bpa`, `analysis/classifier` (exist) | Next in simulation: better framing of floor evidence in the close-ups (wall close-ups are good, floor ones are not yet), then `analysis/bpa` on them |
+| **C6** | **Reenactment and GUI:** event playback from the analysed event; a browser page served from the laptop | Phase 2 A5 playback, plan B4 | Later |
 
 ## 3. Results so far (simulation)
 

@@ -1,0 +1,159 @@
+{
+ "sim_time_s": 301.9,
+ "wall_time_s": 427.6,
+ "path_length_m": 35.56,
+ "known_free_m2": 25.11,
+ "camera_coverage": {
+  "surfaces": 0.758,
+  "floor": 0.828
+ },
+ "collisions": [],
+ "n_collisions": 0,
+ "safety_stops": 4,
+ "goals": [
+  [
+   22.899999999998187,
+   "frontier",
+   7.025,
+   1.875,
+   true
+  ],
+  [
+   80.09999999999472,
+   "frontier",
+   0.7750000000000004,
+   0.7249999999999996,
+   true
+  ],
+  [
+   100.09999999994811,
+   "viewpoint",
+   1.5250000000000004,
+   1.7250000000000005,
+   true
+  ],
+  [
+   116.09999999991082,
+   "viewpoint",
+   1.6750000000000003,
+   2.7250000000000005,
+   true
+  ],
+  [
+   132.59999999990504,
+   "viewpoint",
+   2.625,
+   2.2750000000000004,
+   true
+  ],
+  [
+   151.19999999999385,
+   "viewpoint",
+   2.2250000000000005,
+   3.575,
+   true
+  ],
+  [
+   167.9000000000736,
+   "viewpoint",
+   1.2750000000000004,
+   3.925,
+   true
+  ],
+  [
+   193.2000000001944,
+   "viewpoint",
+   3.625,
+   2.2250000000000005,
+   true
+  ],
+  [
+   209.2000000002708,
+   "viewpoint",
+   4.625,
+   2.2750000000000004,
+   true
+  ],
+  [
+   226.20000000035196,
+   "viewpoint",
+   5.7250000000000005,
+   2.0250000000000004,
+   true
+  ],
+  [
+   245.30000000044316,
+   "viewpoint",
+   5.525,
+   0.4249999999999998,
+   true
+  ],
+  [
+   262.1000000005234,
+   "viewpoint",
+   4.425000000000001,
+   0.47499999999999964,
+   true
+  ],
+  [
+   289.6000000006547,
+   "viewpoint",
+   7.225,
+   3.0250000000000004,
+   true
+  ]
+ ],
+ "frames_tagged": 575,
+ "look_arounds": 14,
+ "inspected": [
+  {
+   "id": "e7",
+   "views_captured": 2
+  },
+  {
+   "id": "e2",
+   "views_captured": 2
+  },
+  {
+   "id": "e12",
+   "views_captured": 2
+  },
+  {
+   "id": "e9",
+   "views_captured": 2
+  },
+  {
+   "id": "e1",
+   "views_captured": 2
+  },
+  {
+   "id": "e14",
+   "views_captured": 2
+  }
+ ],
+ "scenario": "s1_living_room_blunt_nokeepout",
+ "keepout": false,
+ "detector": "stain_rf_depth.pkl",
+ "detector_threshold": 0.25,
+ "detections": 1329,
+ "evidence_frames": 426,
+ "sim_time_total_s": 433.7,
+ "wall_time_total_s": 638.9,
+ "score": {
+  "truth_clusters": 7,
+  "found_clusters": 16,
+  "truth_found": 5,
+  "recall": 0.714,
+  "precision": 0.938,
+  "median_error_to_centre_m": 0.337,
+  "truth_missed": [
+   "c3",
+   "c6"
+  ],
+  "distractors_flagged": 0,
+  "distractors": 3
+ },
+ "floor_stains_stepped_on": 56,
+ "floor_stains_stepped_on_after_found": 52,
+ "floor_stains_total": 84
+}
