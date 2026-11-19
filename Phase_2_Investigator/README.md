@@ -128,6 +128,15 @@ stain pixels, against 99 % of distractor pixels. That's why the detector works o
 
 Video: [`s1_investigation.mp4`](docs/media/stage_c/s1_investigation.mp4).*
 
+![Inspection close-ups](docs/media/stage_c/s1_closeups.jpg)
+
+*Inspection close-ups of four detected clusters:
+- **Wall (bottom: e2, e10):** the impact spatter is clearly captured.
+- **Floor (top: e1, e5):** framed poorly. The stains are tiny on the wood floor, and e5's view ends up
+  facing a wall.
+
+Better floor framing (aim lower, stand closer) is needed before stain analysis (C5) can use these.*
+
 ## Setup (Windows + WSL2 Ubuntu 22.04, or native Ubuntu 22.04)
 
 ```bash

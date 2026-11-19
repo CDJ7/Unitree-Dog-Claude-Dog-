@@ -1,0 +1,145 @@
+{
+ "sim_time_s": 295.6,
+ "wall_time_s": 399.5,
+ "path_length_m": 34.91,
+ "known_free_m2": 25.84,
+ "camera_coverage": {
+  "surfaces": 0.767,
+  "floor": 0.803
+ },
+ "collisions": [],
+ "n_collisions": 0,
+ "safety_stops": 12,
+ "goals": [
+  [
+   22.699999999998298,
+   "frontier",
+   7.025,
+   1.875,
+   true
+  ],
+  [
+   67.10000000002502,
+   "frontier",
+   0.7750000000000004,
+   0.7249999999999996,
+   true
+  ],
+  [
+   86.79999999997911,
+   "viewpoint",
+   1.5250000000000004,
+   1.7250000000000005,
+   true
+  ],
+  [
+   102.99999999994135,
+   "viewpoint",
+   1.6750000000000003,
+   2.7250000000000005,
+   true
+  ],
+  [
+   119.4999999999029,
+   "viewpoint",
+   2.625,
+   2.325,
+   true
+  ],
+  [
+   137.89999999993034,
+   "viewpoint",
+   2.2250000000000005,
+   3.575,
+   true
+  ],
+  [
+   154.5000000000096,
+   "viewpoint",
+   1.2750000000000004,
+   3.925,
+   true
+  ],
+  [
+   180.60000000013423,
+   "viewpoint",
+   3.625,
+   1.8250000000000002,
+   true
+  ],
+  [
+   221.80000000033095,
+   "viewpoint",
+   4.425000000000001,
+   0.47499999999999964,
+   true
+  ],
+  [
+   253.70000000048327,
+   "viewpoint",
+   7.225,
+   3.0250000000000004,
+   true
+  ],
+  [
+   283.3000000006246,
+   "viewpoint",
+   4.575,
+   2.825,
+   true
+  ]
+ ],
+ "frames_tagged": 563,
+ "look_arounds": 12,
+ "inspected": [
+  {
+   "id": "e6",
+   "views_captured": 2
+  },
+  {
+   "id": "e7",
+   "views_captured": 2
+  },
+  {
+   "id": "e2",
+   "views_captured": 2
+  },
+  {
+   "id": "e1",
+   "views_captured": 1
+  },
+  {
+   "id": "e10",
+   "views_captured": 2
+  },
+  {
+   "id": "e13",
+   "views_captured": 2
+  }
+ ],
+ "scenario": "s1_living_room_blunt",
+ "keepout": true,
+ "detector": "stain_rf_depth.pkl",
+ "detector_threshold": 0.25,
+ "detections": 1213,
+ "evidence_frames": 384,
+ "sim_time_total_s": 391.3,
+ "wall_time_total_s": 550.5,
+ "score": {
+  "truth_clusters": 7,
+  "found_clusters": 17,
+  "truth_found": 5,
+  "recall": 0.714,
+  "precision": 0.941,
+  "median_error_to_centre_m": 0.288,
+  "truth_missed": [
+   "c3",
+   "c6"
+  ],
+  "distractors_flagged": 0,
+  "distractors": 3
+ },
+ "floor_stains_stepped_on": 23,
+ "floor_stains_stepped_on_after_found": 19,
+ "floor_stains_total": 84
+}
