@@ -50,7 +50,7 @@ def _camera_offset(sim):
     return float(c * d[0] + s * d[1])
 
 
-def standing_spot(nav, aim, normal, cam_fwd, floor_h=0.50, wall_h=0.50, min_clear=0.32):
+def standing_spot(nav, aim, normal, cam_fwd, floor_h=0.50, wall_h=0.50, min_clear=0.30):
     """Robot base (xy) for a close-up of `aim`, or None."""
     g = nav.grid
     aim = np.asarray(aim, float)
@@ -65,12 +65,12 @@ def standing_spot(nav, aim, normal, cam_fwd, floor_h=0.50, wall_h=0.50, min_clea
     st = nav.sim.state()
     if abs(n[2]) > 0.8:                                   # floor / top: approach from the robot's side
         base_dir = st.position[:2] - aim[:2]
-        dists = (floor_h, floor_h + 0.1, floor_h - 0.1)
+        dists = (floor_h, floor_h + 0.15, floor_h - 0.1, floor_h + 0.3)
         angles = [0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180]
     else:                                                 # wall: stand in front of it
         base_dir = n[:2]
-        dists = (wall_h, wall_h + 0.2, wall_h + 0.4)
-        angles = [0, 20, -20, 40, -40, 60, -60]
+        dists = (wall_h, wall_h + 0.2, wall_h + 0.4, wall_h + 0.6, wall_h + 0.8)   # furniture / a body may be in front
+        angles = [0, 15, -15, 30, -30, 45, -45, 60, -60, 70, -70]
     base_dir = base_dir / max(np.linalg.norm(base_dir), 1e-9)
     for h in dists:
         for ang in angles:
@@ -90,7 +90,8 @@ def standing_spot(nav, aim, normal, cam_fwd, floor_h=0.50, wall_h=0.50, min_clea
     return None
 
 
-def closeup_tour(nav, cluster, max_slant=1.15, max_pitch_deg=50.0, hold_s=0.4, out_dir=None, log=None):
+def closeup_tour(nav, cluster, max_slant=1.15, target_slant=1.8, max_pitch_deg=50.0, hold_s=0.4, out_dir=None,
+                 log=None):
     """Close-up frames [(aim, CameraFrame)] covering one evidence cluster."""
     sim = nav.sim
     say = log or nav.say
@@ -106,12 +107,16 @@ def closeup_tour(nav, cluster, max_slant=1.15, max_pitch_deg=50.0, hold_s=0.4, o
         if base is None:
             say(f"  close-ups {cluster['id']}: no standing spot for aim {i}")
             continue
-        if not nav.go_to(base, timeout=60.0, tol=0.25, final_tol=0.15):
+        ok = nav.go_to(base, timeout=60.0, tol=0.25, final_tol=0.15)
+        if not ok and np.linalg.norm(sim.state().position[:2] - base) > 0.6:
             say(f"  close-ups {cluster['id']}: could not reach the spot for aim {i}")
             continue
         cam = sim.camera_pose()[:3, 3]
         for k, a in enumerate(aims):
-            if shot[k] or np.linalg.norm(a - cam) > max_slant:
+            # the aim the dog came for is always photographed (navigation may stop a little short);
+            # other aims only when close enough to measure well
+            limit = target_slant if k == i else max_slant
+            if shot[k] or np.linalg.norm(a - cam) > limit:
                 continue
             nav.turn_to(a[:2])
             nav.hold(hold_s)
