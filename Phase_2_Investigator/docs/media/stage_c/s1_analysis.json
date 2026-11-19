@@ -1,0 +1,136 @@
+{
+ "stains_measured": 191,
+ "stains_usable": 115,
+ "groups": [
+  {
+   "id": "g0",
+   "n_stains": 166,
+   "n_usable": 98,
+   "centre": [
+    0.051,
+    2.548,
+    1.25
+   ],
+   "surface": "wall",
+   "zone": null,
+   "mechanism": "projected",
+   "mechanism_confidence": 0.974,
+   "weapon_categories": [
+    "edged weapon (e.g. knife)",
+    "no weapon (fall, drip from an existing injury)"
+   ],
+   "text": "This stain group is weakly consistent with projected / arterial-style pattern (classifier confidence high, 97%). Weapon categories consistent with this: edged weapon (e.g. knife), no weapon (fall, drip from an existing injury). These are inferences from the stain pattern, not identifications.",
+   "alpha_median_deg": 40.7,
+   "origin": {
+    "gravity_corrected": [
+     0.577,
+     2.427,
+     1.106
+    ],
+    "straight_line": [
+     0.401,
+     2.468,
+     1.574
+    ],
+    "ellipsoid_95_semi_axes_m": [
+     1.833,
+     0.486,
+     0.477
+    ],
+    "height_m": 1.11
+   },
+   "truth": {
+    "event": 0,
+    "purity": 0.99,
+    "mechanism": "impact",
+    "mechanism_correct": false,
+    "origin_error_m": 0.498,
+    "origin_error_straight_m": 0.405
+   }
+  },
+  {
+   "id": "g1",
+   "n_stains": 24,
+   "n_usable": 16,
+   "centre": [
+    3.988,
+    2.343,
+    0.0
+   ],
+   "surface": "floor",
+   "zone": "lounge_area",
+   "mechanism": "projected",
+   "mechanism_confidence": 0.789,
+   "weapon_categories": [
+    "edged weapon (e.g. knife)",
+    "no weapon (fall, drip from an existing injury)"
+   ],
+   "text": "This stain group is weakly consistent with projected / arterial-style pattern (classifier confidence moderate, 79%). Weapon categories consistent with this: edged weapon (e.g. knife), no weapon (fall, drip from an existing injury). These are inferences from the stain pattern, not identifications.",
+   "alpha_median_deg": 54.0,
+   "origin": {
+    "gravity_corrected": [
+     3.839,
+     2.321,
+     0.056
+    ],
+    "straight_line": [
+     3.897,
+     2.321,
+     0.195
+    ],
+    "ellipsoid_95_semi_axes_m": [
+     0.707,
+     0.508,
+     0.479
+    ],
+    "height_m": 0.06
+   },
+   "truth": {
+    "event": 1,
+    "purity": 0.94,
+    "mechanism": "castoff",
+    "mechanism_correct": false,
+    "origin_error_m": 2.638,
+    "origin_error_straight_m": 2.618
+   }
+  }
+ ],
+ "mechanism_correct": "0/2",
+ "origin_error_median_m": 1.568,
+ "true_events": [
+  {
+   "index": 0,
+   "mechanism": "impact",
+   "weapon_category": "blunt",
+   "origin": [
+    0.8,
+    2.4,
+    1.55
+   ]
+  },
+  {
+   "index": 1,
+   "mechanism": "castoff",
+   "weapon_category": "blunt",
+   "origin": [
+    1.6,
+    2.35,
+    1.45
+   ]
+  }
+ ],
+ "measurement": {
+  "measured_usable": 115,
+  "matched": 113,
+  "distinct_truth_stains": 113,
+  "alpha_abs_err_median_deg": 6.16,
+  "alpha_abs_err_p90_deg": 17.18,
+  "direction_err_median_deg": 3.82,
+  "direction_reversed_frac": 0.221,
+  "distance_median_m": 1.57,
+  "events": {
+   "0": 98,
+   "1": 15
+  }
+ }
+}

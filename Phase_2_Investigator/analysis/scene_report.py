@@ -55,6 +55,13 @@ def _truth_event(group, gt, tol=0.006):
     return e, n / len(group)
 
 
+def _into_room(group, centre, step=0.4):
+    """Where to look up a group's zone: walls are not in any zone, so step 0.4 m off the surface."""
+    n = np.mean([o.plane.normal for o in group], axis=0)
+    n = n / max(np.linalg.norm(n), 1e-9)
+    return centre + step * n if abs(n[2]) < 0.8 else centre
+
+
 def analyse(observations, zone_of=None, gt=None, min_group=3, min_origin=6, rng=None, log=print):
     rng = rng or np.random.default_rng(0)
     usable = [o for o in observations if o.usable]
@@ -73,7 +80,7 @@ def analyse(observations, zone_of=None, gt=None, min_group=3, min_origin=6, rng=
         c = P.mean(0)
         kinds = Counter(o.surface_kind for o in g).most_common(1)[0][0]
         item = {"id": f"g{i}", "n_stains": len(g), "n_usable": len(gu), "centre": np.round(c, 3).tolist(), "surface": kinds,
-                "zone": zone_of(c) if zone_of else None, "mechanism": mech,
+                "zone": zone_of(_into_room(g, c)) if zone_of else None, "mechanism": mech,
                 "mechanism_confidence": round(float(probs[mech]), 3),
                 "weapon_categories": ex["weapon_categories"], "text": ex["text"],
                 "alpha_median_deg": round(float(np.median([o.alpha_deg for o in gu])), 1)}
