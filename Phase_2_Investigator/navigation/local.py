@@ -116,16 +116,25 @@ class SafetyLayer:
         hl, hw = cfg.half_length + margin, cfg.half_width + margin
         reach = cfg.sweep_radius + (abs(vx) + abs(vy)) * horizon + 0.1
         near = p[np.linalg.norm(p, axis=1) < reach]
-        # points already inside the footprint (a returns from the robot's own legs, a thin door frame grazing
-        # the body) cannot be avoided by any move; counting them made every move "hit" and wedged the robot
-        # (S1 doorway, 18 Nov 2026), so only points the move would newly cover count
-        # (inside the real body outline, not the margin-inflated one: walls within the margin still count)
-        near = near[~((np.abs(near[:, 0]) < cfg.half_length) & (np.abs(near[:, 1]) < cfg.half_width))]
         if not len(near):
             return False
+
+        def clearance(q):                       # per point: distance to the real body rectangle (0 inside it)
+            dx = np.maximum(np.abs(q[:, 0]) - cfg.half_length, 0)
+            dy = np.maximum(np.abs(q[:, 1]) - cfg.half_width, 0)
+            return np.hypot(dx, dy)
+        c0 = clearance(near)
+        # Straight and sideways moves: a point counts only if the move puts it inside the margin-inflated
+        # footprint AND brings it closer to the body. Points already within the margin (a door frame grazing the
+        # rear) then no longer block moves that carry the body away from them; before, every move "hit" and
+        # the robot stayed wedged in the S1 bathroom doorway (18 Nov 2026).
+        # Moves that turn keep the strict rule (any point inside the inflated footprint): the legs stick out
+        # past the body rectangle, and the relaxed rule let a rear leg scrape a wall while turning in a corner.
+        strict = abs(wz) > 1e-6
         for frac in (0.25, 0.5, 0.75, 1.0):
             q = self._moved(near, vx, vy, wz, horizon * frac)
-            if np.any((np.abs(q[:, 0]) < hl) & (np.abs(q[:, 1]) < hw)):
+            inside = (np.abs(q[:, 0]) < hl) & (np.abs(q[:, 1]) < hw)
+            if np.any(inside if strict else inside & (clearance(q) < c0 - 1e-3)):
                 return True
         return False
 
