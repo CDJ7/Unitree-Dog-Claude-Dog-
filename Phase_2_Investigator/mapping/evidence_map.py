@@ -57,6 +57,9 @@ class EvidenceMap:
             best["normal"] = nn / max(np.linalg.norm(nn), 1e-9)
             best["w"] += w
             best["probs"].append(float(d.prob))
+            pts = best.setdefault("pts", [])
+            if len(pts) < 400:                              # member positions: the close-up tour aims across them
+                pts.append(p.copy())
             best["area_m2"] = max(best["area_m2"], area)
             if best["_last_frame"] != self.frames:
                 best["views"] += 1

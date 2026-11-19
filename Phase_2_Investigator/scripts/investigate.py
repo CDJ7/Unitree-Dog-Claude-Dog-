@@ -12,8 +12,12 @@ What the dog does:
    detector (perception/stain_detector.py); detections become evidence clusters on the map
    (mapping/evidence_map.py) with surface kind, zone, views and probability;
 3. confirmed floor evidence becomes a keep-out layer in the planner, so later paths go around it;
-4. the confirmed clusters (most certain first) are inspected from 2-3 standoff views with close-ups
-   (navigation/inspect.py), using the detected position, not ground truth.
+4. the confirmed clusters (most certain first) get a close-up tour (navigation/closeups.py): aim points
+   across each cluster, the camera within ~0.5-1 m, 1920 x 1080 close-ups (detected positions, not ground truth);
+5. every stain in the close-ups is measured (analysis/closeup.py: ellipse, impact angle, direction) and the
+   scene is analysed (analysis/scene_report.py): pattern groups, mechanism, weapon categories it is consistent
+   with, area of origin. Writes scene_report.md and analysis.json (scored against ground truth in simulation).
+   --no-analyze uses the old 2-view inspection instead.
 Outputs in outputs/investigate/<scenario>[_nokeepout]/: report.json (ground-truth score, stains stepped on,
 collisions), evidence.json, evidence_map.png, close-ups, and with --video investigation.mp4.
 Simulation only for now: on the real Go2 the detector needs region depth from the floor plane / LiDAR.
@@ -129,7 +133,9 @@ def main():
     ap.add_argument("--no-zones", action="store_true", help="skip zone tagging")
     ap.add_argument("--detector", help="stain detector model (default perception/models/stain_rf_depth.pkl)")
     ap.add_argument("--max-time", type=float, default=900.0, help="exploration + coverage budget, s of robot time")
-    ap.add_argument("--inspect", type=int, default=6, help="inspect at most this many confirmed clusters")
+    ap.add_argument("--inspect", type=int, default=6, help="close-ups of at most this many confirmed clusters")
+    ap.add_argument("--no-analyze", action="store_true",
+                    help="old inspection (2 standoff views per cluster) instead of the close-up tour + stain analysis")
     ap.add_argument("--video", action="store_true")
     ap.add_argument("--out")
     a = ap.parse_args()
@@ -138,6 +144,9 @@ def main():
     from mapping.evidence_map import EvidenceMap, floor_stains_stepped_on, score, stepped_after_found
     from mapping.mapper import ZoneMapper
     from navigation.explorer import Navigator
+    from analysis.closeup import merge_observations, score_against_truth, stains_in_frame
+    from analysis.scene_report import analyse
+    from navigation.closeups import closeup_tour
     from navigation.inspect import inspect_point
     from perception.stain_detector import StainDetector
 
@@ -159,15 +168,24 @@ def main():
                         video=video)
     nav.on_tick.append(hook)
     t0, wall0 = sim.time, time.time()
+    observations = []
     try:
         rep = mapper.run(max_time=a.max_time)
         targets = sorted(ev.confirmed(), key=lambda c: -c["views"] * np.mean(c["probs"]))[: a.inspect]
         inspected = []
-        for c in targets:
-            radius = float(np.clip(np.sqrt(max(c["area_m2"], 1e-4) / np.pi) * 2, 0.15, 0.6))
-            res = inspect_point(nav, c["xyz"], c["normal"], name=c["id"], out_dir=out / "closeups", n_views=2,
-                                radius=radius)
-            inspected.append({"id": c["id"], "views_captured": len(res["views"])})
+        if a.no_analyze:
+            for c in targets:
+                radius = float(np.clip(np.sqrt(max(c["area_m2"], 1e-4) / np.pi) * 2, 0.15, 0.6))
+                res = inspect_point(nav, c["xyz"], c["normal"], name=c["id"], out_dir=out / "closeups", n_views=2,
+                                    radius=radius)
+                inspected.append({"id": c["id"], "views_captured": len(res["views"])})
+        else:
+            # C5: close-ups across every detected cluster, then measure each stain (no ground truth used)
+            for c in targets:
+                frames = closeup_tour(nav, c, out_dir=str(out / "closeups"))
+                for _, fr in frames:
+                    observations.extend(stains_in_frame(fr, frame_id=fr.frame_id))
+                inspected.append({"id": c["id"], "closeups": len(frames)})
         rep["inspected"] = inspected
     finally:
         nav.vel.stop()
@@ -183,6 +201,19 @@ def main():
     rep["floor_stains_stepped_on_after_found"] = len(stepped_after_found(ev, stepped))
     rep["floor_stains_total"] = n_floor
     rep.pop("regions", None)
+    if observations:
+        stains = merge_observations(observations)
+        zone_of = (lambda xy: hook.zone_of(np.asarray(xy)[:2])) if clf is not None else None
+        ana = analyse(stains, zone_of=zone_of, gt=gt)
+        ana["measurement"] = score_against_truth(stains, gt)
+        (out / "scene_report.md").write_text(ana.pop("text"))
+        (out / "analysis.json").write_text(json.dumps(ana, indent=1, default=float))
+        rep["analysis"] = {k: ana.get(k) for k in ("stains_measured", "stains_usable", "mechanism_correct",
+                                                   "origin_error_median_m")}
+        rep["analysis"]["groups"] = [{k: g.get(k) for k in ("id", "n_stains", "surface", "zone", "mechanism",
+                                                             "mechanism_confidence", "origin", "truth")}
+                                     for g in ana["groups"]]
+        rep["analysis"]["measurement"] = ana["measurement"]
     ev.save(out / "evidence.json")
     (out / "report.json").write_text(json.dumps(rep, indent=1, default=float))
     cv2.imwrite(str(out / "evidence_map.png"), cv2.cvtColor(evidence_image(nav, mapper.zone_map, ev, gt), cv2.COLOR_RGB2BGR))
