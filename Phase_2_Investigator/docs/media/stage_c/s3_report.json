@@ -1,0 +1,165 @@
+{
+ "sim_time_s": 160.9,
+ "wall_time_s": 162.8,
+ "path_length_m": 10.08,
+ "known_free_m2": 13.35,
+ "camera_coverage": {
+  "surfaces": 0.623,
+  "floor": 0.787
+ },
+ "collisions": [],
+ "n_collisions": 0,
+ "safety_stops": 0,
+ "goals": [
+  [
+   12.600000000000877,
+   "frontier",
+   6.775,
+   2.4250000000000007,
+   true
+  ],
+  [
+   27.899999999995416,
+   "frontier",
+   5.775,
+   2.5250000000000004,
+   true
+  ],
+  [
+   42.80000000000634,
+   "frontier",
+   5.925000000000001,
+   1.9249999999999998,
+   true
+  ],
+  [
+   61.10000000002871,
+   "frontier",
+   4.4750000000000005,
+   2.7250000000000005,
+   true
+  ],
+  [
+   80.19999999999449,
+   "viewpoint",
+   4.125000000000001,
+   1.5750000000000002,
+   true
+  ],
+  [
+   129.29999999988928,
+   "viewpoint",
+   3.7250000000000005,
+   3.4250000000000007,
+   true
+  ]
+ ],
+ "frames_tagged": 0,
+ "look_arounds": 7,
+ "inspected": [
+  {
+   "id": "e1",
+   "closeups": 1
+  },
+  {
+   "id": "e2",
+   "closeups": 1
+  },
+  {
+   "id": "e5",
+   "closeups": 1
+  },
+  {
+   "id": "e7",
+   "closeups": 0
+  },
+  {
+   "id": "e13",
+   "closeups": 0
+  },
+  {
+   "id": "e6",
+   "closeups": 0
+  }
+ ],
+ "scenario": "s3_bedroom_fall",
+ "keepout": true,
+ "detector": "stain_rf_depth.pkl",
+ "detector_threshold": 0.25,
+ "detections": 295,
+ "evidence_frames": 230,
+ "sim_time_total_s": 237.8,
+ "wall_time_total_s": 239.2,
+ "score": {
+  "truth_clusters": 6,
+  "found_clusters": 7,
+  "truth_found": 4,
+  "recall": 0.667,
+  "precision": 1.0,
+  "median_error_to_centre_m": 0.127,
+  "truth_missed": [
+   "c1",
+   "c2"
+  ],
+  "distractors_flagged": 0,
+  "distractors": 3
+ },
+ "floor_stains_stepped_on": 16,
+ "floor_stains_stepped_on_after_found": 0,
+ "floor_stains_total": 140,
+ "analysis": {
+  "stains_measured": 43,
+  "stains_usable": 24,
+  "mechanism_correct": "1/1",
+  "origin_error_median_m": 0.68,
+  "groups": [
+   {
+    "id": "g0",
+    "n_stains": 35,
+    "surface": "floor",
+    "zone": null,
+    "mechanism": "impact",
+    "mechanism_confidence": 0.944,
+    "origin": {
+     "gravity_corrected": [
+      4.484,
+      3.485,
+      0.066
+     ],
+     "straight_line": [
+      4.292,
+      3.431,
+      0.474
+     ],
+     "ellipsoid_95_semi_axes_m": [
+      0.433,
+      0.327,
+      0.238
+     ],
+     "height_m": 0.07
+    },
+    "truth": {
+     "event": 0,
+     "purity": 0.72,
+     "mechanism": "impact",
+     "mechanism_correct": true,
+     "origin_error_m": 0.68,
+     "origin_error_straight_m": 0.369
+    }
+   }
+  ],
+  "measurement": {
+   "measured_usable": 24,
+   "matched": 17,
+   "distinct_truth_stains": 17,
+   "alpha_abs_err_median_deg": 6.55,
+   "alpha_abs_err_p90_deg": 18.31,
+   "direction_err_median_deg": 10.82,
+   "direction_reversed_frac": 0.294,
+   "distance_median_m": 1.21,
+   "events": {
+    "0": 17
+   }
+  }
+ }
+}

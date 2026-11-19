@@ -1,6 +1,6 @@
 {
  "sim_time_s": 295.6,
- "wall_time_s": 395.7,
+ "wall_time_s": 458.5,
  "path_length_m": 34.91,
  "known_free_m2": 25.84,
  "camera_coverage": {
@@ -124,7 +124,7 @@
  "detections": 1130,
  "evidence_frames": 409,
  "sim_time_total_s": 416.4,
- "wall_time_total_s": 573.9,
+ "wall_time_total_s": 652.6,
  "score": {
   "truth_clusters": 7,
   "found_clusters": 20,
@@ -152,7 +152,7 @@
     "id": "g0",
     "n_stains": 166,
     "surface": "wall",
-    "zone": null,
+    "zone": "victim_area",
     "mechanism": "projected",
     "mechanism_confidence": 0.974,
     "origin": {

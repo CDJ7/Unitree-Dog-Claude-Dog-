@@ -1,0 +1,92 @@
+{
+ "sim_time_s": 90.0,
+ "wall_time_s": 97.5,
+ "path_length_m": 10.07,
+ "known_free_m2": 14.38,
+ "camera_coverage": {
+  "surfaces": 0.607,
+  "floor": 0.751
+ },
+ "collisions": [],
+ "n_collisions": 0,
+ "safety_stops": 0,
+ "goals": [
+  [
+   21.299999999999073,
+   "frontier",
+   5.855,
+   2.055,
+   true
+  ],
+  [
+   37.900000000000354,
+   "frontier",
+   7.005000000000001,
+   2.5050000000000003,
+   true
+  ],
+  [
+   61.60000000002932,
+   "viewpoint",
+   4.655000000000001,
+   1.755,
+   true
+  ],
+  [
+   77.70000000000032,
+   "viewpoint",
+   3.8050000000000006,
+   1.205,
+   true
+  ]
+ ],
+ "frames_tagged": 0,
+ "look_arounds": 5,
+ "inspected": [
+  {
+   "id": "e0",
+   "closeups": 0
+  }
+ ],
+ "scenario": "s4_bedroom_castoff",
+ "keepout": true,
+ "detector": "stain_rf_depth.pkl",
+ "detector_threshold": 0.25,
+ "detections": 43,
+ "evidence_frames": 86,
+ "sim_time_total_s": 90.0,
+ "wall_time_total_s": 97.6,
+ "score": {
+  "truth_clusters": 19,
+  "found_clusters": 1,
+  "truth_found": 1,
+  "recall": 0.053,
+  "precision": 1.0,
+  "median_error_to_centre_m": 0.194,
+  "truth_missed": [
+   "c1",
+   "c2",
+   "c3",
+   "c4",
+   "c5",
+   "c6",
+   "c7",
+   "c8",
+   "c9",
+   "c10",
+   "c11",
+   "c12",
+   "c13",
+   "c14",
+   "c15",
+   "c16",
+   "c17",
+   "c18"
+  ],
+  "distractors_flagged": 0,
+  "distractors": 3
+ },
+ "floor_stains_stepped_on": 0,
+ "floor_stains_stepped_on_after_found": 0,
+ "floor_stains_total": 17
+}
