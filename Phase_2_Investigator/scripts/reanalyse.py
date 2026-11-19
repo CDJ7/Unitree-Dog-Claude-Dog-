@@ -48,7 +48,11 @@ def main():
         (run / f"scene_report_{tag}.md").write_text(ana.pop("text"))
         (run / f"analysis_{tag}.json").write_text(json.dumps(ana, indent=1, default=float))
         s = rep["score"]
+        big = [c for c in gt["clusters"] if c["n_stains"] >= 3]
+        missed = set(s.get("truth_missed", []))
+        stain_recall = sum(c["n_stains"] for c in big if c["id"] not in missed) / max(sum(c["n_stains"] for c in big), 1)
         rows.append({"run": run.name, "clusters_found": f"{s['truth_found']}/{s['truth_clusters']}",
+                     "stains_in_found_clusters": round(stain_recall, 3),
                      "precision": s["precision"], "distractors_flagged": f"{s['distractors_flagged']}/{s['distractors']}",
                      "floor_stains_stepped_on": f"{rep['floor_stains_stepped_on']}/{rep['floor_stains_total']}",
                      "stepped_after_found": rep.get("floor_stains_stepped_on_after_found"),
