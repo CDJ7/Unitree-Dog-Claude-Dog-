@@ -58,3 +58,16 @@ def test_report_text_groups_by_zone():
           "origin": {"gravity_corrected": [0.8, 2.4, 1.4], "height_m": 1.4, "ellipsoid_95_semi_axes_m": [0.3, 0.1, 0.1]}}]
     t = report_text(g)
     assert "## victim_area" in t and "area of origin" in t and "1.40 m above the floor" in t
+
+
+def test_grazing_view_is_rejected_quickly():
+    import time
+
+    import pytest
+
+    from analysis.bpa.ellipse import fit_stain
+    pts = np.column_stack([np.r_[np.linspace(0, 0.004, 40), [50.0]], np.r_[np.linspace(0, 0.002, 40), [0.0]]])
+    t = time.time()
+    with pytest.raises(ValueError):
+        fit_stain(pts, 0.0007)                      # one pixel projected 50 m away
+    assert time.time() - t < 1.0

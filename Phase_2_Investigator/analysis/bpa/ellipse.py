@@ -67,6 +67,10 @@ def fit_stain(points, spacing):
 
     h = spacing
     s_min, s_max = s.min(), s.max()
+    if (s_max - s_min) > 0.5 or (s_max - s_min) / h > 5000:
+        # a "stain" half a metre long, or thousands of slices: a mask seen almost edge-on whose pixels project
+        # out to near infinity on the plane. Not measurable (and the slice loop below would run for hours).
+        raise ValueError("stain extent implausible (grazing view)")
     nb = max(int(np.ceil((s_max - s_min) / h)) + 1, 1)
     k = np.clip(((s - s_min) / h).astype(int), 0, nb - 1)
     widths = np.zeros(nb)
