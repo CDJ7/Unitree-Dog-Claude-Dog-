@@ -63,7 +63,9 @@ class EvidenceMap:
                 best["_last_frame"] = self.frames
             best["last_t"] = t
             if zone_of is not None:
-                best["zone"] = zone_of(best["xyz"][:2])
+                # walls: look up the zone a little way into the room (the wall cell itself is no zone)
+                q = best["xyz"][:2] + (0.4 * best["normal"][:2] if abs(best["normal"][2]) < 0.8 else 0.0)
+                best["zone"] = zone_of(q)
             if "confirmed_t" not in best and best["views"] >= self.min_views and np.mean(best["probs"]) >= self.min_prob:
                 best["confirmed_t"] = t
 

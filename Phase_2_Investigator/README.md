@@ -61,6 +61,73 @@ row failed (cell accuracy 0.553).
 blue, and each zone's goal point. Video: [`sim_r1854_map_building.mp4`](docs/media/stage_r/sim_r1854_map_building.mp4).*
 
 
+### Crime-scene search in simulation (C2–C4, 18–19 Nov 2026)
+
+The first crime-scene steps for the real dog are built and tested in simulation. In one run, the dog
+explores, finds stains with its camera, puts them on its map, keeps off floor evidence, and inspects
+what it found.
+
+```bash
+python training/train_stain_detector.py         # C2: train + evaluate the stain detector (CPU, ~25 min)
+python scripts/investigate.py --scenario 1      # C3 + C4: the search mission, scored against ground truth
+```
+
+**C2: stain detector** (`perception/stain_detector.py`, CPU only, no GPU or deep network):
+- **How it works:** red mask, then regions, then shape, colour and geometry features, then a random forest.
+- **Why colour alone isn't enough:** the scenes contain red distractors (towel, mug, cushion, book) in
+  the same red as blood. What separates them is the pattern (many small spots, or one flat mark) and
+  the geometry (lying flat on a surface, rather than standing out from it).
+- **Data:** the camera is set up like the Go2's 1280×720, 100° stream. Labels come from the simulator's
+  segmentation. Split by scene: 18 random scenes train, 4 validate, and the 5 hand-made scenarios test.
+
+| Hand-made test scenes (`docs/media/stage_c/detector_metrics.json`) | With depth | Image only (real-dog case) |
+|---|---|---|
+| Region precision / recall | 0.919 / 0.973 | 0.920 / 0.923 |
+| Red distractors called a stain | 4.8 % of 207 | 5.8 % |
+| Visible stain clusters found per view | 0.783 | 0.754 |
+
+At the navigation camera's 320×240, most droplets are under a pixel. A colour check there found 23 % of
+stain pixels, against 99 % of distractor pixels. That's why the detector works on the 720p stream.
+
+**C3: evidence map** (`mapping/evidence_map.py`):
+- Detections become 3-D points, which are grouped into clusters with a surface (floor / wall / raised)
+  and a zone.
+- A cluster counts as **confirmed** after 2 frames, so one-off false alarms drop out.
+
+**C4: mission** (`scripts/investigate.py`):
+- Confirmed floor evidence becomes a **keep-out** layer that the planner routes around.
+- Viewpoints are never placed on evidence.
+- The detected clusters (not ground truth) are inspected from 2 standoff views with close-ups.
+
+**Scenario 1** (living room, blunt force), the same mission with and without keep-out (files in
+`docs/media/stage_c/`):
+
+| | **With keep-out** | Without |
+|---|---|---|
+| Ground-truth stain clusters found | 5 / 7 | 5 / 7 |
+| Precision of confirmed clusters | 0.941 | 0.938 |
+| Red distractors flagged as evidence | 0 / 3 | 0 / 3 |
+| Floor stains walked over | **23 / 84** | 56 / 84 |
+| ... of those, after the dog had found them | **19** | 52 |
+| Collisions | 0 | 0 |
+
+- **Missed clusters:** both are on furniture. One is 9 stains near the west wall at 1.2 m; the other is
+  3 stains at 2.7 m, above the camera's view.
+- **Keep-out** cuts the floor stains walked over by more than half, but not to zero. It is a cost, not a
+  wall, so a drip trail through the only doorway can still be crossed; it also only protects stains
+  already found.
+- **Real dog:** the Go2's camera has no depth, so there the image-only model applies. Region positions
+  will come from the floor plane (camera height and pitch) and the LiDAR (plan step C2/C3 real).
+
+![Evidence map, scenario 1](docs/media/stage_c/s1_evidence_map.png)
+
+*Scenario 1 as the dog mapped it:
+- zones in colour and the path in blue;
+- confirmed evidence as red dots (f = floor, w = wall), with keep-out in pink;
+- ground-truth clusters as grey circles.
+
+Video: [`s1_investigation.mp4`](docs/media/stage_c/s1_investigation.mp4).*
+
 ## Setup (Windows + WSL2 Ubuntu 22.04, or native Ubuntu 22.04)
 
 ```bash
