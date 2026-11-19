@@ -17,6 +17,7 @@ Steps (all Phase 2's existing analysis, now fed by the dog's own close-ups inste
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
 
@@ -26,18 +27,23 @@ from analysis.classifier.inference import explain
 from analysis.classifier.model import DEFAULT_MODEL, MechanismClassifier
 
 
-def load_classifier(log=print):
-    """Phase 2's mechanism classifier (gitignored model; trained once if missing, ~2 min). A variant trained
-    on degraded "close-up-like" measurements was tried and did worse on rendered close-ups, so it was dropped."""
-    if not DEFAULT_MODEL.exists():
-        import subprocess
-        import sys
-        from pathlib import Path
-        root = Path(__file__).resolve().parents[1]
-        log("[analysis] training the mechanism classifier once (gitignored model, ~2 min)...")
-        subprocess.run([sys.executable, str(root / "training/train_mechanism_classifier.py")], check=True,
-                       cwd=root, stdout=subprocess.DEVNULL)
-    return MechanismClassifier.load(DEFAULT_MODEL)
+SIMCLOSE_MODEL = Path(__file__).resolve().parents[1] / "perception/models/mechanism_gb_simclose.pkl"
+
+
+def load_classifier(log=print, model=None):
+    """The mechanism classifier. Default: the one trained on stains measured from simulator close-ups
+    (training/train_mechanism_simclose.py, committed), else Phase 2's original trained on ideal synthetic
+    measurements (gitignored; trained once if missing, ~2 min)."""
+    if model == "ideal" or (model is None and not SIMCLOSE_MODEL.exists()):
+        if not DEFAULT_MODEL.exists():
+            import subprocess
+            import sys
+            root = Path(__file__).resolve().parents[1]
+            log("[analysis] training the mechanism classifier once (gitignored model, ~2 min)...")
+            subprocess.run([sys.executable, str(root / "training/train_mechanism_classifier.py")], check=True,
+                           cwd=root, stdout=subprocess.DEVNULL)
+        return MechanismClassifier.load(DEFAULT_MODEL)
+    return MechanismClassifier.load(model if model not in (None, "simclose") else SIMCLOSE_MODEL)
 
 
 def _truth_event(group, gt, tol=0.006):
@@ -62,14 +68,14 @@ def _into_room(group, centre, step=0.4):
     return centre + step * n if abs(n[2]) < 0.8 else centre
 
 
-def analyse(observations, zone_of=None, gt=None, min_group=3, min_origin=6, rng=None, log=print):
+def analyse(observations, zone_of=None, gt=None, min_group=3, min_origin=6, rng=None, log=print, model=None):
     rng = rng or np.random.default_rng(0)
     usable = [o for o in observations if o.usable]
     # group every measured stain, usable or not, exactly as the classifier's training data was grouped:
     # round stains (no measurable direction) and the usable fraction are features of the pattern
     groups = [g for g in group_observations(list(observations), link=0.3) if sum(o.usable for o in g) >= min_group]
     groups.sort(key=len, reverse=True)
-    clf = load_classifier(log)
+    clf = load_classifier(log, model)
     events = {e["index"]: e for e in gt["events"]} if gt else {}
     out = []
     for i, g in enumerate(groups):

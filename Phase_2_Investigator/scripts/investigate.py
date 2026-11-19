@@ -203,6 +203,8 @@ def main():
     rep.pop("regions", None)
     if observations:
         stains = merge_observations(observations)
+        import pickle
+        (out / "stains.pkl").write_bytes(pickle.dumps(stains))      # scripts/reanalyse.py re-runs the analysis
         zone_of = (lambda xy: hook.zone_of(np.asarray(xy)[:2])) if clf is not None else None
         ana = analyse(stains, zone_of=zone_of, gt=gt)
         ana["measurement"] = score_against_truth(stains, gt)
