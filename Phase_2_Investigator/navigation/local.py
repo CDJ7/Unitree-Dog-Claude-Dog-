@@ -157,36 +157,28 @@ class SafetyLayer:
         cands = [(0.0, 0.0, 0.4 * s), (-0.12, 0.0, 0.4 * s), (0.12, 0.0, 0.4 * s), (-0.12, 0.0, -0.4 * s),
                  (0.12, 0.0, -0.4 * s), (-0.15, 0.0, 0.0), (0.15, 0.0, 0.0), (0.0, 0.12, 0.0), (0.0, -0.12, 0.0),
                  (0.0, 0.12, 0.3 * s), (0.0, -0.12, 0.3 * s)]
-        # what filter() would let through: the escape move is executed through it, so a candidate it would
-        # zero (e.g. forward with the nose already inside stop_dist) is no escape at all. Before this, the
-        # robot picked such a move 8 times in a row and stayed wedged in a corner (S5, 19 Nov 2026).
-        cfg = self.cfg
-        hw = cfg.half_width + cfg.corridor_margin
-        inside = np.abs(near[:, 1]) < hw
-        front = near[inside & (near[:, 0] > 0), 0] - cfg.half_length
-        rear = -near[inside & (near[:, 0] < 0), 0] - cfg.half_length
-        f = float(front.min()) if len(front) else np.inf
-        r = float(rear.min()) if len(rear) else np.inf
+        # Only moves that filter() lets through essentially unchanged: the escape move is executed through it,
+        # and a candidate it zeroes or slows to a crawl is no escape. (S5, 19-24 Nov 2026: first a forward arc
+        # with the nose inside stop_dist, then one the slow-down scaled to 8 mm/s, which turned the arc into a
+        # blocked turn on the spot; the robot stayed wedged.)
+        saved = (dict(self.last), self.turn_blocked)
 
-        def passes_filter(vx, vy):
-            if vx > 0 and f <= cfg.stop_dist + 0.01:
-                return False
-            if vx < 0 and r <= cfg.stop_dist + 0.01:
-                return False
-            if vy != 0:
-                side = near[(np.abs(near[:, 0]) < cfg.half_length + 0.05) & (np.sign(near[:, 1]) == np.sign(vy)), 1]
-                if len(side) and float(np.min(np.abs(side))) - cfg.half_width < cfg.stop_dist:
-                    return False
-            return True
+        def passes_filter(vx, vy, wz):
+            out = self.filter(state, vx, vy, wz, map_points=map_points)
+            # what is left must still move the robot (the filter may strip part of a move: fine)
+            return max(abs(out[0]), abs(out[1])) >= 0.06 or abs(out[2]) >= 0.2
 
-        best = None
+        ranked = []
         for vx, vy, wz in cands:
-            if not passes_filter(vx, vy) or self.motion_hits(near, vx, wz, horizon, vy=vy):
+            if self.motion_hits(near, vx, wz, horizon, vy=vy):
                 continue
             score = self._footprint_clearance(self._moved(near, vx, vy, wz, horizon)) + 0.05 * (wz * s > 0)
-            if best is None or score > best[0]:
-                best = (score, (vx, vy, wz))
-        return None if best is None else best[1]
+            ranked.append((score, (vx, vy, wz)))
+        ranked.sort(key=lambda r: -r[0])
+        # the best-scoring move, unless the filter would zero it or slow it to a crawl: then the best one it passes
+        choice = next((m for _, m in ranked if passes_filter(*m)), None)
+        self.last, self.turn_blocked = saved
+        return choice
 
 
 class PurePursuit:
