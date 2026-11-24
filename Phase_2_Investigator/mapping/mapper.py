@@ -61,20 +61,10 @@ class ZoneMapper:
         self.recent = []
         turned, prev = 0.0, st.yaw
         t0 = nav.sim.time
-        blocked = 0
         while turned < 2 * np.pi - 0.1 and nav.sim.time - t0 < 2.5 * 2 * np.pi / self.look_rate:
             st = nav.tick(0, 0, self.look_rate)
             turned += abs((st.yaw - prev + np.pi) % (2 * np.pi) - np.pi)
             prev = st.yaw
-            blocked = blocked + 1 if nav.safety.turn_blocked else 0
-            if blocked >= 10:                              # 1 s unable to turn here: step clear, then go on
-                near = nav.grid.occupied_points_near(st.position[:2], 1.2)
-                man = nav.safety.free_maneuver(st, +1, near)
-                if man is not None:
-                    for _ in range(8):
-                        nav.tick(*man)
-                    prev = nav.sim.state().yaw
-                blocked = 0
         nav.tick(0, 0, 0)
 
     # --------------------------------------------------------------- the run
