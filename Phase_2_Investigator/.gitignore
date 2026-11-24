@@ -32,3 +32,6 @@ sim_env/scenarios/generated/
 
 # Stage R: terminal logs of real-robot runs
 logs/
+
+# Stage C trained models: small (1-5 MB) and slow to retrain (~2 h), so they are committed
+!perception/models/*.pkl
