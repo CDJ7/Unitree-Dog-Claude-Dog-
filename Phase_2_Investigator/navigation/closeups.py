@@ -91,7 +91,7 @@ def standing_spot(nav, aim, normal, cam_fwd, floor_h=0.50, wall_h=0.50, min_clea
 
 
 def closeup_tour(nav, cluster, max_slant=1.15, target_slant=1.8, max_pitch_deg=50.0, hold_s=0.4, out_dir=None,
-                 log=None):
+                 log=None, camera_height=None):
     """Close-up frames [(aim, CameraFrame)] covering one evidence cluster."""
     sim = nav.sim
     say = log or nav.say
@@ -111,7 +111,9 @@ def closeup_tour(nav, cluster, max_slant=1.15, target_slant=1.8, max_pitch_deg=5
         if not ok and np.linalg.norm(sim.state().position[:2] - base) > 0.6:
             say(f"  close-ups {cluster['id']}: could not reach the spot for aim {i}")
             continue
-        cam = sim.camera_pose()[:3, 3]
+        cam = sim.camera_pose()[:3, 3].copy()
+        if camera_height is not None:
+            cam[2] = camera_height
         for k, a in enumerate(aims):
             # the aim the dog came for is always photographed (navigation may stop a little short);
             # other aims only when close enough to measure well
@@ -120,13 +122,24 @@ def closeup_tour(nav, cluster, max_slant=1.15, target_slant=1.8, max_pitch_deg=5
                 continue
             nav.turn_to(a[:2])
             nav.hold(hold_s)
-            fr = sim.evidence_frame(a, fovy=40.0, width=1920, height=1080, max_pitch_deg=max_pitch_deg)
+            if camera_height is None:
+                fr = sim.evidence_frame(a, fovy=40.0, width=1920, height=1080, max_pitch_deg=max_pitch_deg)
+            else:                                      # emulated mast camera (investigate.py --camera-height)
+                c = sim.camera_pose()[:3, 3].copy()
+                c[2] = camera_height
+                d = a - c
+                pitch = np.clip(np.arctan2(d[2], np.hypot(d[0], d[1])), -np.radians(70), np.radians(max_pitch_deg))
+                yaw = np.arctan2(d[1], d[0])
+                fwd = np.array([np.cos(pitch) * np.cos(yaw), np.cos(pitch) * np.sin(yaw), np.sin(pitch)])
+                fr = sim.render_camera(c, fwd, fovy=40.0, width=1920, height=1080)
             fr.frame_id = f"{cluster['id']}_a{k}"
             frames.append((a, fr))
             shot[k] = True
             if out_dir is not None:
                 from navigation.inspect import save_frame
                 save_frame(fr, f"{out_dir}/{fr.frame_id}")
-            cam = sim.camera_pose()[:3, 3]
+            cam = sim.camera_pose()[:3, 3].copy()
+            if camera_height is not None:
+                cam[2] = camera_height
     say(f"  close-ups {cluster['id']}: {len(frames)} frames, {sum(shot)}/{len(aims)} aim points")
     return frames

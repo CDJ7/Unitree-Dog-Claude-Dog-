@@ -157,9 +157,31 @@ class SafetyLayer:
         cands = [(0.0, 0.0, 0.4 * s), (-0.12, 0.0, 0.4 * s), (0.12, 0.0, 0.4 * s), (-0.12, 0.0, -0.4 * s),
                  (0.12, 0.0, -0.4 * s), (-0.15, 0.0, 0.0), (0.15, 0.0, 0.0), (0.0, 0.12, 0.0), (0.0, -0.12, 0.0),
                  (0.0, 0.12, 0.3 * s), (0.0, -0.12, 0.3 * s)]
+        # what filter() would let through: the escape move is executed through it, so a candidate it would
+        # zero (e.g. forward with the nose already inside stop_dist) is no escape at all. Before this, the
+        # robot picked such a move 8 times in a row and stayed wedged in a corner (S5, 19 Nov 2026).
+        cfg = self.cfg
+        hw = cfg.half_width + cfg.corridor_margin
+        inside = np.abs(near[:, 1]) < hw
+        front = near[inside & (near[:, 0] > 0), 0] - cfg.half_length
+        rear = -near[inside & (near[:, 0] < 0), 0] - cfg.half_length
+        f = float(front.min()) if len(front) else np.inf
+        r = float(rear.min()) if len(rear) else np.inf
+
+        def passes_filter(vx, vy):
+            if vx > 0 and f <= cfg.stop_dist + 0.01:
+                return False
+            if vx < 0 and r <= cfg.stop_dist + 0.01:
+                return False
+            if vy != 0:
+                side = near[(np.abs(near[:, 0]) < cfg.half_length + 0.05) & (np.sign(near[:, 1]) == np.sign(vy)), 1]
+                if len(side) and float(np.min(np.abs(side))) - cfg.half_width < cfg.stop_dist:
+                    return False
+            return True
+
         best = None
         for vx, vy, wz in cands:
-            if self.motion_hits(near, vx, wz, horizon, vy=vy):
+            if not passes_filter(vx, vy) or self.motion_hits(near, vx, wz, horizon, vy=vy):
                 continue
             score = self._footprint_clearance(self._moved(near, vx, vy, wz, horizon)) + 0.05 * (wz * s > 0)
             if best is None or score > best[0]:

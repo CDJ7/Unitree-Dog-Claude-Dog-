@@ -78,3 +78,19 @@ def test_safety_does_not_freeze_on_a_point_inside_the_body():
     assert not sl.motion_hits(inside, 0.15, 0.0)            # driving forward is still allowed
     ahead = np.array([[0.45, 0.0]])
     assert sl.motion_hits(ahead, 0.3, 0.0, horizon=0.5)      # a real obstacle ahead still counts
+
+
+def test_escape_from_a_corner_uses_a_move_the_filter_allows():
+    """S5 wedge: wall 0.18 m ahead of the nose, wall behind-right; turning blocked. The only real escape is a
+    sideways step to the free left side (forward arcs would be zeroed by the stop distance)."""
+    from navigation.local import SafetyLayer
+    sl = SafetyLayer()
+    ys = np.linspace(-0.6, 0.6, 61)
+    ahead = np.column_stack([np.full(61, 0.53), ys])                     # nose (0.35) + 0.18
+    t = np.linspace(-2.9, -1.9, 40)
+    behind_right = np.column_stack([0.42 * np.cos(t), 0.42 * np.sin(t)])
+    pts = np.vstack([ahead, behind_right])
+    sl._points_robot = lambda st, mp=None: pts
+    st = NS(yaw=0.0, position=np.zeros(3))
+    vx, vy, wz = sl.free_maneuver(st, +1)
+    assert vx <= 0.0 and vy > 0                                         # not forward into the wall
