@@ -1,0 +1,152 @@
+{
+ "sim_time_s": 90.0,
+ "wall_time_s": 100.8,
+ "path_length_m": 10.07,
+ "known_free_m2": 14.38,
+ "camera_coverage": {
+  "surfaces": 0.607,
+  "floor": 0.751
+ },
+ "collisions": [],
+ "n_collisions": 0,
+ "safety_stops": 0,
+ "goals": [
+  [
+   21.299999999999073,
+   "frontier",
+   5.855,
+   2.055,
+   true
+  ],
+  [
+   37.900000000000354,
+   "frontier",
+   7.005000000000001,
+   2.5050000000000003,
+   true
+  ],
+  [
+   61.60000000002932,
+   "viewpoint",
+   4.655000000000001,
+   1.755,
+   true
+  ],
+  [
+   77.70000000000032,
+   "viewpoint",
+   3.8050000000000006,
+   1.205,
+   true
+  ]
+ ],
+ "frames_tagged": 0,
+ "look_arounds": 5,
+ "inspected": [
+  {
+   "id": "e1",
+   "closeups": 0
+  },
+  {
+   "id": "e5",
+   "closeups": 0
+  },
+  {
+   "id": "e0",
+   "closeups": 1
+  }
+ ],
+ "scenario": "s4_bedroom_castoff_mast1.0",
+ "keepout": true,
+ "detector": "stain_rf_depth.pkl",
+ "detector_threshold": 0.25,
+ "detections": 104,
+ "evidence_frames": 98,
+ "sim_time_total_s": 102.7,
+ "wall_time_total_s": 116.6,
+ "score": {
+  "truth_clusters": 19,
+  "found_clusters": 5,
+  "truth_found": 4,
+  "recall": 0.211,
+  "precision": 1.0,
+  "median_error_to_centre_m": 0.198,
+  "truth_missed": [
+   "c1",
+   "c2",
+   "c3",
+   "c6",
+   "c8",
+   "c9",
+   "c10",
+   "c11",
+   "c12",
+   "c13",
+   "c14",
+   "c15",
+   "c16",
+   "c17",
+   "c18"
+  ],
+  "distractors_flagged": 0,
+  "distractors": 3
+ },
+ "floor_stains_stepped_on": 0,
+ "floor_stains_stepped_on_after_found": 0,
+ "floor_stains_total": 17,
+ "analysis": {
+  "stains_measured": 19,
+  "stains_usable": 8,
+  "mechanism_correct": "0/1",
+  "origin_error_median_m": 2.003,
+  "groups": [
+   {
+    "id": "g0",
+    "n_stains": 18,
+    "surface": "floor",
+    "zone": null,
+    "mechanism": "impact",
+    "mechanism_confidence": 0.677,
+    "origin": {
+     "gravity_corrected": [
+      3.187,
+      2.9,
+      0.606
+     ],
+     "straight_line": [
+      3.213,
+      2.941,
+      0.639
+     ],
+     "ellipsoid_95_semi_axes_m": [
+      0.376,
+      0.233,
+      0.133
+     ],
+     "height_m": 0.61
+    },
+    "truth": {
+     "event": 2,
+     "purity": 1.0,
+     "mechanism": "castoff",
+     "mechanism_correct": false,
+     "origin_error_m": 2.003,
+     "origin_error_straight_m": 2.032
+    }
+   }
+  ],
+  "measurement": {
+   "measured_usable": 8,
+   "matched": 8,
+   "distinct_truth_stains": 8,
+   "alpha_abs_err_median_deg": 4.92,
+   "alpha_abs_err_p90_deg": 13.77,
+   "direction_err_median_deg": 5.49,
+   "direction_reversed_frac": 0.25,
+   "distance_median_m": 0.74,
+   "events": {
+    "2": 8
+   }
+  }
+ }
+}
