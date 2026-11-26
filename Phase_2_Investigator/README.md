@@ -6,6 +6,9 @@ impact angles, directionality, area of origin, pattern (mechanism)
 classification and the weapon categories the pattern is *consistent with*.
 Forensic-science education project; people appear only as simple mannequins.
 
+**Full write-up:** [`REPORT.md`](REPORT.md) ([PDF](Phase2_Report.pdf)): Stage A simulation, Stage R self-built zone
+maps, Stage C crime-scene search and stain analysis, with every result and its source file.
+
 **Status (17 Nov 2026):** Stage R (the real dog maps and tags the lab) is in progress, see below.
 **Status (29 Oct 2026):** Stage A (simulation) is built: A1-A6 and the Stage A checklist with
 evidence ([docs/stage_a_checklist.md](docs/stage_a_checklist.md)). Waiting for confirmation before

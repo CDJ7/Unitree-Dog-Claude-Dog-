@@ -124,4 +124,4 @@ has the tables and the map.
    on paper. Is that allowed there?
 4. **Does the lab layout stay the same between sessions?** Saved maps and relocalisation assume the walls
    and big furniture don't move.
-5. **GPU on the Linux laptop?** It decides whether C2 starts with RF-DETR or with the colour detector.
+5. ~~GPU on the Linux laptop?~~ **Yes, a good GPU (26 Nov 2026).** So C2 on the real dog fine-tunes RF-DETR-Seg on the simulator COCO set plus lab photos of printed stain patterns, compared with the CPU random forest's image-only model.
