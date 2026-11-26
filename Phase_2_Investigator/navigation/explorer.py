@@ -179,7 +179,10 @@ class Navigator:
                          f"(goal {np.round(path[-1], 2).tolist()}, {d:.2f} m; front {sl['front']:.2f} "
                          f"rear {sl['rear']:.2f} nearest {sl['nearest']:.2f}, turn blocked "
                          f"{self.safety.turn_blocked}): backing off")
+                p0 = st.position[:2].copy()
                 self.back_off()
+                if np.linalg.norm(self.sim.state().position[:2] - p0) < 0.05:
+                    self.escape(path)               # could not back out (rear blocked): safe sideways/forward steps
                 return False
             if self.sim.time - last_plan > replan_s:
                 p = self.plan(goal_xy, tol)
@@ -197,6 +200,23 @@ class Navigator:
                 return True
             self.tick(vx, 0, wz)
         self.say("go_to timed out")
+        return False
+
+    def escape(self, path, tries=5):
+        """Boxed in with the rear blocked: up to `tries` short moves the safety filter allows (free_maneuver),
+        turning toward the path where possible. Used after back_off() could not move the robot."""
+        for _ in range(tries):
+            st = self.sim.state()
+            tgt = path[min(len(path) - 1, 3)]
+            err = (np.arctan2(tgt[1] - st.position[1], tgt[0] - st.position[0]) - st.yaw + np.pi) % (2 * np.pi) - np.pi
+            man = self.safety.free_maneuver(st, err, self.grid.occupied_points_near(st.position[:2], 1.2))
+            if man is None:
+                self.say("boxed in: no safe move")
+                return False
+            for _ in range(8):
+                self.tick(*man)
+            if not self.safety.turn_blocked:
+                return True
         return False
 
     def back_off(self, distance=1.0, timeout=12.0):

@@ -43,8 +43,10 @@ FOVY = float(np.degrees(2 * np.arctan(np.tan(np.radians(HFOV / 2)) * H / W)))
 class EvidenceHook:
     """Every `every` s of robot time: render the front camera at 720p, detect stains, update the evidence map."""
 
-    def __init__(self, sim, detector, evidence, zone_map=None, keepout=True, every=1.0, video=None):
+    def __init__(self, sim, detector, evidence, zone_map=None, keepout=True, every=1.0, video=None, camera_height=None,
+                 mast_pitch_deg=25.0):
         self.sim, self.det, self.ev, self.zm = sim, detector, evidence, zone_map
+        self.camera_height, self.mast_pitch = camera_height, np.radians(mast_pitch_deg)
         self.keepout, self.every, self.next = keepout, every, -1.0
         self.video, self.last = video, None
         self.n_det = 0
@@ -61,7 +63,13 @@ class EvidenceHook:
             return
         self.next = t + self.every
         T = self.sim.camera_pose()
-        frame = self.sim.render_camera(T[:3, 3], T[:3, 2], fovy=FOVY, width=W, height=H, depth=True, frame_id="front_720p")
+        pos, fwd = T[:3, 3].copy(), T[:3, 2].copy()
+        if self.camera_height is not None:                 # emulated mast camera: higher, tilted down
+            pos[2] = self.camera_height
+            yaw = np.arctan2(fwd[1], fwd[0])
+            fwd = np.array([np.cos(self.mast_pitch) * np.cos(yaw), np.cos(self.mast_pitch) * np.sin(yaw),
+                            -np.sin(self.mast_pitch)])
+        frame = self.sim.render_camera(pos, fwd, fovy=FOVY, width=W, height=H, depth=True, frame_id="front_720p")
         regs = self.det.regions(frame)
         hits = [r for r in regs if r.prob >= self.det.threshold]
         self.n_det += len(hits)
@@ -137,6 +145,9 @@ def main():
     ap.add_argument("--no-analyze", action="store_true",
                     help="old inspection (2 standoff views per cluster) instead of the close-up tour + stain analysis")
     ap.add_argument("--video", action="store_true")
+    ap.add_argument("--camera-height", type=float,
+                    help="simulation only: emulate a camera on a mast at this height (m) for detection and close-ups "
+                         "(the Go2's own camera is at ~0.41 m and cannot see onto surfaces above it, e.g. a bed top)")
     ap.add_argument("--out")
     a = ap.parse_args()
     if not (a.scenario or a.random is not None):
@@ -151,7 +162,8 @@ def main():
     from perception.stain_detector import StainDetector
 
     sim, gt = session_from_args(a)
-    name = getattr(sim, "scenario_id", sim.environment_id) + ("_nokeepout" if a.no_keepout else "")
+    name = getattr(sim, "scenario_id", sim.environment_id) + ("_nokeepout" if a.no_keepout else "") + \
+        (f"_mast{a.camera_height:.1f}" if a.camera_height else "")
     out = Path(a.out or ROOT / "outputs" / "investigate" / name)
     out.mkdir(parents=True, exist_ok=True)
     clf = None
@@ -165,6 +177,7 @@ def main():
     ev = EvidenceMap()
     video = Video(out / "investigation.mp4", (mapper.zone_map, ev, gt)) if a.video else None
     hook = EvidenceHook(sim, det, ev, mapper.zone_map if clf is not None else None, keepout=not a.no_keepout,
+                        camera_height=a.camera_height,
                         video=video)
     nav.on_tick.append(hook)
     t0, wall0 = sim.time, time.time()
@@ -182,7 +195,7 @@ def main():
         else:
             # C5: close-ups across every detected cluster, then measure each stain (no ground truth used)
             for c in targets:
-                frames = closeup_tour(nav, c, out_dir=str(out / "closeups"))
+                frames = closeup_tour(nav, c, out_dir=str(out / "closeups"), camera_height=a.camera_height)
                 for _, fr in frames:
                     observations.extend(stains_in_frame(fr, frame_id=fr.frame_id))
                 inspected.append({"id": c["id"], "closeups": len(frames)})

@@ -1,6 +1,6 @@
 {
  "sim_time_s": 295.6,
- "wall_time_s": 458.5,
+ "wall_time_s": 472.8,
  "path_length_m": 34.91,
  "known_free_m2": 25.84,
  "camera_coverage": {
@@ -124,7 +124,7 @@
  "detections": 1130,
  "evidence_frames": 409,
  "sim_time_total_s": 416.4,
- "wall_time_total_s": 652.6,
+ "wall_time_total_s": 694.3,
  "score": {
   "truth_clusters": 7,
   "found_clusters": 20,
@@ -145,21 +145,21 @@
  "analysis": {
   "stains_measured": 191,
   "stains_usable": 115,
-  "mechanism_correct": "0/2",
-  "origin_error_median_m": 1.568,
+  "mechanism_correct": "2/2",
+  "origin_error_median_m": 0.418,
   "groups": [
    {
     "id": "g0",
     "n_stains": 166,
     "surface": "wall",
     "zone": "victim_area",
-    "mechanism": "projected",
-    "mechanism_confidence": 0.974,
+    "mechanism": "impact",
+    "mechanism_confidence": 0.935,
     "origin": {
      "gravity_corrected": [
-      0.577,
+      0.573,
       2.427,
-      1.106
+      1.2
      ],
      "straight_line": [
       0.401,
@@ -167,18 +167,18 @@
       1.574
      ],
      "ellipsoid_95_semi_axes_m": [
-      1.833,
-      0.486,
-      0.477
+      1.717,
+      0.172,
+      0.119
      ],
-     "height_m": 1.11
+     "height_m": 1.2
     },
     "truth": {
      "event": 0,
      "purity": 0.99,
      "mechanism": "impact",
-     "mechanism_correct": false,
-     "origin_error_m": 0.498,
+     "mechanism_correct": true,
+     "origin_error_m": 0.418,
      "origin_error_straight_m": 0.405
     }
    },
@@ -187,33 +187,14 @@
     "n_stains": 24,
     "surface": "floor",
     "zone": "lounge_area",
-    "mechanism": "projected",
-    "mechanism_confidence": 0.789,
-    "origin": {
-     "gravity_corrected": [
-      3.839,
-      2.321,
-      0.056
-     ],
-     "straight_line": [
-      3.897,
-      2.321,
-      0.195
-     ],
-     "ellipsoid_95_semi_axes_m": [
-      0.707,
-      0.508,
-      0.479
-     ],
-     "height_m": 0.06
-    },
+    "mechanism": "castoff",
+    "mechanism_confidence": 0.517,
+    "origin": null,
     "truth": {
      "event": 1,
      "purity": 0.94,
      "mechanism": "castoff",
-     "mechanism_correct": false,
-     "origin_error_m": 2.638,
-     "origin_error_straight_m": 2.618
+     "mechanism_correct": true
     }
    }
   ],

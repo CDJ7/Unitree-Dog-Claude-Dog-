@@ -173,7 +173,8 @@ photographed (no ground truth):
 | S2 living room, projected | 3/4 | 0.98 | 0/3 | 0/34 | 0 | 1 | **1/1** (projected) | 0.62 m |
 | S3 bedroom, fall | 4/6 | 0.94 | 0/3 | 16/140 (0) | 0 | 3 | **1/1** (impact) | 0.68 m |
 | S4 bedroom, cast-off | 1/19 | 0.57 | 0/3 | 0/17 | 0 | 0 | not analysed | — |
-| S5 simple room, bat | 4/6 | 0.98 | 0/3 | 0/44 | 0 | 0 | not analysed | — |
+| S5 simple room, bat | 4/6 | 0.98 | 0/3 | 1/44 (1) | 0 | 3 | **1/1** (impact) | 0.40 m |
+| S4 with an emulated 1.0 m mast camera | 4/19 | 0.65 | 0/3 | 0/17 | 0 | 1 | 0/1 | 2.0 m |
 
 - **Measured stains:** the impact-angle error is a median of 6.1–6.6° in S1–S3.
 - **The scene report for S1** reads: "impact spatter … consistent with a blunt swung object (e.g. bat, pipe,
@@ -184,10 +185,15 @@ photographed (no ground truth):
 - **S4:** 15 of its 19 clusters are cast-off on top of the bed, about 0.6 m up, above the dog's camera
   (0.41 m). It cannot see them. The one cluster it found (the wall impact) had no reachable standing spot
   for close-ups.
-- **S5:** at 84 s the dog drove into a tight corner, blocked in front and behind with no room to turn. It
-  stayed there, so the coverage and close-up phases never ran. The search still found 4/6 clusters
-  (98 % of the stains) from where it was. Avoiding such corners in the first place is the next navigation
-  fix.
+- **S5, fixed (24–26 Nov 2026):** the dog used to get wedged in a corner at 84 s. Its escape moves were
+  ones the safety filter then zeroed or slowed to a crawl, and backing off had no room. Now, when backing
+  off fails, it tries escape moves the filter actually lets through. Result: 44 m of path, 15
+  look-arounds, close-ups taken, mechanism right, origin 0.40 m off. S1 is unchanged by the fix (the same
+  24/84, 2/2 and 0.42 m).
+- **S4 with a mast:** `--camera-height 1.0` emulates a camera on a 1 m mast. It finds more of the bed-top
+  cast-off (4/19 clusters, 65 % of the stains, against 1/19 and 57 %), but its only analysed group is wrong
+  (impact, truth cast-off). A mast alone is not enough here: the bed top would also need close-ups taken
+  from above.
 - **Real dog:** the Go2's own front camera (1280×720 at about 100°) is far too coarse for droplet-level
   close-ups. On the real dog this step needs a separate high-resolution camera.
 

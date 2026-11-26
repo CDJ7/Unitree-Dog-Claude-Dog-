@@ -1,15 +1,15 @@
 {
- "sim_time_s": 414.5,
- "wall_time_s": 346.4,
- "path_length_m": 5.84,
- "known_free_m2": 24.16,
+ "sim_time_s": 379.6,
+ "wall_time_s": 431.0,
+ "path_length_m": 43.97,
+ "known_free_m2": 26.52,
  "camera_coverage": {
-  "surfaces": 0.565,
-  "floor": 0.706
+  "surfaces": 0.585,
+  "floor": 0.857
  },
  "collisions": [],
  "n_collisions": 0,
- "safety_stops": 1080,
+ "safety_stops": 6,
  "goals": [
   [
    29.49999999999453,
@@ -19,136 +19,129 @@
    true
   ],
   [
-   85.19999999998284,
+   76.80000000000241,
    "viewpoint",
    0.6749999999999998,
    2.125,
-   false
+   true
   ],
   [
-   109.4999999999262,
+   93.49999999996349,
    "viewpoint",
-   1.625,
-   2.4750000000000005,
-   false
+   1.6749999999999998,
+   2.325,
+   true
   ],
   [
-   133.6999999999103,
-   "viewpoint",
-   1.125,
-   1.2250000000000005,
-   false
-  ],
-  [
-   157.10000000002202,
-   "viewpoint",
-   2.375,
-   1.7750000000000004,
-   false
-  ],
-  [
-   180.50000000013375,
+   109.59999999992597,
    "viewpoint",
    2.575,
-   2.825,
-   false
+   2.7750000000000004,
+   true
   ],
   [
-   203.90000000024548,
+   126.79999999988588,
    "viewpoint",
-   3.325,
+   2.5250000000000004,
+   1.625,
+   true
+  ],
+  [
+   143.3999999999566,
+   "viewpoint",
+   3.5250000000000004,
+   1.625,
+   true
+  ],
+  [
+   159.0000000000311,
+   "viewpoint",
+   3.675,
+   0.625,
+   true
+  ],
+  [
+   175.10000000010797,
+   "viewpoint",
+   4.675,
+   0.42500000000000027,
+   true
+  ],
+  [
+   200.10000000022734,
+   "viewpoint",
+   5.325,
+   2.7250000000000005,
+   true
+  ],
+  [
+   215.90000000030278,
+   "viewpoint",
+   4.875,
+   3.625,
+   true
+  ],
+  [
+   232.2000000003806,
+   "viewpoint",
+   5.475,
+   4.425000000000001,
+   true
+  ],
+  [
+   272.00000000057065,
+   "viewpoint",
+   3.2750000000000004,
    3.5250000000000004,
    false
   ],
   [
-   227.30000000035722,
+   281.6000000006165,
    "viewpoint",
-   3.375,
-   1.625,
-   false
+   1.025,
+   1.1749999999999998,
+   true
   ],
   [
-   250.70000000046895,
+   311.10000000075735,
    "viewpoint",
-   4.075,
-   0.875,
-   false
-  ],
-  [
-   274.1000000005807,
-   "viewpoint",
-   3.7750000000000004,
+   3.7249999999999996,
    4.425000000000001,
-   false
+   true
   ],
   [
-   297.5000000006924,
+   348.00000000093354,
    "viewpoint",
-   1.6749999999999998,
-   0.375,
-   false
-  ],
-  [
-   320.90000000080414,
-   "viewpoint",
-   5.025,
-   2.9250000000000007,
-   false
-  ],
-  [
-   344.3000000009159,
-   "viewpoint",
-   3.175,
+   2.675,
    0.42500000000000027,
-   false
-  ],
-  [
-   367.7000000010276,
-   "viewpoint",
-   5.625,
-   2.125,
-   false
-  ],
-  [
-   391.10000000113934,
-   "viewpoint",
-   5.475,
-   3.825,
-   false
-  ],
-  [
-   414.50000000125107,
-   "viewpoint",
-   4.975,
-   0.42500000000000027,
-   false
+   true
   ]
  ],
  "frames_tagged": 0,
- "look_arounds": 2,
+ "look_arounds": 15,
  "inspected": [
   {
-   "id": "e6",
+   "id": "e3",
+   "closeups": 1
+  },
+  {
+   "id": "e2",
+   "closeups": 0
+  },
+  {
+   "id": "e10",
    "closeups": 0
   },
   {
    "id": "e1",
-   "closeups": 0
+   "closeups": 1
   },
   {
-   "id": "e8",
-   "closeups": 0
+   "id": "e12",
+   "closeups": 1
   },
   {
-   "id": "e9",
-   "closeups": 0
-  },
-  {
-   "id": "e3",
-   "closeups": 0
-  },
-  {
-   "id": "e11",
+   "id": "e6",
    "closeups": 0
   }
  ],
@@ -156,17 +149,17 @@
  "keepout": true,
  "detector": "stain_rf_depth.pkl",
  "detector_threshold": 0.25,
- "detections": 143,
- "evidence_frames": 545,
- "sim_time_total_s": 556.5,
- "wall_time_total_s": 468.5,
+ "detections": 2191,
+ "evidence_frames": 536,
+ "sim_time_total_s": 546.6,
+ "wall_time_total_s": 608.1,
  "score": {
   "truth_clusters": 6,
-  "found_clusters": 7,
+  "found_clusters": 22,
   "truth_found": 4,
   "recall": 0.667,
-  "precision": 1.0,
-  "median_error_to_centre_m": 0.235,
+  "precision": 0.909,
+  "median_error_to_centre_m": 0.557,
   "truth_missed": [
    "c3",
    "c5"
@@ -174,7 +167,62 @@
   "distractors_flagged": 0,
   "distractors": 3
  },
- "floor_stains_stepped_on": 0,
- "floor_stains_stepped_on_after_found": 0,
- "floor_stains_total": 44
+ "floor_stains_stepped_on": 1,
+ "floor_stains_stepped_on_after_found": 1,
+ "floor_stains_total": 44,
+ "analysis": {
+  "stains_measured": 190,
+  "stains_usable": 139,
+  "mechanism_correct": "1/1",
+  "origin_error_median_m": 0.404,
+  "groups": [
+   {
+    "id": "g0",
+    "n_stains": 190,
+    "surface": "wall",
+    "zone": null,
+    "mechanism": "impact",
+    "mechanism_confidence": 0.985,
+    "origin": {
+     "gravity_corrected": [
+      2.178,
+      0.673,
+      1.138
+     ],
+     "straight_line": [
+      2.239,
+      0.399,
+      1.538
+     ],
+     "ellipsoid_95_semi_axes_m": [
+      1.965,
+      0.142,
+      0.116
+     ],
+     "height_m": 1.14
+    },
+    "truth": {
+     "event": 0,
+     "purity": 0.96,
+     "mechanism": "impact",
+     "mechanism_correct": true,
+     "origin_error_m": 0.404,
+     "origin_error_straight_m": 0.454
+    }
+   }
+  ],
+  "measurement": {
+   "measured_usable": 139,
+   "matched": 133,
+   "distinct_truth_stains": 133,
+   "alpha_abs_err_median_deg": 5.91,
+   "alpha_abs_err_p90_deg": 20.87,
+   "direction_err_median_deg": 2.58,
+   "direction_reversed_frac": 0.098,
+   "distance_median_m": 0.89,
+   "events": {
+    "0": 133
+   }
+  }
+ }
 }
