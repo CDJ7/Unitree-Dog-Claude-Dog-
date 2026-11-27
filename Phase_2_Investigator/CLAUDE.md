@@ -1,10 +1,14 @@
 # Phase 2 Investigator: notes for Claude Code (terminal, Linux laptop)
 
+**Start with [`docs/STATUS.md`](docs/STATUS.md):** where everything stands, the working agreement with the user,
+what comes next, and the lessons and gotchas learned the hard way. The results and method are in `REPORT.md`.
+
 The crime-scene search dog for a Unitree Go2:
 - **Stage A, simulation:** MuJoCo, spatter physics, scenarios, navigation, inspect, playback.
-- **Stage R, the real dog:**
-  - it maps the lab and tags zones itself (`mapping/`, `real_robot/`);
-  - later, crime-scene evidence on the real robot.
+- **Stage R, the real dog:** it maps the lab and tags zones itself (`mapping/`, `real_robot/`). Done in
+  simulation; the first real-dog session follows `LAB_PLAN.md`.
+- **Stage C, the crime-scene search:** stain detector, evidence map, keep-out, close-ups and stain analysis
+  (`scripts/investigate.py`). Done in simulation only.
 
 Plans: `docs/plan.md` (Stage A/B), `docs/real_robot_plan.md` (Stage R and crime scene C1-C6).
 Lab sessions with the real dog follow `LAB_PLAN.md` (Part 1: mapping + go-to-zone, no stain prints; Part 2 later).
@@ -18,10 +22,21 @@ Lab sessions with the real dog follow `LAB_PLAN.md` (Part 1: mapping + go-to-zon
 - `perception/zone_classifier.py`: loads Test 2's ResNet18 checkpoints.
   - simulation: `../Test2/results/q1/resnet18/best.pt` (in git);
   - lab: `../Test2/results/real_q1/resnet18/best.pt` (not in git).
-- `scripts/`: `real_check.py`, `map_zones.py`, `goto_zone.py`, plus the Stage A scripts (`run_sim.sh`, ...).
+- `perception/stain_detector.py` + `perception/models/stain_rf_{depth,image}.pkl` (committed): the stain detector.
+- `mapping/evidence_map.py`: detections -> evidence clusters, keep-out disks, GT scoring, stains walked over.
+- `navigation/closeups.py`: the close-up tour. `analysis/closeup.py`: per-stain measurement.
+  `analysis/scene_report.py`: groups -> mechanism (`perception/models/mechanism_gb_simclose.pkl`) -> origin -> report.
+- `scripts/`:
+  - `real_check.py`, `map_zones.py`, `goto_zone.py` (Stage R);
+  - `investigate.py`, `reanalyse.py` (Stage C);
+  - plus the Stage A scripts (`run_sim.sh`, ...).
+- `training/`: `train_stain_detector.py`, `train_mechanism_simclose.py`, Phase 2's COCO and mechanism training.
+- `report/build_pdf.sh`: `REPORT.md` -> `Phase2_Report.pdf`.
 - Outputs go to `outputs/` (gitignored). Logs of robot runs go in `logs/` (gitignored): `cmd 2>&1 | tee logs/<name>.log`.
 
 ## Rules
+- **Git:** work on `claude/eng6010-test2-crime-scene-0rst3r`. When the user asks, open a PR into `main`.
+  **They merge; never merge yourself.** After a merge, restart the branch from `origin/main`.
 - **Test 2 (`../Test2/`) is submitted and frozen: never edit it.** Read or import from it only.
 - **Do not edit Test 1 (`../go2_stream/`)** unless the user says so; Phase 2 imports its modules.
 - **Never run anything that moves the real dog.** That means `map_zones.py --backend real` or
@@ -34,7 +49,8 @@ Lab sessions with the real dog follow `LAB_PLAN.md` (Part 1: mapping + go-to-zon
   - `ping 192.168.123.161`, `ip -br addr`, `nmcli con show`;
   - `python ../go2_stream/preflight.py`.
 - Every number reported must come from a file a script wrote (`outputs/**/report.json`,
-  `outputs/goto/*.json`). Never invent results.
+  `outputs/goto/*.json`, `docs/media/**`). Never invent results, and never quote an overwritten run.
+  Copy result files that docs quote into `docs/media/` (`outputs/` is gitignored).
 - After code changes: `python -m pytest -q` (about 2 minutes; the zone-map, localize and real-session
   tests take seconds).
 

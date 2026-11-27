@@ -8,6 +8,8 @@ Forensic-science education project; people appear only as simple mannequins.
 
 **In the lab with the real dog? Start with [`LAB_PLAN.md`](LAB_PLAN.md).**
 
+**Status, next steps and lessons learned:** [`docs/STATUS.md`](docs/STATUS.md).
+
 **Full write-up:** [`REPORT.md`](REPORT.md) ([PDF](Phase2_Report.pdf)): Stage A simulation, Stage R self-built zone
 maps, Stage C crime-scene search and stain analysis, with every result and its source file.
 
