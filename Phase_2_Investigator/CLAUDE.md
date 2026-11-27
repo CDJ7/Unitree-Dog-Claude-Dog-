@@ -7,6 +7,7 @@ The crime-scene search dog for a Unitree Go2:
   - later, crime-scene evidence on the real robot.
 
 Plans: `docs/plan.md` (Stage A/B), `docs/real_robot_plan.md` (Stage R and crime scene C1-C6).
+Lab sessions with the real dog follow `LAB_PLAN.md` (Part 1: mapping + go-to-zone, no stain prints; Part 2 later).
 
 ## Where things are
 - `navigation/`: occupancy grid, frontiers, planner, safety layer, `Navigator` (explorer.py).
