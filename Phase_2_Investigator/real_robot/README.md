@@ -1,5 +1,8 @@
 # Real Go2: the dog maps the lab and tags its zones itself (Stage R)
 
+> **Working in the lab today? Follow [`../LAB_PLAN.md`](../LAB_PLAN.md)**: the step-by-step session plan, with
+> what to collect and when (and when not) to print stain patterns. This file is the reference behind it.
+
 The dog explores the lab on its own and builds a LiDAR map. Every place on the map collects the camera
 zone classifier's votes (lab_1, lab_2, open_area, shelves) from all the directions it was seen from.
 The result is a map split into zones that you can send it to: "go to lab_2" plans a path on the map.
@@ -92,7 +95,7 @@ lab.
 far is saved. The Unitree remote and Test 1's teleop keys also take over at once.
 
 ```bash
-python scripts/map_zones.py --backend real --max-time 600 --video
+python scripts/map_zones.py --backend real --max-time 600 --video            # map: 30 x 30 m around the start (--map-size)
 ```
 
 **What the dog does:**

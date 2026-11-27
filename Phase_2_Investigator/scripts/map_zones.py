@@ -24,6 +24,8 @@ sys.path.insert(0, str(ROOT))
 
 import sim_env  # noqa: E402,F401  (offscreen GL backend before mujoco loads)
 
+import numpy as np  # noqa: E402
+
 
 class VideoHook:
     """Camera | live zone map, one frame every `every` seconds of robot time."""
@@ -77,6 +79,8 @@ def main():
     ap.add_argument("--spacing", type=float, default=1.0, help="metres between look-around viewpoints")
     ap.add_argument("--out", help="output directory (default outputs/zone_map/<name>)")
     ap.add_argument("--video", action="store_true", help="save map_building.mp4")
+    ap.add_argument("--map-size", type=float, default=30.0,
+                    help="real robot: side of the square map around the start, m (default 30)")
     ap.add_argument("--house", default="scenesmith_house_185", help="sim: house for --random scenes")
     ap.add_argument("--zones-gt", default=str(ROOT / "mapping/config/house185_zones.yaml"),
                     help="sim only: true zone polygons used to score the map")
@@ -103,12 +107,23 @@ def main():
         from real_robot.session import RealGo2Session
         sim = RealGo2Session.from_args(a)
         name = "real_" + time.strftime("%Y%m%d_%H%M%S")
-        model = a.model or REAL_MODEL
+        model = Path(a.model) if a.model else (SIM_MODEL if a.link == "sim" else REAL_MODEL)
+        if not model.exists():
+            sim.close()
+            raise SystemExit(f"Zone classifier not found: {model}\nCopy the lab model (best.pt, trained in Test 2 on the "
+                             "lab laptop; not in git) to that path, or pass --model <path>.")
     out = Path(a.out or ROOT / "outputs" / "zone_map" / name)
     out.mkdir(parents=True, exist_ok=True)
     clf = ZoneClassifier(model)
     print(f"zone classifier {Path(model).name}: {clf.classes}")
-    nav = Navigator(sim, verbose=True)
+    grid = None
+    if a.backend == "real":
+        # the real lab can be bigger than the simulator houses: a map of --map-size m around the start
+        from navigation.occupancy import OccupancyGrid
+        st0 = sim.state()
+        grid = OccupancyGrid(origin=st0.position[:2] - np.array([a.map_size / 2, a.map_size / 2]),
+                             size=(a.map_size, a.map_size))
+    nav = Navigator(sim, grid=grid, verbose=True)
     if hasattr(sim, "safety_config"):                     # real dog: larger stop / slow distances
         nav.safety.cfg = sim.safety_config
     mapper = ZoneMapper(nav, clf)

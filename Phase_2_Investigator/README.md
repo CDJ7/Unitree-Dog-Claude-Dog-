@@ -6,6 +6,8 @@ impact angles, directionality, area of origin, pattern (mechanism)
 classification and the weapon categories the pattern is *consistent with*.
 Forensic-science education project; people appear only as simple mannequins.
 
+**In the lab with the real dog? Start with [`LAB_PLAN.md`](LAB_PLAN.md).**
+
 **Full write-up:** [`REPORT.md`](REPORT.md) ([PDF](Phase2_Report.pdf)): Stage A simulation, Stage R self-built zone
 maps, Stage C crime-scene search and stain analysis, with every result and its source file.
 
